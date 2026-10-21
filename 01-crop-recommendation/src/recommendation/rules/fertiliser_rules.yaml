@@ -1,0 +1,36 @@
+# Fertiliser rules (data, not code).
+#
+# STATUS: EMPTY ON PURPOSE. No real rule has been entered yet because the RAB guideline
+# document has not been confirmed. Do not add a rule from memory or from a blog post.
+#
+# Every rule needs:
+#   id        unique, for example maize-lowph-lime-01
+#   crop      lower case code: beans, irish_potato, maize, rice
+#   when      conditions on soil values (optional). Variables: ph_water, organic_carbon_pct,
+#             total_nitrogen_pct, phosphorus_mgkg, potassium_cmolkg, texture.
+#             Operators: lt, lte, gt, gte, eq, in, between ([low, high], inclusive).
+#             A rule with no 'when' applies to the crop in general.
+#   advice    list of items: input_type, product, rate, rate_unit (kg/ha or t/ha), timing, explanation
+#   source    document (required), section and page (required once status is verified), url
+#   status    draft (default, never served) or verified (a teammate checked it against the source)
+#   priority  optional integer; higher wins if two rules give the same input type
+#
+# Example of the shape (kept as a comment so it is never loaded):
+#
+#   - id: example-01
+#     crop: maize
+#     when:
+#       ph_water: {lt: 5.0}
+#     advice:
+#       - input_type: lime
+#         rate: 0
+#         rate_unit: t/ha
+#         explanation: "<copy the guideline sentence>"
+#     source:
+#       document: "<full title of the guideline>"
+#       section: "<section number>"
+#       page: "<page>"
+#     status: draft
+
+version: "0.0-empty"
+rules: []
