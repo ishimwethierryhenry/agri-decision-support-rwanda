@@ -107,7 +107,7 @@ Coverage: 2017-2025, 4 districts, seasons A and B.
 
 | Limitation | Impact |
 |---|---|
-| Rwanda Govt soil fertility dataset covers Gicumbi only, not pilot districts | iSDAsoil modelled estimates used instead |
+| Rwanda Govt soil fertility dataset covers Gicumbi only, not pilot districts | iSDAsoil modelled estimates used instead; API now requires auth key (401 as of Oct 2026), registration submitted, soil join pending |
 | CIMMYT 2022 has 104 samples with truncated coordinates | Excluded, cannot join spatially |
 | CIAT GPS_Elev includes some 0.0m readings | Filter elevation_m > 900 before training |
 | CIAT GPS_Long includes outliers above 31.0 | Filter longitude < 31.0 before training |
