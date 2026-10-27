@@ -61,4 +61,4 @@ lightning_logs/
 *.7z
 *.sqlite
 *.db
-cdcrop-recommendation/data/processed/*.csv
+01-crop-recommendation/data/processed/*.csv
