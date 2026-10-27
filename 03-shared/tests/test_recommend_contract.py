@@ -1,4 +1,4 @@
-"""Contract tests for the Recommendation API (draft 0.1.0).
+"""Contract tests for the Recommendation API (draft 0.2.0).
 
 Run from the repository root:  python -m pytest 03-shared/tests -q
 """
@@ -138,3 +138,25 @@ def test_stub_server_follows_contract():
 
     oob = c.post("/v1/recommend", json={"lat": 10, "lon": 29.6, "season": "B"})
     assert ErrorEnvelope(**oob.json()).error.code == "OUT_OF_BOUNDS"
+
+
+# ------------------------------------------------------------ added in 0.2.0
+@pytest.mark.parametrize("elev,ok", [(950, True), (2300, True), (4507, True), (500, False), (5000, False)])
+def test_elevation_is_optional_and_bounded(elev, ok):
+    if ok:
+        assert RecommendRequest(district="Musanze", season="B", elevation_m=elev).elevation_m == elev
+    else:
+        with pytest.raises(ValidationError):
+            RecommendRequest(district="Musanze", season="B", elevation_m=elev)
+    assert RecommendRequest(district="Musanze", season="B").elevation_m is None
+
+
+def test_site_inputs_are_optional_and_carry_a_source():
+    body = dict(ex.RESPONSE_OK)
+    body["inputs_used"] = {**ex.RESPONSE_OK["inputs_used"],
+                           "site": {"elevation_m": {"value": 2107.2, "source": "district_median_ciat"}}}
+    assert RecommendResponse(**body).inputs_used.site["elevation_m"].source == "district_median_ciat"
+    bad = dict(body)
+    bad["inputs_used"] = {**ex.RESPONSE_OK["inputs_used"], "site": {"elevation_m": {"value": 2107.2}}}
+    with pytest.raises(ValidationError):
+        RecommendResponse(**bad)

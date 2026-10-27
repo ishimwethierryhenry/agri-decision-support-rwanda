@@ -23,14 +23,13 @@ import pandas as pd
 from sklearn.metrics import f1_score, recall_score
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from expert_baseline import ExpertRulesBaseline, MajorityBaseline  # noqa: E402
+from expert_baseline import ExpertRulesBaseline, MajorityBaseline, adjust_to_height  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[3]
-DEFAULT_TABLE = REPO / "01-crop-recommendation" / "data" / "processed" / "feature_table.csv"
+PROCESSED = REPO / "01-crop-recommendation" / "data" / "processed"
+# Newest table first. Part A renamed the table to v2 on 27 Oct (NISR crop stats replaced by district crop shares).
+TABLE_CANDIDATES = [PROCESSED / "feature_table_v2.csv", PROCESSED / "feature_table.csv"]
 DEFAULT_OUT = REPO / "01-crop-recommendation" / "reports" / "eval_v0"
-
-# Standard atmosphere lapse rate: air cools about 6.5 C per 1000 m of height (ICAO standard atmosphere).
-LAPSE_RATE_C_PER_M = 0.0065
 
 LABEL_MAP = {"Maize": "maize", "Beans": "beans", "Irish potatoes": "irish_potato", "Rice": "rice"}
 GROUP_COL = "district"
@@ -40,9 +39,13 @@ ALLOWED_FEATURES = [
     "elevation_m", "precip_mm", "tmax_c", "tmin_c", "tmean_c", "solar_mj_m2", "tmean_point_c", "tmin_point_c",
     "nitrogen_0_20cm", "phosphorous_extractable_0_20cm", "potassium_extractable_0_20cm", "ph_0_20cm",
     "sand_0_20cm", "clay_0_20cm", "silt_0_20cm", "carbon_organic_0_20cm", "cation_exchange_capacity_0_20cm",
+    # District crop shares from NISR (table v2). Same value for every point in a district, never the point's own crop.
+    "nisr_share_beans", "nisr_share_irish_potato", "nisr_share_maize", "nisr_share_paddy_rice",
 ]
 # Columns that describe or are derived from the crop itself. Using them leaks the answer.
+# NISR statistics looked up with the point's own crop (table v1) are refused; district shares are allowed.
 FORBIDDEN_PREFIXES = ("nisr_",)
+ALLOWED_PREFIX_EXCEPTIONS = ("nisr_share_",)
 FORBIDDEN_COLUMNS = {"label", "Crop_plant", "landcover", "Mixed_crop", "All_crops", "SA_crop", "SA_prod",
                      "SB_yield", "Crop_sys", "Crop_area", "Crop_propo", "Seed_var", "Var_reason", "Growth_stg",
                      "Plant_date", "Har_season", "Har_period", "Harvest", "Fert_type", "Base_fert", "Base_quant",
@@ -55,7 +58,8 @@ class LeakageError(ValueError):
 
 def check_features(features: Iterable[str]) -> list[str]:
     features = list(features)
-    bad = [f for f in features if f in FORBIDDEN_COLUMNS or f.startswith(FORBIDDEN_PREFIXES)]
+    bad = [f for f in features if f in FORBIDDEN_COLUMNS
+           or (f.startswith(FORBIDDEN_PREFIXES) and not f.startswith(ALLOWED_PREFIX_EXCEPTIONS))]
     if bad:
         raise LeakageError(f"these columns leak the label or the district and cannot be features: {bad}")
     unknown = [f for f in features if f not in ALLOWED_FEATURES]
@@ -64,25 +68,43 @@ def check_features(features: Iterable[str]) -> list[str]:
     return features
 
 
+def _first_present(df: pd.DataFrame, names: list[str]) -> str:
+    for n in names:
+        if n in df.columns:
+            return n
+    raise KeyError(f"none of these columns are in the table: {names}")
+
+
+def default_table() -> Path:
+    for p in TABLE_CANDIDATES:
+        if p.exists():
+            return p
+    raise FileNotFoundError("No feature table found. Expected one of: "
+                            + ", ".join(str(p) for p in TABLE_CANDIDATES)
+                            + ". Get the latest from Part A (team drive) or pass --table.")
+
+
 def prepare(df: pd.DataFrame, label_col: str = "Crop_plant", min_elev: float = 900.0,
             max_lon: float = 31.0) -> pd.DataFrame:
     """Apply Part A's filters, keep pure crops, and add derived columns. Returns a new frame."""
     out = df.copy()
     n0 = len(out)
-    out = out[(out["GPS_Elev"] > min_elev) & (out["longitude"] < max_lon)]
-    out = out[out[label_col].isin(LABEL_MAP)]
-    out["label"] = out[label_col].map(LABEL_MAP)
+    lon_col = _first_present(out, ["GPS_Long", "longitude", "longitude_x"])
+    out = out[(out["GPS_Elev"] > min_elev) & (out[lon_col] < max_lon)].copy()
     out["elevation_m"] = out["GPS_Elev"].astype(float)
     out[GROUP_COL] = out["District"]
+    # Reference height for the temperature adjustment: median elevation of all CIAT points in the district
+    # (labelled or not). The service uses the same reference (district_profiles.json), so both agree.
+    ref = out.groupby(GROUP_COL)["elevation_m"].transform("median")
+    out = out[out[label_col].isin(LABEL_MAP)].copy()
+    ref = ref.loc[out.index]
+    out["label"] = out[label_col].map(LABEL_MAP)
     if {"tmax_c", "tmin_c"} <= set(out.columns):
         out["tmean_c"] = (out["tmax_c"] + out["tmin_c"]) / 2
         # NASA POWER gives one temperature per district. Move it to each point's own height with the
-        # standard lapse rate. Reference height = median CIAT elevation of the district (an assumption,
-        # because the NASA POWER cell height is not stored in the table). Uses inputs only, never labels.
-        ref = out.groupby(GROUP_COL)["elevation_m"].transform("median")
-        shift = LAPSE_RATE_C_PER_M * (out["elevation_m"] - ref)
-        out["tmean_point_c"] = out["tmean_c"] - shift
-        out["tmin_point_c"] = out["tmin_c"] - shift
+        # standard lapse rate (an approximation, because the NASA POWER cell height is not stored).
+        out["tmean_point_c"] = adjust_to_height(out["tmean_c"], out["elevation_m"], ref)
+        out["tmin_point_c"] = adjust_to_height(out["tmin_c"], out["elevation_m"], ref)
     out.attrs["rows_before_filters"] = n0
     return out.reset_index(drop=True)
 
@@ -181,8 +203,8 @@ def write_report(df: pd.DataFrame, results: pd.DataFrame, summary: pd.DataFrame,
         "# Leave-one-district-out evaluation (v0)", "",
         f"Rows used: {len(df)} of {df.attrs.get('rows_before_filters', 'n/a')} "
         "(filters: elevation above 900 m, longitude below 31.0, pure crops only, mixed crops dropped).", "",
-        f"Features allowed for ML models: {', '.join(features)}. NISR columns are excluded because they are "
-        "looked up from the crop label.", "",
+        f"Features allowed for ML models: {', '.join(features)}. NISR statistics looked up from a point's own "
+        "crop are refused; district crop shares are allowed.", "",
         "## Rows per district and crop", "", _md(counts), "",
         "## Summary (mean over the four held-out districts)", "", _md(summary.round(3)), "",
         "## Per held-out district", "", _md(results.round(3), index=False), "",
@@ -200,11 +222,13 @@ def write_report(df: pd.DataFrame, results: pd.DataFrame, summary: pd.DataFrame,
 
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--table", default=str(DEFAULT_TABLE))
+    ap.add_argument("--table", default=None, help="Feature table CSV. Default: newest table in data/processed.")
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     ap.add_argument("--label-col", default="Crop_plant")
     args = ap.parse_args(argv)
-    df = prepare(pd.read_csv(args.table), label_col=args.label_col)
+    table = Path(args.table) if args.table else default_table()
+    print(f"Feature table: {table}")
+    df = prepare(pd.read_csv(table), label_col=args.label_col)
     features = check_features([c for c in ALLOWED_FEATURES if c in df.columns and df[c].notna().any()])
     results = run_lodo(df, default_models(features))
     summary = summarise(results)

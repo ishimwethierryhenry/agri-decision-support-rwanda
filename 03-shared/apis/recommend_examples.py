@@ -22,7 +22,7 @@ REQUEST_POINT_FERTILISER_ONLY = {
 
 RESPONSE_OK = {
     "request_id": "example-0001",
-    "api_version": "0.1.0",
+    "api_version": "0.2.0",
     "model_version": None,
     "rules_version": "rules-0.1-example",
     "generated_at": "2026-10-21T08:00:00Z",
@@ -79,7 +79,7 @@ RESPONSE_OK = {
 
 RESPONSE_ABSTAIN = {
     "request_id": "example-0002",
-    "api_version": "0.1.0",
+    "api_version": "0.2.0",
     "model_version": None,
     "rules_version": "rules-0.1-example",
     "generated_at": "2026-10-21T08:05:00Z",
