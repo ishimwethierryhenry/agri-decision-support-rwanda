@@ -56,4 +56,5 @@ crops:
         optimal: [14, null]
         source: {ref: "[6]", text: "Minimum temperatures below 14 C during reproduction damaged rice."}
     reliability_cap: low
+    note_factor: water_access
     note: "Rice depends mostly on marshland or irrigation, and the feature table has no water-access layer [5]."

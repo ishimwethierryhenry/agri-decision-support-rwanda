@@ -139,3 +139,27 @@ def test_unknown_label_without_rules_is_refused():
     df = pd.DataFrame({"elevation_m": [1500.0]})
     with pytest.raises(RulesError):
         ExpertRulesBaseline().fit(df, pd.Series(["cassava"]))
+
+
+def test_prepare_handles_table_v2_column_names():
+    raw = raw_table().rename(columns={"longitude": "longitude_x"})
+    raw["GPS_Long"] = raw["longitude_x"]
+    assert len(prepare(raw)) == 160
+
+
+def test_district_crop_shares_are_allowed_but_point_crop_stats_are_not():
+    assert check_features(["nisr_share_maize", "elevation_m"]) == ["nisr_share_maize", "elevation_m"]
+    with pytest.raises(LeakageError):
+        check_features(["nisr_yield_kg_ha"])
+
+
+def test_default_table_prefers_v2_and_explains_when_missing(tmp_path, monkeypatch):
+    import evaluate
+    v2, v1 = tmp_path / "feature_table_v2.csv", tmp_path / "feature_table.csv"
+    monkeypatch.setattr(evaluate, "TABLE_CANDIDATES", [v2, v1])
+    with pytest.raises(FileNotFoundError, match="Part A"):
+        evaluate.default_table()
+    v1.write_text("x\n1\n")
+    assert evaluate.default_table() == v1
+    v2.write_text("x\n1\n")
+    assert evaluate.default_table() == v2

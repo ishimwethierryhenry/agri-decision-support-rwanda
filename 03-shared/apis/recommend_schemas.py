@@ -1,4 +1,4 @@
-"""Pydantic models for the Recommendation API contract (DRAFT 0.1.0).
+"""Pydantic models for the Recommendation API contract (DRAFT 0.2.0).
 
 These models are the executable form of docs/api_contracts.md. If a field changes,
 change this file and the document together, and bump CONTRACT_VERSION.
@@ -12,11 +12,14 @@ from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CONTRACT_VERSION = "0.1.0"
+CONTRACT_VERSION = "0.2.0"
 
 # Approximate bounding box of Rwanda (decimal degrees, WGS84).
 LAT_MIN, LAT_MAX = -2.9, -1.0
 LON_MIN, LON_MAX = 28.8, 31.0
+
+# Rwanda's land elevation runs from about 950 m (Rusizi river) to 4,507 m (Mount Karisimbi), with a small margin.
+ELEV_MIN, ELEV_MAX = 900.0, 4600.0
 
 # Candidate crop codes. The final list is still a team decision, so the API
 # checks crop codes at run time against GET /v1/metadata, not against this tuple.
@@ -52,6 +55,9 @@ class RecommendRequest(Strict):
     district: Optional[str] = Field(None, min_length=2, max_length=40)
     lat: Optional[float] = Field(None, ge=LAT_MIN, le=LAT_MAX)
     lon: Optional[float] = Field(None, ge=LON_MIN, le=LON_MAX)
+    elevation_m: Optional[float] = Field(None, ge=ELEV_MIN, le=ELEV_MAX,
+                                         description="Field elevation in metres, for example from a phone GPS. "
+                                                     "If omitted, the district median is used.")
     season: Literal["A", "B", "C"]
     year: Optional[int] = Field(None, ge=2000, le=2100)
     crop: Optional[str] = Field(None, pattern=r"^[a-z_]{2,30}$",
@@ -151,8 +157,16 @@ class SoilUsed(Strict):
     missing: list[str] = Field(default_factory=list, description="Key soil inputs that were not available.")
 
 
+class SiteValue(Strict):
+    value: float
+    source: str = Field(description="Where the value came from, for example user, district_median_ciat, "
+                                    "or a NASA POWER season normal.")
+
+
 class InputsUsed(Strict):
     soil: SoilUsed
+    site: dict[str, SiteValue] = Field(default_factory=dict,
+                                       description="Elevation and climate values the method used, with sources.")
 
 
 class Warning_(Strict):

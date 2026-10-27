@@ -18,6 +18,14 @@ import yaml
 RULES_PATH = Path(__file__).resolve().parent / "rules" / "crop_suitability.yaml"
 SCORE_OPTIMAL, SCORE_TOLERATED, SCORE_OUTSIDE = 1.0, 0.5, 0.0
 
+# Standard atmosphere lapse rate: air cools about 6.5 C per 1000 m of height (ICAO standard atmosphere).
+LAPSE_RATE_C_PER_M = 0.0065
+
+
+def adjust_to_height(temp_c, elevation_m, ref_elevation_m):
+    """Move a temperature measured at ref_elevation_m to elevation_m. Works on numbers and pandas Series."""
+    return temp_c - LAPSE_RATE_C_PER_M * (elevation_m - ref_elevation_m)
+
 
 class RulesError(ValueError):
     pass
@@ -79,25 +87,62 @@ def score_factor(x: Any, factor: dict) -> Optional[float]:
     return SCORE_OUTSIDE
 
 
+# Plain-language names for the rule variables, used in the reasons shown to extension officers.
+VARIABLE_LABELS = {
+    "elevation_m": ("Elevation", "m", 0),
+    "precip_mm": ("Season rainfall", "mm", 0),
+    "tmean_point_c": ("Mean temperature", "C", 1),
+    "tmin_point_c": ("Minimum temperature", "C", 1),
+}
+
+
+def _label(variable: str) -> tuple[str, str, int]:
+    return VARIABLE_LABELS.get(variable, (variable, "", 1))
+
+
+def _range_text(rng: Optional[list], unit: str) -> Optional[str]:
+    if rng is None:
+        return None
+    lo, hi = rng
+    u = f" {unit}" if unit else ""
+    if lo is None:
+        return f"up to {hi}{u}"
+    if hi is None:
+        return f"{lo}{u} or more"
+    return f"{lo} to {hi}{u}"
+
+
 def explain_row(row: dict, rules: dict) -> dict[str, dict]:
     """Score every crop for one location and return scores with reasons in the API contract shape."""
     out = {}
     for crop, spec in rules["crops"].items():
         scores, reasons = [], []
         for f in spec["factors"]:
+            name, unit, digits = _label(f["variable"])
             x = row.get(f["variable"])
             s = score_factor(x, f)
+            best = _range_text(f["optimal"], unit)
             if s is None:
                 reasons.append({"factor": f["variable"], "direction": "neutral", "value": None,
                                 "expected_range": _fmt_range(f["optimal"]),
-                                "text": f"{f['variable']} not available, so this factor was skipped."})
+                                "text": f"{name} is not available, so this check was skipped."})
                 continue
             scores.append(s)
-            direction = "supports" if s == SCORE_OPTIMAL else ("neutral" if s == SCORE_TOLERATED else "against")
+            val = f"{float(x):.{digits}f} {unit}".strip()
+            if s == SCORE_OPTIMAL:
+                direction, verdict = "supports", f"inside the expected range ({best})"
+            elif s == SCORE_TOLERATED:
+                direction = "neutral"
+                verdict = (f"outside the best range ({best}) but within what the crop tolerates "
+                           f"({_range_text(f.get('tolerated'), unit)})")
+            else:
+                direction, verdict = "against", f"outside the expected range ({best})"
             reasons.append({"factor": f["variable"], "direction": direction, "value": float(x),
                             "expected_range": _fmt_range(f["optimal"]),
-                            "text": f"{f['variable']} is {float(x):.1f}; expected {_fmt_range(f['optimal'])} "
-                                    f"{f['source']['ref']}. {f['source']['text']}"})
+                            "text": f"{name} is {val}, {verdict} {f['source']['ref']}. {f['source']['text']}"})
+        if spec.get("note"):
+            reasons.append({"factor": spec.get("note_factor", "note"), "direction": "neutral", "value": None,
+                            "expected_range": None, "text": spec["note"]})
         out[crop] = {"score": float(np.mean(scores)) if scores else None, "n_evaluated": len(scores),
                      "reasons": reasons, "reliability_cap": spec.get("reliability_cap")}
     return out
@@ -117,6 +162,28 @@ class MajorityBaseline:
         return np.tile(self.prior_, (len(X), 1))
 
 
+# Tie-break weights. They only matter when two crops have the same rule score:
+# first the crop backed by more evaluated factors wins, then the crop more common in the training data.
+EVIDENCE_WEIGHT = 1e-2
+PRIOR_WEIGHT = 1e-4
+
+
+def ranking_key(score: Optional[float], n_evaluated: int, prior: float) -> float:
+    return (0.0 if score is None else score) + EVIDENCE_WEIGHT * n_evaluated + PRIOR_WEIGHT * prior
+
+
+def rank_crops(row: dict, rules: dict, prior: dict[str, float]) -> list[dict]:
+    """Score and rank every crop in the rules for one location. Best first.
+
+    Each item: crop, score (0 to 1, or None if no factor could be evaluated), n_evaluated, reasons,
+    reliability_cap. The evaluation harness and the service both use this, so they cannot drift apart.
+    """
+    ex = explain_row(row, rules)
+    items = [{"crop": c, **v} for c, v in ex.items()]
+    items.sort(key=lambda d: ranking_key(d["score"], d["n_evaluated"], prior.get(d["crop"], 0.0)), reverse=True)
+    return items
+
+
 class ExpertRulesBaseline:
     """B1: published ranges only.
 
@@ -124,8 +191,8 @@ class ExpertRulesBaseline:
     then the crop that is more common in the training districts. Neither changes a clear score difference.
     """
     name = "B1_expert_rules"
-    EVIDENCE_WEIGHT = 1e-2
-    PRIOR_WEIGHT = 1e-4
+    EVIDENCE_WEIGHT = EVIDENCE_WEIGHT
+    PRIOR_WEIGHT = PRIOR_WEIGHT
 
     def __init__(self, rules: Optional[dict] = None):
         self.rules = rules or load_rules()
@@ -145,7 +212,5 @@ class ExpertRulesBaseline:
         for i, row in enumerate(rows):
             ex = explain_row(row, self.rules)
             for j, c in enumerate(self.classes_):
-                s = ex[c]["score"]
-                out[i, j] = ((0.0 if s is None else s) + self.EVIDENCE_WEIGHT * ex[c]["n_evaluated"]
-                             + self.PRIOR_WEIGHT * self.prior_[j])
+                out[i, j] = ranking_key(ex[c]["score"], ex[c]["n_evaluated"], self.prior_[j])
         return out

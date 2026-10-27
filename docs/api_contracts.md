@@ -1,6 +1,6 @@
 # API contracts
 
-**Status:** DRAFT 0.1.0, proposed by Thierry (Part B, ML and Geospatial) on 20 October 2026. Nothing below is a live endpoint. Examples are placeholders, not model output and not agronomic advice.
+**Status:** DRAFT 0.2.0, proposed by Thierry (Part B, ML and Geospatial) on 20 October 2026 and updated on 27 October 2026. `POST /v1/recommend` now runs on the B1 expert-rules baseline (section 6). The examples below are still placeholders, not model output and not agronomic advice.
 
 **Reviewers needed:** Anny and Gabin (CV sub-team) for section 1 and the dashboard side. Arsene for the feature schema link and reliability levels. Calvin or Prof. Okeyo only if they want to see the format.
 
@@ -43,7 +43,7 @@ These are proposals. The goal is that the dashboard can call both services the s
 | Responsible workstream | Crop recommendation (ML and Geospatial, Part B), with the shared dashboard |
 | Purpose | An extension officer gives a location, a season and optional soil test values. The service returns ranked crops with reasons and a reliability level, and fertiliser guidance for one crop with the source of each rule. |
 | Method and route | `POST /v1/recommend` (proposed, not agreed) |
-| Contract version | 0.1.0 draft. Reviewer and review date: to fill in. |
+| Contract version | 0.2.0 draft. Reviewer and review date: to fill in. |
 
 ### 2.1 Input fields
 
@@ -52,6 +52,7 @@ These are proposals. The goal is that the dashboard can call both services the s
 | `district` | string | one of `district` or `lat` and `lon` | name from `GET /v1/metadata` | Case-insensitive. Unknown names are rejected. |
 | `lat` | number | with `lon` | decimal degrees, -2.9 to -1.0 | Approximate bounding box of Rwanda. |
 | `lon` | number | with `lat` | decimal degrees, 28.8 to 31.0 | If `lat` and `lon` are given they win over `district`. |
+| `elevation_m` | number | no | metres, 900 to 4,600 | Added in 0.2.0. Field elevation, for example from a phone GPS. If left out, the median elevation of the CIAT points in the district is used, with a warning. |
 | `season` | string | yes | `A`, `B` or `C` | Rwandan agricultural seasons. |
 | `year` | integer | no | 2000 to 2100 | Reserved. Not used by the first version. |
 | `crop` | string | no | lower case code from `GET /v1/metadata` | The crop to give fertiliser advice for. If left out, advice is for the rank 1 crop. |
@@ -126,6 +127,7 @@ Example request (point, fertiliser advice only):
 | `fertiliser.items[].explanation_method` | string | `rule_text` (written with the rule) or `rag` (retrieved guideline passages, see below). |
 | `inputs_used.soil.values` | object | For each soil variable used: `value` and `source` (`user`, `isdasoil`, `district_default`). |
 | `inputs_used.soil.missing` | list | Key soil inputs that were not available (pH, organic carbon, total nitrogen). |
+| `inputs_used.site` | object | Added in 0.2.0. The elevation and climate values the method used, each with `value` and `source` (for example `user`, `district_median_ciat`, `nasa_power_normal_2017_2024`). |
 | `warnings` | list | `code` and `message` pairs (section 5). |
 | `disclaimer` | string | Fixed sentence: decision support, not a replacement for local advice. |
 
@@ -136,7 +138,7 @@ Example response (placeholders only):
 ```json
 {
   "request_id": "example-0001",
-  "api_version": "0.1.0",
+  "api_version": "0.2.0",
   "model_version": null,
   "rules_version": "rules-0.1-example",
   "generated_at": "2026-10-21T08:00:00Z",
@@ -258,7 +260,7 @@ Example response when the service abstains:
 ```json
 {
   "request_id": "example-0002",
-  "api_version": "0.1.0",
+  "api_version": "0.2.0",
   "model_version": null,
   "rules_version": "rules-0.1-example",
   "generated_at": "2026-10-21T08:05:00Z",
@@ -306,7 +308,8 @@ Example response when the service abstains:
 | District not in the metadata list | `422`, `UNKNOWN_DISTRICT`. |
 | Crop not in the metadata list | `422`, `UNSUPPORTED_CROP`. |
 | Valid request but district is outside the training data | `200`, expert rules only, reliability `low`, warning `DISTRICT_NOT_IN_TRAINING_DATA`. |
-| Valid request but no crop reaches the minimum score | `200`, `abstain: true`. The minimum score is set after the baseline is tuned. |
+| Valid request but no crop reaches the minimum score | `200`, `abstain: true`. Draft minimum score: 0.5 (set in the service, to be reviewed after ML). |
+| Point more than 25 km from every pilot district centre | `200`, reliability `low`, warning `DISTRICT_NOT_IN_TRAINING_DATA`. No climate is invented for it. |
 | No fertiliser rule fits | `200`, `fertiliser.status: "no_matching_rule"`, no items. The service never invents a rule. |
 | Model files not loaded | `503`, `MODEL_UNAVAILABLE`. Expert rules should still answer, so this is only for a full failure. |
 
@@ -381,30 +384,45 @@ The crop list is not final. The candidates are beans, irish_potato, maize, rice 
 
 ## 5. Reliability levels (draft meaning)
 
-The level is about how much the answer should be trusted, and it is shown to the extension officer. These definitions are placeholders. They are set properly after the held-out district evaluation and then recorded in `04-data-reporting`.
+The level is about how much the answer should be trusted, and it is shown to the extension officer. The rules below are drafts. They are reviewed after the ML models are evaluated and then recorded in `04-data-reporting`.
+
+**Rules used now, with the B1 expert-rules baseline (0.2.0).** B1 is never `high`, because no trained model has been adopted (on 27 October, ML did not beat B1 on held-out districts).
+
+| Level | When |
+| --- | --- |
+| `medium` | The location is in a pilot district, the season is B (the only season B1 was tested on), every rule input is available, and the crop's rules are not marked weak. |
+| `low` | Any of: outside the pilot districts, season A or C, a rule input is missing, or the crop's rules are marked weak (rice, because there is no water-access layer). |
+
+**Rules planned for the ML models.**
 
 | Level | Draft meaning |
 | --- | --- |
 | `high` | The district is in the training data, the ML model beat the expert-rules baseline in evaluation and was adopted, and all key soil inputs are available. |
-| `medium` | The district is in the training data and at most one key soil input is missing. Either method. |
+| `medium` | The district is in the training data and at most one key soil input is missing. |
 | `low` | The district is outside the training data, or two or more key soil inputs are missing. |
 
 Key soil inputs are pH, organic carbon and total nitrogen, the same three as in the feature schema.
 
-Reason codes in `reliability.reason_codes`: `DISTRICT_NOT_IN_TRAINING`, `ML_NOT_ADOPTED`, `MODEL_BEAT_BASELINE`, `INPUT_MISSING_<VARIABLE>` (for example `INPUT_MISSING_TOTAL_NITROGEN`), `SOIL_FROM_ISDASOIL`.
+Reason codes in `reliability.reason_codes`: `ML_NOT_ADOPTED`, `MODEL_BEAT_BASELINE`, `DISTRICT_NOT_IN_TRAINING`, `SEASON_NOT_EVALUATED`, `CROP_RULES_WEAK`, `INPUT_MISSING_<VARIABLE>` (for example `INPUT_MISSING_TOTAL_NITROGEN` or `INPUT_MISSING_WATER_ACCESS`), `SOIL_FROM_ISDASOIL`.
 
-Warning codes in `warnings[].code`: `DISTRICT_NOT_IN_TRAINING_DATA`, `SOIL_VALUE_MISSING`, `SOIL_FROM_ISDASOIL`, `NO_CROP_ABOVE_MIN_SCORE`, `NO_GUIDELINE_RULE_FOUND`, `INPUT_OUT_OF_TYPICAL_RANGE`, `STUB_RESPONSE` (only the stub server).
+Warning codes in `warnings[].code`: `DISTRICT_NOT_IN_TRAINING_DATA`, `LOCATION_MATCHED_TO_NEAREST_DISTRICT`, `DISTRICT_MISMATCH`, `ELEVATION_FROM_DISTRICT_MEDIAN`, `SEASON_NOT_EVALUATED`, `SOIL_VALUE_MISSING`, `SOIL_NOT_USED_BY_METHOD`, `SOIL_FROM_ISDASOIL`, `NO_CROP_ABOVE_MIN_SCORE`, `NO_GUIDELINE_RULE_FOUND`, `FERTILISER_SKIPPED`, `INPUT_OUT_OF_TYPICAL_RANGE`, `STUB_RESPONSE` (only the stub server).
 
-## 6. Stub server
+## 6. The B1 service and the stub server
 
-`03-shared/apis/stub_app.py` is a small FastAPI app that validates requests with the real models and returns placeholder data marked `STUB_RESPONSE`. It exists so the dashboard and the CV team can integrate now. Run it with:
+**B1 service (real answers).** `01-crop-recommendation/src/recommendation/service.py` implements all three interfaces on the B1 expert-rules baseline and the fertiliser engine. It reads `district_profiles.json` (district elevation and NASA POWER season normals, no farm-level data), so it needs no raw data at run time. Run it from the repository root with:
+
+```
+python -m uvicorn service:app --app-dir 01-crop-recommendation/src/recommendation --port 8001
+```
+
+**Stub (placeholder answers).** `03-shared/apis/stub_app.py` is a small FastAPI app that validates requests with the real models and returns placeholder data marked `STUB_RESPONSE`. It exists so the dashboard and the CV team can test without the rules. Run it with:
 
 ```
 cd 03-shared/apis
 uvicorn stub_app:app --port 8001 --reload
 ```
 
-Then open http://127.0.0.1:8001/docs for the interactive page. The stub is replaced by the baseline first, then by the trained models, without changing the contract.
+Then open http://127.0.0.1:8001/docs for the interactive page. The B1 service will be replaced by the trained models once they beat the baseline, without changing the contract.
 
 ## 7. Open questions
 
@@ -414,7 +432,7 @@ Then open http://127.0.0.1:8001/docs for the interactive page. The stub is repla
 | 2 | Same error envelope, request id, ports and uncertainty rules for the diagnosis service? | Anny and Gabin with Thierry |
 | 3 | Should the dashboard send a district name only, or also let the user click a point on a map? | Whoever owns the dashboard (not yet named) |
 | 4 | Units the extension officers actually have on soil test reports (percent, mg per kg, cmol per kg). | Prof. Okeyo, through the primary contact |
-| 5 | Minimum score for abstaining, and the final reliability thresholds. | Thierry and Arsene, after the baseline and evaluation |
+| 5 | Minimum score for abstaining (draft 0.5) and the final reliability thresholds. | Thierry and Arsene, after the ML evaluation |
 | 6 | Does `district_default` soil exist? It needs a district level soil table from the data pipeline. | Arsene |
 | 7 | Is rounding coordinates in logs enough for privacy? | Team |
 
@@ -423,6 +441,7 @@ Then open http://127.0.0.1:8001/docs for the interactive page. The stub is repla
 | Version | Date | Change |
 | --- | --- | --- |
 | 0.1.0 draft | 2026-10-20 | First draft of recommendation, metadata and health interfaces. |
+| 0.2.0 draft | 2026-10-27 | Optional `elevation_m` in the request; `inputs_used.site` in the response; B1 reliability rules; new warning and reason codes; draft abstain threshold. All changes are additive, so 0.1.0 requests still work. |
 
 ## Review checklist
 
