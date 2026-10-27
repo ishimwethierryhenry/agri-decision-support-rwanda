@@ -24,7 +24,7 @@ Target variable: `crop_type` (maize, beans, rice, Irish potato)
 | `year` | Season start year, 2017-2025 |
 | `point_id` | CIAT point identifier (from F_index in original shapefile) |
 
-CIAT collection was May-June 2025, which falls in Season B 2025.
+CIAT collection was May-June 2025, which falls in Season B, start year 2024.
 Climate and soil features are joined at district level.
 iSDAsoil features are joined at point level (nearest API query).
 
@@ -60,7 +60,7 @@ Coverage: 4 districts x 8 start years (2017-2024) x 3 seasons = 96 district-seas
 
 ## Soil features (iSDAsoil)
 
-Joined at point level. Source: isda_soil_points.csv
+Joined at point level. Source: isda_soil_points_v2.csv
 Two depths: 0-20cm and 20-50cm. Column naming: {property}_{depth}cm
 
 | Column | Unit | Notes |
@@ -107,13 +107,13 @@ Coverage: 2017-2025, 4 districts, seasons A and B.
 
 | Limitation | Impact |
 |---|---|
-| Rwanda Govt soil fertility dataset covers Gicumbi only, not pilot districts | iSDAsoil modelled estimates used instead; API now requires auth key (401 as of Oct 2026), registration submitted, soil join pending |
+| Rwanda Govt soil fertility dataset covers Gicumbi only, not pilot districts | iSDAsoil modelled estimates used instead; API v2 requires JWT auth; credentials obtained Oct 2026, fetch running, soil join complete by 2026-10-28 |
 | CIMMYT 2022 has 104 samples with truncated coordinates | Excluded, cannot join spatially |
 | CIAT GPS_Elev includes some 0.0m readings | Filter elevation_m > 900 before training |
 | CIAT GPS_Long includes outliers above 31.0 | Filter longitude < 31.0 before training |
 | No swamp/irrigation flag at point level | Rice predictions may underperform |
 | No cassava in CIAT labels | Cassava cannot be predicted |
-| CIAT collection was single-season (Season B 2025 only) | Labels are a snapshot |
+| CIAT collection was single-season (Season B, start year 2024 only) | Labels are a snapshot |
 
 ---
 
@@ -123,6 +123,6 @@ Coverage: 2017-2025, 4 districts, seasons A and B.
 2. Filter: longitude < 31.0
 3. Join climate features on district + season + year
 4. Join NISR statistics on district + season + year
-5. Soil features already joined at point level in isda_soil_points.csv
+5. Soil features already joined at point level in isda_soil_points_v2.csv
 6. Drop columns with more than 30% missing values
 7. One-hot encode district and season for tree models
