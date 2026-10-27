@@ -1,0 +1,171 @@
+{
+  "built_on": "2026-10-27",
+  "source_table": "feature_table_v2.csv",
+  "climate_source": "NASA POWER seasonal sums (precipitation) and means (temperature), averaged over all start years",
+  "season_windows": {
+    "A": "1 Sep to 31 Jan",
+    "B": "1 Mar to 30 Jun",
+    "C": "1 Jun to 31 Aug"
+  },
+  "elevation_source": "CIAT GPS elevation of the field points (filtered above 900 m)",
+  "crop_prior": {
+    "maize": 0.5305,
+    "beans": 0.3157,
+    "irish_potato": 0.1292,
+    "rice": 0.0247
+  },
+  "districts": {
+    "Musanze": {
+      "province": "North",
+      "in_training_data": true,
+      "n_points": 173,
+      "centre": {
+        "lat": -1.4715,
+        "lon": 29.599
+      },
+      "elevation_m": {
+        "median": 2107.2,
+        "p10": 1772.5,
+        "p90": 2423.2
+      },
+      "nasa_power_point": {
+        "lat": -1.4985,
+        "lon": 29.6066
+      },
+      "seasons": {
+        "A": {
+          "precip_mm": 905.7,
+          "tmax_c": 21.91,
+          "tmin_c": 13.98,
+          "years": "2017 to 2024 (start years)"
+        },
+        "B": {
+          "precip_mm": 722.9,
+          "tmax_c": 21.89,
+          "tmin_c": 13.81,
+          "years": "2017 to 2024 (start years)"
+        },
+        "C": {
+          "precip_mm": 229.1,
+          "tmax_c": 21.46,
+          "tmin_c": 12.68,
+          "years": "2017 to 2024 (start years)"
+        }
+      }
+    },
+    "Nyabihu": {
+      "province": "West",
+      "in_training_data": true,
+      "n_points": 174,
+      "centre": {
+        "lat": -1.6514,
+        "lon": 29.5156
+      },
+      "elevation_m": {
+        "median": 2390.8,
+        "p10": 1906.7,
+        "p90": 2571.6
+      },
+      "nasa_power_point": {
+        "lat": -1.6474,
+        "lon": 29.5105
+      },
+      "seasons": {
+        "A": {
+          "precip_mm": 905.7,
+          "tmax_c": 21.91,
+          "tmin_c": 13.98,
+          "years": "2017 to 2024 (start years)"
+        },
+        "B": {
+          "precip_mm": 722.9,
+          "tmax_c": 21.89,
+          "tmin_c": 13.81,
+          "years": "2017 to 2024 (start years)"
+        },
+        "C": {
+          "precip_mm": 229.1,
+          "tmax_c": 21.46,
+          "tmin_c": 12.68,
+          "years": "2017 to 2024 (start years)"
+        }
+      }
+    },
+    "Nyagatare": {
+      "province": "East",
+      "in_training_data": true,
+      "n_points": 1627,
+      "centre": {
+        "lat": -1.3287,
+        "lon": 30.3109
+      },
+      "elevation_m": {
+        "median": 1407.4,
+        "p10": 1335.9,
+        "p90": 1484.5
+      },
+      "nasa_power_point": {
+        "lat": -1.3383,
+        "lon": 30.3799
+      },
+      "seasons": {
+        "A": {
+          "precip_mm": 632.8,
+          "tmax_c": 26.6,
+          "tmin_c": 16.33,
+          "years": "2017 to 2024 (start years)"
+        },
+        "B": {
+          "precip_mm": 449.5,
+          "tmax_c": 25.92,
+          "tmin_c": 15.92,
+          "years": "2017 to 2024 (start years)"
+        },
+        "C": {
+          "precip_mm": 132.2,
+          "tmax_c": 27.29,
+          "tmin_c": 14.98,
+          "years": "2017 to 2024 (start years)"
+        }
+      }
+    },
+    "Ruhango": {
+      "province": "South",
+      "in_training_data": true,
+      "n_points": 754,
+      "centre": {
+        "lat": -2.1979,
+        "lon": 29.733
+      },
+      "elevation_m": {
+        "median": 1703.9,
+        "p10": 1543.6,
+        "p90": 1816.9
+      },
+      "nasa_power_point": {
+        "lat": -2.1936,
+        "lon": 29.7717
+      },
+      "seasons": {
+        "A": {
+          "precip_mm": 675.4,
+          "tmax_c": 25.57,
+          "tmin_c": 15.45,
+          "years": "2017 to 2024 (start years)"
+        },
+        "B": {
+          "precip_mm": 477.1,
+          "tmax_c": 24.63,
+          "tmin_c": 15.01,
+          "years": "2017 to 2024 (start years)"
+        },
+        "C": {
+          "precip_mm": 127.7,
+          "tmax_c": 25.18,
+          "tmin_c": 13.56,
+          "years": "2017 to 2024 (start years)"
+        }
+      }
+    }
+  }
+}

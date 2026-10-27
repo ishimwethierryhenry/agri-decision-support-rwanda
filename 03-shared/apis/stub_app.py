@@ -18,7 +18,7 @@ import recommend_examples as ex
 from recommend_schemas import (CANDIDATE_CROPS, ErrorEnvelope, HealthResponse, MetadataResponse,
                                RecommendRequest, RecommendResponse)
 
-app = FastAPI(title="Recommendation API (STUB)", version="0.1.0")
+app = FastAPI(title="Recommendation API (STUB)", version="0.2.0")
 
 
 def _rid() -> str:
