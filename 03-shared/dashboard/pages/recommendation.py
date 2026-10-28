@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import client  # noqa: E402
 
 # Season windows as defined by Part A (01-crop-recommendation/data/README.md).
-SEASONS = {"A": "Season A (Sep to Jan)", "B": "Season B (Mar to Jun)", "C": "Season C (Jun to Aug, valleys and marshland)"}
+SEASONS = {"A": "Season A (Sep to Jan)", "B": "Season B (Feb to Jun)", "C": "Season C (Jun to Aug, valleys and marshland)"}
 LEVEL_LABEL = {"high": "High reliability", "medium": "Medium reliability", "low": "Low reliability"}
 DIRECTION_LABEL = {"supports": "Supports", "against": "Against", "neutral": "Note"}
 REASON_CODE_TEXT = {
@@ -15,6 +15,7 @@ REASON_CODE_TEXT = {
     "SEASON_NOT_EVALUATED": "the rules were tested on season B only",
     "CROP_RULES_WEAK": "the rules for this crop are weak",
     "DISTRICT_NOT_IN_TRAINING": "outside the four pilot districts",
+    "RULES_WEAK_IN_DISTRICT": "the rules scored low in this district when tested",
 }
 SITE_LABEL = {"elevation_m": ("Elevation", "m"), "precip_mm": ("Season rainfall", "mm"),
               "tmean_point_c": ("Mean temperature", "C"), "tmin_point_c": ("Minimum temperature", "C")}

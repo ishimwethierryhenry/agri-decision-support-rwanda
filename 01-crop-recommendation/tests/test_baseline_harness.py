@@ -233,10 +233,12 @@ def test_balanced_weights_reach_the_estimator():
     assert np.allclose(m.estimator.w, [4 / 6, 4 / 6, 4 / 6, 2.0])
 
 
-def test_file_fingerprint_matches_sha256(tmp_path):
-    p = tmp_path / "t.csv"
-    p.write_bytes(b"a,b\n1,2\n")
-    assert file_sha256(p) == hashlib.sha256(b"a,b\n1,2\n").hexdigest()
+def test_file_fingerprint_matches_sha256_and_ignores_windows_line_endings(tmp_path):
+    unix, windows = tmp_path / "unix.csv", tmp_path / "windows.csv"
+    unix.write_bytes(b"a,b\n1,2\n")
+    windows.write_bytes(b"a,b\r\n1,2\r\n")
+    assert file_sha256(unix) == hashlib.sha256(b"a,b\n1,2\n").hexdigest()
+    assert file_sha256(windows) == file_sha256(unix)
 
 
 def test_full_run_writes_report_and_run_info(tmp_path, monkeypatch):

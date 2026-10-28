@@ -1,4 +1,4 @@
-"""Contract tests for the Recommendation API (draft 0.2.0).
+"""Contract tests for the Recommendation API (draft 0.2.1).
 
 Run from the repository root:  python -m pytest 03-shared/tests -q
 """
