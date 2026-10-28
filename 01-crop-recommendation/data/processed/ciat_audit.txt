@@ -1,0 +1,42 @@
+============================================================
+CIAT FIELDWORK POINTS AUDIT
+============================================================
+Total points: 2739
+Columns (62): ['Date', 'Organizati', 'Province', 'District', 'Sector', 'Cell', 'Village', 'Antierosio', 'Antieros_1', 'Other1', 'Agroforest', 'Agro_type', 'Other2', 'Cur_season', 'Crop_sys', 'landcover', 'Status', 'Crop_plant', 'Mixed_crop', 'Crop_area', 'Plant_date', 'Growth_stg', 'Har_season', 'Har_period', 'All_crops', 'SA_crop', 'SA_prod', 'SB_yield', 'Land_conso', 'Crop_propo', 'Seed_var', 'Fert_type', 'Base_fert', 'Base_quant', 'Topdr_fert', 'Topdr_quan', 'Fruit', 'Fruit_type', 'fruitname_', 'Fruit_numb', 'Farm_reasn', 'Weeding', 'Water_sour', 'Harvest', 'GPS_Lat', 'GPS_Long', 'GPS_Elev', 'GPS_Prec', 'North_pho', 'East_pho', 'South_pho', 'West_pho', 'Comment', 'Var_reason', 'F_id', 'F_uuid', 'F_submissi', 'F__version', 'F_index', 'Field', 'longitude', 'latitude']
+
+--- Label counts per district ---
+District
+Nyagatare    1627
+Ruhango       755
+Musanze       183
+Nyabihu       174
+
+--- Missing values per column ---
+            missing    pct
+Field          2739  100.0
+Other1         2736   99.9
+fruitname_     2734   99.8
+Var_reason     2733   99.8
+Other2         2718   99.2
+Base_fert      2535   92.6
+Topdr_fert     2534   92.5
+Fruit_type     2239   81.7
+Fruit_numb     2239   81.7
+Agro_type      1689   61.7
+Antieros_1     1431   52.2
+landcover      1172   42.8
+Comment         841   30.7
+Har_period      344   12.6
+Mixed_crop      339   12.4
+SA_crop          50    1.8
+Fert_type        13    0.5
+Growth_stg       11    0.4
+Water_sour        6    0.2
+Harvest           5    0.2
+Seed_var          4    0.1
+Weeding           4    0.1
+All_crops         2    0.1
+
+--- Coordinate bounds ---
+  lat: -2.2809 to -1.0574
+  lon: 29.4051 to 36.8969

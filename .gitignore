@@ -1,6 +1,64 @@
-.venv/
-data/raw/
-data/processed/
-*.pyc
+# Python caches and build output
 __pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Virtual environments and local secrets
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Notebooks and editors
 .ipynb_checkpoints/
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS and temporary files
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+*.log
+
+# Generated models and experiment outputs
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.hdf5
+*.onnx
+*.pkl
+*.joblib
+wandb/
+mlruns/
+lightning_logs/
+
+# Large/raw datasets and archives (documentation is not ignored)
+*.csv
+*.parquet
+*.feather
+*.arrow
+*.npy
+*.npz
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.sqlite
+*.db
+01-crop-recommendation/data/processed/*.csv
