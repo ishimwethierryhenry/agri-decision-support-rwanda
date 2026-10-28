@@ -1,4 +1,5 @@
-"""Tests for the baselines and the LODO harness. Synthetic data only, no real farm data needed."""
+"""Tests for the baselines and the evaluation harness. Synthetic data only, no real farm data needed."""
+import hashlib
 import sys
 from pathlib import Path
 
@@ -7,8 +8,9 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "models"))
-from evaluate import (LeakageError, SklearnModel, check_features, prepare, run_lodo, summarise,  # noqa: E402
-                      topk)
+from evaluate import (ALLOWED_FEATURES, CROPS, SOIL_SUB, SOIL_TOP, LeakageError, SklearnModel,  # noqa: E402
+                      block_folds, check_features, file_sha256, prepare, run_block_cv, run_lodo, scores,
+                      summarise, topk)
 from expert_baseline import (ExpertRulesBaseline, MajorityBaseline, RulesError, explain_row,  # noqa: E402
                              load_rules, score_factor)
 
@@ -28,6 +30,22 @@ def raw_table(n_per=40, seed=0):
     rows.append({"District": "A", "GPS_Elev": 1500.0, "longitude": 36.0, "Crop_plant": "Maize"})   # outside Rwanda
     rows.append({"District": "A", "GPS_Elev": 1500.0, "longitude": 30.0, "Crop_plant": "Mixed crops"})
     return pd.DataFrame(rows)
+
+
+def table_v2(n_per=40, seed=0):
+    """Shaped like Part A's current table: qc_ok and block_id instead of coordinates, Status, soil, NISR shares."""
+    rng = np.random.default_rng(seed)
+    df = raw_table(n_per, seed).drop(columns=["longitude", "nisr_yield_kg_ha"])
+    df["qc_ok"] = df["GPS_Elev"] > 900
+    df.loc[len(df) - 2, "qc_ok"] = False                 # the field outside Rwanda
+    df["Status"] = np.where(np.arange(len(df)) % 3 == 0, "Used", "Not Used")
+    df["block_id"] = [f"{d}_{i // 4}" for d, i in zip(df["District"], range(len(df)))]
+    for c in ["nisr_share_beans", "nisr_share_irish_potato", "nisr_share_maize", "nisr_share_paddy_rice"]:
+        df[c] = df["District"].map({"A": 0.2, "B": 0.5, "C": 0.3, "D": 0.1})
+    for c in SOIL_TOP + SOIL_SUB:
+        df[c] = rng.normal(10, 2, len(df)) + (df["District"] == "A") * 3
+    df["F_id"] = np.arange(len(df)) + 1000
+    return df
 
 
 def test_shipped_rules_load_and_every_factor_has_a_source():
@@ -73,6 +91,26 @@ def test_prepare_applies_filters_and_drops_mixed_crops():
     assert "tmean_c" in df and (df["elevation_m"] > 900).all()
 
 
+def test_prepare_uses_qc_ok_when_coordinates_are_gone():
+    raw = table_v2()
+    assert "longitude" not in raw.columns
+    df = prepare(raw)
+    assert len(df) == 160 and df.attrs["rows_after_qc"] == 161     # 163 rows, 2 fail qc_ok, 1 mixed crop
+    raw.loc[0, "qc_ok"] = False                                     # qc_ok wins even when the elevation looks fine
+    assert len(prepare(raw)) == 159
+    raw["qc_ok"] = raw["qc_ok"].map({True: "True", False: "False"})  # text values after a CSV round trip
+    assert len(prepare(raw)) == 159
+
+
+def test_status_filter_keeps_only_used_and_keeps_the_same_reference_height():
+    raw = table_v2()
+    main, used = prepare(raw), prepare(raw, status="Used")
+    assert len(used) < len(main) and used.attrs["status_filter"] == "Used"
+    merged = used.merge(main, on="F_id", suffixes=("_u", "_m"))
+    assert len(merged) == len(used)
+    assert np.allclose(merged["tmean_point_c_u"], merged["tmean_point_c_m"])
+
+
 def test_point_temperature_follows_the_lapse_rate():
     df = prepare(raw_table())
     a = df[df["District"] == "A"]
@@ -82,10 +120,16 @@ def test_point_temperature_follows_the_lapse_rate():
 
 
 @pytest.mark.parametrize("cols", [["nisr_yield_kg_ha"], ["Crop_plant"], ["district"], ["landcover"],
-                                  ["Fert_type"], ["made_up_column"]])
+                                  ["Fert_type"], ["made_up_column"], ["Status"], ["qc_ok"], ["block_id"],
+                                  ["F_id"], ["F_index"], ["Water_sour"]])
 def test_leaky_or_unknown_features_are_refused(cols):
     with pytest.raises(LeakageError):
         check_features(cols)
+
+
+def test_every_view_feature_is_allowed():
+    assert check_features(ALLOWED_FEATURES) == ALLOWED_FEATURES
+    assert all(c in ALLOWED_FEATURES for c in SOIL_TOP + SOIL_SUB + ["elevation_m", "nisr_share_maize"])
 
 
 def test_lodo_never_tests_on_a_training_district_and_reports_all_models():
@@ -93,12 +137,124 @@ def test_lodo_never_tests_on_a_training_district_and_reports_all_models():
     from sklearn.ensemble import RandomForestClassifier
     models = [MajorityBaseline(), ExpertRulesBaseline(),
               SklearnModel("rf", RandomForestClassifier(n_estimators=20, random_state=0), ["elevation_m"])]
-    res = run_lodo(df, models)
-    assert len(res) == 4 * 3 and set(res["held_out"]) == {"A", "B", "C", "D"}
+    res, conf = run_lodo(df, models)
+    assert len(res) == 4 * 3 and set(res["district"]) == {"A", "B", "C", "D"}
     assert (res["n_train"] + res["n_test"] == len(df)).all()
-    assert res[["top1", "top3", "macro_f1"]].apply(lambda s: s.between(0, 1)).all().all()
+    assert res[["top1", "top3", "macro_f1", "macro_f1_all4"]].apply(lambda s: s.between(0, 1)).all().all()
+    assert conf.groupby(["model", "district"])["count"].sum().eq(res.set_index(["model", "district"])["n_test"]).all()
     s = summarise(res)
     assert set(s.index) == {"B0_majority", "B1_expert_rules", "rf"}
+    assert s.loc["B1_expert_rules", "passes_rule"] == "" and s.loc["rf", "passes_rule"] in {"yes", "no"}
+
+
+def test_main_score_skips_crops_with_fewer_than_five_fields():
+    y = np.array(["maize"] * 10 + ["beans"] * 10 + ["rice"])
+    pred = y.copy()
+    pred[-1] = "maize"                       # the single rice field is missed
+    proba = np.zeros((len(y), 4))
+    out = scores(y, pred, proba, np.array(CROPS))
+    assert out["crops_scored"] == "beans+maize"
+    assert out["macro_f1"] > 0.97                                 # rice (1 field) does not count
+    assert out["macro_f1_all4"] < 0.5                             # old definition: rice and potato count as zero
+    assert np.isnan(out["recall_irish_potato"]) and out["recall_rice"] == 0.0
+
+
+def _fake_results(b1, other):
+    rows = [{"model": "B1_expert_rules", "district": d, "macro_f1": v, "macro_f1_all4": v, "top1": v, "top3": 1.0}
+            for d, v in zip("ABCD", b1)]
+    for name, vals in other.items():
+        rows += [{"model": name, "district": d, "macro_f1": v, "macro_f1_all4": v, "top1": v, "top3": 1.0}
+                 for d, v in zip("ABCD", vals)]
+    return pd.DataFrame(rows)
+
+
+def test_adoption_rule_needs_a_higher_mean_and_three_clear_wins():
+    b1 = [0.60, 0.60, 0.10, 0.20]
+    s = summarise(_fake_results(b1, {
+        "wins_three": [0.65, 0.62, 0.30, 0.10],     # mean higher, 3 wins by more than 0.01
+        "tiny_win": [0.605, 0.62, 0.30, 0.10],      # one 'win' is only 0.005, so 2 wins
+        "mean_lower": [0.62, 0.62, 0.12, 0.00],     # 3 wins but a lower mean
+        "two_big_wins": [0.40, 0.40, 0.60, 0.60],   # higher mean, only 2 wins
+    }))
+    assert s.loc["wins_three", "passes_rule"] == "yes"
+    assert s.loc["tiny_win", "passes_rule"] == "no" and s.loc["tiny_win", "districts_beating_B1"] == 2
+    assert s.loc["mean_lower", "passes_rule"] == "no" and s.loc["mean_lower", "districts_beating_B1"] == 3
+    assert s.loc["two_big_wins", "passes_rule"] == "no"
+
+
+def test_only_the_main_test_can_adopt():
+    from evaluate import _decision
+    s = summarise(_fake_results([0.60, 0.60, 0.10, 0.20], {"wins_three": [0.65, 0.62, 0.30, 0.10]}))
+    assert _decision(s, deciding=True).startswith("Adopted: wins_three")
+    assert _decision(s, deciding=False).startswith("For information only")
+    s = summarise(_fake_results([0.60, 0.60, 0.10, 0.20], {"loses": [0.50, 0.50, 0.20, 0.20]}))
+    assert _decision(s, deciding=True).startswith("No ML model passes the adoption rule, so B1 stays")
+
+
+def test_block_folds_never_split_a_block_and_cover_every_field():
+    df = prepare(table_v2())
+    folds = block_folds(df)
+    assert len(folds) == 5
+    seen = np.concatenate([te for _, te in folds])
+    assert sorted(seen) == list(range(len(df)))
+    for tr, te in folds:
+        assert set(df.loc[tr, "block_id"]).isdisjoint(set(df.loc[te, "block_id"]))
+
+
+def test_block_cv_predicts_every_field_once():
+    df = prepare(table_v2())
+    from sklearn.ensemble import RandomForestClassifier
+    models = [ExpertRulesBaseline(),
+              SklearnModel("rf", RandomForestClassifier(n_estimators=20, random_state=0), ["elevation_m"])]
+    res, conf = run_block_cv(df, models)
+    assert len(res) == 2 * 4
+    assert res.groupby("model")["n_test"].sum().eq(len(df)).all()
+    assert conf.groupby("model")["count"].sum().eq(len(df)).all()
+
+
+def test_block_cv_needs_block_id():
+    df = prepare(raw_table())
+    with pytest.raises(KeyError, match="block_id"):
+        block_folds(df)
+
+
+def test_balanced_weights_reach_the_estimator():
+    class Spy:
+        def fit(self, X, y, sample_weight=None):
+            self.w, self.classes_ = sample_weight, np.unique(y)
+            return self
+
+        def predict_proba(self, X):
+            return np.full((len(X), len(self.classes_)), 1 / len(self.classes_))
+
+    X = pd.DataFrame({"elevation_m": [1.0, 2.0, 3.0, 4.0]})
+    y = pd.Series(["maize", "maize", "maize", "rice"])
+    m = SklearnModel("spy", Spy(), ["elevation_m"], balance=True).fit(X, y)
+    assert np.allclose(m.estimator.w, [4 / 6, 4 / 6, 4 / 6, 2.0])
+
+
+def test_file_fingerprint_matches_sha256(tmp_path):
+    p = tmp_path / "t.csv"
+    p.write_bytes(b"a,b\n1,2\n")
+    assert file_sha256(p) == hashlib.sha256(b"a,b\n1,2\n").hexdigest()
+
+
+def test_full_run_writes_report_and_run_info(tmp_path, monkeypatch):
+    pytest.importorskip("xgboost")
+    import evaluate
+    full = evaluate.default_models
+    monkeypatch.setattr(evaluate, "default_models", lambda: full(n_estimators=10))  # same pipeline, faster
+    table, out = tmp_path / "feature_table_v2.csv", tmp_path / "eval"
+    table_v2(n_per=60).to_csv(table, index=False)
+    assert evaluate.main(["--table", str(table), "--out", str(out)]) == 0
+    report = (out / "report.md").read_text(encoding="utf-8")
+    assert "Main test: leave one district out" in report and "Second check" in report
+    import json
+    info = json.loads((out / "run_info.json").read_text(encoding="utf-8"))
+    assert info["table_sha256"] == file_sha256(table) and info["rows"]["main"] > info["rows"]["used_only"]
+    for name in ("main_lodo_results.csv", "main_blockcv_summary.csv", "used_only_lodo_summary.csv",
+                 "confusion_counts.csv"):
+        assert (out / name).exists()
 
 
 def test_expert_rules_rank_potato_high_and_beans_low_at_high_altitude():
@@ -141,7 +297,7 @@ def test_unknown_label_without_rules_is_refused():
         ExpertRulesBaseline().fit(df, pd.Series(["cassava"]))
 
 
-def test_prepare_handles_table_v2_column_names():
+def test_prepare_handles_older_column_names():
     raw = raw_table().rename(columns={"longitude": "longitude_x"})
     raw["GPS_Long"] = raw["longitude_x"]
     assert len(prepare(raw)) == 160

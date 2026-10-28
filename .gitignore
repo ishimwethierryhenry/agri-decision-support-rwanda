@@ -61,3 +61,6 @@ lightning_logs/
 *.7z
 *.sqlite
 *.db
+
+# Evaluation results are small summaries (no field data), so they are committed
+!01-crop-recommendation/reports/**/*.csv
