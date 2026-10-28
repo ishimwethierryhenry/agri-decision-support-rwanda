@@ -1,6 +1,6 @@
 # API contracts
 
-**Status:** DRAFT 0.2.0, proposed by Thierry (Part B, ML and Geospatial) on 20 October 2026 and updated on 27 October 2026. `POST /v1/recommend` now runs on the B1 expert-rules baseline (section 6). The examples below are still placeholders, not model output and not agronomic advice.
+**Status:** DRAFT 0.2.1, proposed by Thierry (Part B, ML and Geospatial) on 20 October 2026 and updated on 28 October 2026. `POST /v1/recommend` now runs on the B1 expert-rules baseline (section 6). The examples below are still placeholders, not model output and not agronomic advice.
 
 **Reviewers needed:** Anny and Gabin (CV sub-team) for section 1 and the dashboard side. Arsene for the feature schema link and reliability levels. Calvin or Prof. Okeyo only if they want to see the format.
 
@@ -43,7 +43,7 @@ These are proposals. The goal is that the dashboard can call both services the s
 | Responsible workstream | Crop recommendation (ML and Geospatial, Part B), with the shared dashboard |
 | Purpose | An extension officer gives a location, a season and optional soil test values. The service returns ranked crops with reasons and a reliability level, and fertiliser guidance for one crop with the source of each rule. |
 | Method and route | `POST /v1/recommend` (proposed, not agreed) |
-| Contract version | 0.2.0 draft. Reviewer and review date: to fill in. |
+| Contract version | 0.2.1 draft. Reviewer and review date: to fill in. |
 
 ### 2.1 Input fields
 
@@ -138,7 +138,7 @@ Example response (placeholders only):
 ```json
 {
   "request_id": "example-0001",
-  "api_version": "0.2.0",
+  "api_version": "0.2.1",
   "model_version": null,
   "rules_version": "rules-0.1-example",
   "generated_at": "2026-10-21T08:00:00Z",
@@ -260,7 +260,7 @@ Example response when the service abstains:
 ```json
 {
   "request_id": "example-0002",
-  "api_version": "0.2.0",
+  "api_version": "0.2.1",
   "model_version": null,
   "rules_version": "rules-0.1-example",
   "generated_at": "2026-10-21T08:05:00Z",
@@ -386,12 +386,12 @@ The crop list is not final. The candidates are beans, irish_potato, maize, rice 
 
 The level is about how much the answer should be trusted, and it is shown to the extension officer. The rules below are drafts. They are reviewed after the ML models are evaluated and then recorded in `04-data-reporting`.
 
-**Rules used now, with the B1 expert-rules baseline (0.2.0).** B1 is never `high`, because no trained model has been adopted (on 27 October, ML did not beat B1 on held-out districts).
+**Rules used now, with the B1 expert-rules baseline (0.2.1).** B1 is never `high`, because no trained model has been adopted: in the official evaluation of 28 October (`01-crop-recommendation/reports/eval_v1`, protocol in `docs/training_protocol.md`), no ML model passed the adoption rule. The same evaluation shows where the rules themselves work. B1 scored 0.59 (Musanze) and 0.65 (Nyabihu) macro-F1, but 0.09 (Nyagatare) and 0.19 (Ruhango), where several crops fit the rules equally and the rules cannot tell which one farmers prefer. These scores are stored per district in `district_profiles.json` (`b1_tested`) and set the level below.
 
 | Level | When |
 | --- | --- |
-| `medium` | The location is in a pilot district, the season is B (the only season B1 was tested on), every rule input is available, and the crop's rules are not marked weak. |
-| `low` | Any of: outside the pilot districts, season A or C, a rule input is missing, or the crop's rules are marked weak (rice, because there is no water-access layer). |
+| `medium` | The location is in a pilot district where B1 scored at least 0.5 macro-F1 when tested (now Musanze and Nyabihu), the season is B (the only season B1 was tested on), every rule input is available, and the crop's rules are not marked weak. |
+| `low` | Any of: outside the pilot districts, a pilot district where B1 scored below 0.5 when tested (now Nyagatare and Ruhango), season A or C, a rule input is missing, or the crop's rules are marked weak (rice, because there is no water-access layer). |
 
 **Rules planned for the ML models.**
 
@@ -403,13 +403,13 @@ The level is about how much the answer should be trusted, and it is shown to the
 
 Key soil inputs are pH, organic carbon and total nitrogen, the same three as in the feature schema.
 
-Reason codes in `reliability.reason_codes`: `ML_NOT_ADOPTED`, `MODEL_BEAT_BASELINE`, `DISTRICT_NOT_IN_TRAINING`, `SEASON_NOT_EVALUATED`, `CROP_RULES_WEAK`, `INPUT_MISSING_<VARIABLE>` (for example `INPUT_MISSING_TOTAL_NITROGEN` or `INPUT_MISSING_WATER_ACCESS`), `SOIL_FROM_ISDASOIL`.
+Reason codes in `reliability.reason_codes`: `ML_NOT_ADOPTED`, `MODEL_BEAT_BASELINE`, `DISTRICT_NOT_IN_TRAINING`, `SEASON_NOT_EVALUATED`, `RULES_WEAK_IN_DISTRICT`, `CROP_RULES_WEAK`, `INPUT_MISSING_<VARIABLE>` (for example `INPUT_MISSING_TOTAL_NITROGEN` or `INPUT_MISSING_WATER_ACCESS`), `SOIL_FROM_ISDASOIL`.
 
-Warning codes in `warnings[].code`: `DISTRICT_NOT_IN_TRAINING_DATA`, `LOCATION_MATCHED_TO_NEAREST_DISTRICT`, `DISTRICT_MISMATCH`, `ELEVATION_FROM_DISTRICT_MEDIAN`, `SEASON_NOT_EVALUATED`, `SOIL_VALUE_MISSING`, `SOIL_NOT_USED_BY_METHOD`, `SOIL_FROM_ISDASOIL`, `NO_CROP_ABOVE_MIN_SCORE`, `NO_GUIDELINE_RULE_FOUND`, `FERTILISER_SKIPPED`, `INPUT_OUT_OF_TYPICAL_RANGE`, `STUB_RESPONSE` (only the stub server).
+Warning codes in `warnings[].code`: `DISTRICT_NOT_IN_TRAINING_DATA`, `LOCATION_MATCHED_TO_NEAREST_DISTRICT`, `DISTRICT_MISMATCH`, `ELEVATION_FROM_DISTRICT_MEDIAN`, `SEASON_NOT_EVALUATED`, `RULES_WEAK_IN_DISTRICT`, `CROPS_TIED`, `SOIL_VALUE_MISSING`, `SOIL_NOT_USED_BY_METHOD`, `SOIL_FROM_ISDASOIL`, `NO_CROP_ABOVE_MIN_SCORE`, `NO_GUIDELINE_RULE_FOUND`, `FERTILISER_SKIPPED`, `INPUT_OUT_OF_TYPICAL_RANGE`, `STUB_RESPONSE` (only the stub server).
 
 ## 6. The B1 service and the stub server
 
-**B1 service (real answers).** `01-crop-recommendation/src/recommendation/service.py` implements all three interfaces on the B1 expert-rules baseline and the fertiliser engine. It reads `district_profiles.json` (district elevation and NASA POWER season normals, no farm-level data), so it needs no raw data at run time. Run it from the repository root with:
+**B1 service (real answers).** `01-crop-recommendation/src/recommendation/service.py` implements all three interfaces on the B1 expert-rules baseline and the fertiliser engine. It reads `district_profiles.json` (district elevation, NASA POWER season normals with season B from 1 February to 30 June, and B1's tested score per district, no farm-level data), so it needs no raw data at run time. Run it from the repository root with:
 
 ```
 python -m uvicorn service:app --app-dir 01-crop-recommendation/src/recommendation --port 8001
@@ -432,7 +432,7 @@ Then open http://127.0.0.1:8001/docs for the interactive page. The B1 service wi
 | 2 | Same error envelope, request id, ports and uncertainty rules for the diagnosis service? | Anny and Gabin with Thierry |
 | 3 | Should the dashboard send a district name only, or also let the user click a point on a map? | Whoever owns the dashboard (not yet named) |
 | 4 | Units the extension officers actually have on soil test reports (percent, mg per kg, cmol per kg). | Prof. Okeyo, through the primary contact |
-| 5 | Minimum score for abstaining (draft 0.5) and the final reliability thresholds. | Thierry and Arsene, after the ML evaluation |
+| 5 | Minimum score for abstaining (draft 0.5) and the final reliability thresholds. Since 0.2.1, `medium` needs B1's tested macro-F1 of at least 0.5 in the district (draft). | Thierry and Arsene, after the ML evaluation |
 | 6 | Does `district_default` soil exist? It needs a district level soil table from the data pipeline. | Arsene |
 | 7 | Is rounding coordinates in logs enough for privacy? | Team |
 
@@ -442,6 +442,7 @@ Then open http://127.0.0.1:8001/docs for the interactive page. The B1 service wi
 | --- | --- | --- |
 | 0.1.0 draft | 2026-10-20 | First draft of recommendation, metadata and health interfaces. |
 | 0.2.0 draft | 2026-10-27 | Optional `elevation_m` in the request; `inputs_used.site` in the response; B1 reliability rules; new warning and reason codes; draft abstain threshold. All changes are additive, so 0.1.0 requests still work. |
+| 0.2.1 draft | 2026-10-28 | Reliability now uses B1's tested score per district from `eval_v1` (new reason and warning code `RULES_WEAK_IN_DISTRICT`); new warning `CROPS_TIED` when crops fit the rules equally; season B climate normals now run from 1 February to 30 June, as in the training data. No field changes, so 0.2.0 clients still work. |
 
 ## Review checklist
 

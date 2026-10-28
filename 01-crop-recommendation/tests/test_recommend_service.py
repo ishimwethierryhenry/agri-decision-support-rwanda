@@ -186,3 +186,65 @@ def test_district_profiles_hold_no_farm_level_data():
     text = (Path(service.PROFILES_PATH)).read_text()
     for forbidden in ("Village", "F_uuid", "GPS_Lat", "Sector"):
         assert forbidden not in text
+
+
+# ------------------------------------------------------------ added in contract 0.2.1
+def test_reliability_follows_how_the_rules_scored_in_each_district():
+    for district in ("Nyagatare", "Ruhango"):     # B1 scored below 0.5 there in eval_v1
+        resp, _ = ok({"district": district, "season": "B"})
+        assert all(c.reliability.level.value == "low" for c in resp.crop_recommendations)
+        assert all("RULES_WEAK_IN_DISTRICT" in c.reliability.reason_codes for c in resp.crop_recommendations)
+        msg = [w.message for w in resp.warnings if w.code == "RULES_WEAK_IN_DISTRICT"]
+        tested = service.DISTRICTS[district]["b1_tested"]
+        assert len(msg) == 1 and str(tested["n_fields"]) in msg[0] and f"{tested['macro_f1']:.2f}" in msg[0]
+    for district in ("Musanze", "Nyabihu"):        # B1 scored at least 0.5 there
+        resp, _ = ok({"district": district, "season": "B"})
+        top = resp.crop_recommendations[0]
+        assert top.crop == "irish_potato" and top.reliability.level.value == "medium"
+        assert "RULES_WEAK_IN_DISTRICT" not in codes(resp)
+
+
+def test_the_evidence_threshold_is_what_decides(monkeypatch):
+    monkeypatch.setattr(service, "RULES_EVIDENCE_MIN", 0.0)
+    resp, _ = ok({"district": "Nyagatare", "season": "B", "top_k": 2})
+    assert [c.crop for c in resp.crop_recommendations] == ["beans", "maize"]
+    assert all(c.reliability.level.value == "medium" for c in resp.crop_recommendations)
+
+
+def test_tied_crops_are_flagged():
+    resp, _ = ok({"district": "Nyagatare", "season": "B"})
+    tied = [w.message for w in resp.warnings if w.code == "CROPS_TIED"]
+    assert len(tied) == 1 and "beans" in tied[0] and "maize" in tied[0]
+    resp, _ = ok({"district": "Musanze", "season": "B"})       # potato is clearly first here
+    assert "CROPS_TIED" not in codes(resp)
+
+
+def test_season_b_normals_use_the_february_to_june_window():
+    assert service.PROFILES["season_windows"]["B"] == "1 Feb to 30 Jun"
+    resp, _ = ok({"district": "Nyagatare", "season": "B"})
+    assert resp.inputs_used.site["precip_mm"].value == service.DISTRICTS["Nyagatare"]["seasons"]["B"]["precip_mm"]
+
+
+def test_profiles_match_the_official_evaluation():
+    import csv
+    path = ROOT / "01-crop-recommendation" / "reports" / "eval_v1" / "main_lodo_results.csv"
+    with open(path, encoding="utf-8") as f:
+        rows = {r["district"]: r for r in csv.DictReader(f) if r["model"] == "B1_expert_rules"}
+    assert set(rows) == set(service.DISTRICTS)
+    for name, p in service.DISTRICTS.items():
+        assert abs(p["b1_tested"]["macro_f1"] - float(rows[name]["macro_f1"])) < 0.0005
+        assert p["b1_tested"]["n_fields"] == int(rows[name]["n_test"])
+
+
+def test_profile_builder_keeps_centres_when_the_table_has_no_coordinates(tmp_path):
+    import pandas as pd
+    import build_district_profiles as bdp
+    g = pd.DataFrame({"GPS_Elev": [1500.0, 1600.0]})
+    previous = {"districts": {"X": {"centre": {"lat": -1.5, "lon": 30.0}}}}
+    assert bdp._centre(g, "X", previous) == {"lat": -1.5, "lon": 30.0}
+    with pytest.raises(KeyError):
+        bdp._centre(g, "Y", previous)
+    res = tmp_path / "res.csv"
+    res.write_text("model,district,n_test,top1,macro_f1,crops_scored\n"
+                   "B1_expert_rules,X,10,0.5,0.41234,beans+maize\nRF[all],X,10,0.9,0.9,beans+maize\n")
+    assert bdp.b1_tested(res) == {"X": {"macro_f1": 0.412, "top1": 0.5, "n_fields": 10, "crops_scored": "beans+maize"}}

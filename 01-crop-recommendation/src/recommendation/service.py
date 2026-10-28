@@ -4,7 +4,8 @@ It follows the contract in docs/api_contracts.md (models in 03-shared/apis/recom
 What it does for one request:
   1. Resolve the location to one of the four pilot districts (by name, or the nearest district centre).
   2. Build the inputs B1 needs: elevation, and the season climate normal moved to the point's height.
-  3. Rank crops with B1. Each crop gets a score, reasons with sources, and a reliability level.
+  3. Rank crops with B1. Each crop gets a score, reasons with sources, and a reliability level that also
+     uses how B1 scored in that district in the official evaluation (reports/eval_v1).
   4. Ask the fertiliser engine for advice on the requested crop, or the rank 1 crop.
 It never invents an answer: if no crop scores well enough it abstains, and if no fertiliser rule fits it says so.
 
@@ -44,6 +45,7 @@ FERTILISER_RULES_PATH = HERE / "rules" / "fertiliser_rules.yaml"
 MIN_SCORE = 0.5                 # abstain when the best crop scores below this
 MAX_DISTRICT_DISTANCE_KM = 25   # a point further than this from every pilot district centre is "outside"
 EVALUATED_SEASONS = {"B"}       # B1 was evaluated on season B data only (CIAT, 2025)
+RULES_EVIDENCE_MIN = 0.5        # B1's tested macro-F1 in a district must reach this for "medium" (eval_v1)
 KEY_SOIL_INPUTS = ("ph_water", "organic_carbon_pct", "total_nitrogen_pct")
 
 CROP_RULES = b1.load_rules()
@@ -174,8 +176,20 @@ def site_inputs(req: RecommendRequest, district: Optional[str], warnings: list) 
     return row, site
 
 
+def rules_tested(district: Optional[str]) -> Optional[dict]:
+    """How B1 scored in this district in the official evaluation (main test, season B 2025), if known."""
+    return DISTRICTS[district].get("b1_tested") if district else None
+
+
+def rules_weak_here(district: Optional[str], season: str) -> bool:
+    tested = rules_tested(district)
+    return bool(tested) and season in EVALUATED_SEASONS and tested["macro_f1"] < RULES_EVIDENCE_MIN
+
+
 def reliability_for(item: dict, district: Optional[str], season: str, row: dict) -> dict:
-    """Draft B1 reliability rules (contract section 5). B1 is never 'high', because no ML model is adopted."""
+    """B1 reliability rules (contract section 5). B1 is never 'high', because no ML model is adopted.
+    'medium' needs a pilot district where B1 scored at least RULES_EVIDENCE_MIN when tested, season B,
+    a crop whose rules are not weak, and every rule input present. Anything else is 'low'."""
     codes = ["ML_NOT_ADOPTED"]
     low = False
     if district is None:
@@ -183,6 +197,9 @@ def reliability_for(item: dict, district: Optional[str], season: str, row: dict)
         low = True
     if season not in EVALUATED_SEASONS:
         codes.append("SEASON_NOT_EVALUATED")
+        low = True
+    if rules_weak_here(district, season):
+        codes.append("RULES_WEAK_IN_DISTRICT")
         low = True
     if item.get("reliability_cap") == "low":
         codes.append("CROP_RULES_WEAK")
@@ -231,6 +248,13 @@ def recommend(req: RecommendRequest, request: Request):
         warnings.append({"code": "SEASON_NOT_EVALUATED",
                          "message": f"The baseline was tested on season B data only. Treat season {req.season} "
                                     "results with extra care."})
+    if rules_weak_here(district, req.season):
+        tested = rules_tested(district)
+        warnings.append({"code": "RULES_WEAK_IN_DISTRICT",
+                         "message": f"When tested on {tested['n_fields']} CIAT fields in {district} (season B 2025), "
+                                    f"the expert rules scored {tested['macro_f1']:.2f} out of 1 for matching the "
+                                    f"crop farmers planted, below the {RULES_EVIDENCE_MIN} needed for medium "
+                                    "reliability. Treat this ranking with care."})
     if soil_given:
         warnings.append({"code": "SOIL_NOT_USED_BY_METHOD",
                          "message": "Soil values are recorded and passed to the fertiliser rules, but the crop "
@@ -245,6 +269,13 @@ def recommend(req: RecommendRequest, request: Request):
         warnings.append({"code": "NO_CROP_ABOVE_MIN_SCORE",
                          "message": f"No crop reached the minimum score of {MIN_SCORE} for these conditions."})
     elif "crops" in req.include:
+        tied = [i["crop"] for i in ranked if abs(i["score"] - ranked[0]["score"]) < 1e-9]
+        if len(tied) > 1:
+            warnings.append({"code": "CROPS_TIED",
+                             "message": f"{', '.join(tied)} fit the rules equally well (score "
+                                        f"{ranked[0]['score']:.2f}). Their order comes from a tie-break (number of "
+                                        "rules checked, then how common each crop is in the CIAT data), not from a "
+                                        "real difference in fit."})
         for rank, item in enumerate(ranked[: req.top_k], start=1):
             crops_out.append({"rank": rank, "crop": item["crop"], "score": round(item["score"], 3),
                               "method": "expert_rules",
