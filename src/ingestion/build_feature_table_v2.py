@@ -25,7 +25,7 @@ CIAT_POINTS  = 'data/raw/ciat/ciat_points_clean.csv'
 NASA_POWER   = 'data/raw/nasa_power/nasa_power_seasonal.csv'
 NISR_CULT    = 'data/raw/nisr/nisr_cultivated_area_ha.csv'
 ISDA_POINTS  = 'data/raw/isda/isda_soil_all.csv'
-OUT_PATH     = 'data/processed/feature_table_v2.csv'
+OUT_PATH     = '01-crop-recommendation/data/processed/feature_table_v2.csv'
 
 # CIAT collection: May-June 2025 = Season B
 # NASA POWER start-year convention: Season B year=2024 covers Mar 2025 to Jun 2025
@@ -161,12 +161,16 @@ def build(ciat, climate, nisr_share, isda):
     # Join 3: iSDAsoil at point level
     if isda is not None:
         print('Join 3: + iSDAsoil soil properties...')
+        # Join on F_id (rounded to int) - F_index has 274 duplicates pointing to
+        # different fields; F_id is unique for all 2,739 points.
+        merged['F_id_int'] = merged['F_id'].round().astype('Int64')
+        isda['F_id'] = isda['F_id'].astype('Int64')
         merged = merged.merge(
             isda,
-            left_on='F_index',
-            right_on='point_id',
+            left_on='F_id_int',
+            right_on='F_id',
             how='left'
-        ).drop(columns=['point_id'])
+        ).drop(columns=['F_id_int', 'F_id_y']).rename(columns={'F_id_x': 'F_id'})
         soil_cols = [c for c in merged.columns if any(
             c.startswith(p) for p in ['nitrogen', 'phosphorous', 'potassium', 'ph_',
                                        'sand_', 'clay_', 'silt_', 'carbon_organic', 'cation_']
@@ -175,6 +179,12 @@ def build(ciat, climate, nisr_share, isda):
         print(f'  Shape: {merged.shape}  Soil nulls: {soil_nulls}')
     else:
         print('Join 3: iSDAsoil skipped (file not available)')
+
+    # Musanze and Nyabihu have no paddy rice: NISR has no rice row for them,
+    # so nisr_share_paddy_rice is NaN after the join. Fill with 0.
+    highland = ['Musanze', 'Nyabihu']
+    mask = merged['District'].isin(highland)
+    merged.loc[mask, 'nisr_share_paddy_rice'] = merged.loc[mask, 'nisr_share_paddy_rice'].fillna(0)
 
     return merged
 
