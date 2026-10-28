@@ -8,7 +8,7 @@ Run everything with one command from the repo root:
 python 01-crop-recommendation/src/models/evaluate.py
 ```
 
-It writes `01-crop-recommendation/reports/eval_v1/` (report, CSV files and `run_info.json`).
+It writes `01-crop-recommendation/reports/eval_v1/` (report, CSV files and `run_info.json`). To get exactly the official numbers, install the pinned versions first: `python -m pip install -r 01-crop-recommendation/requirements-eval.txt`.
 
 ## 1. Data
 
@@ -82,3 +82,5 @@ Any change after seeing results (rules, inputs, filters, settings, models) is re
 
 - 28 Oct, morning: dry run on the table as it was then (before the soil fix). It was used only to plan this protocol and its numbers are not reported. The main score and the 0.01 margin were set after it. Under both the old and the new score, it gave the same picture: no ML model beat B1 when leaving one district out.
 - 28 Oct, afternoon: Part A fixed the soil join, removed the coordinates, added `qc_ok` and `block_id`, set rice share to 0 in Musanze and Nyabihu, and moved the season B start to 1 February. The Status decision (section 2) was made before the first run on this table.
+- 28 Oct, evening: official run on Thierry's laptop (Windows, Python 3.13), committed as `eval_v1`. Rerun on Colab Pro (Linux, Python 3.12) with the same library versions: every result file was identical (`01-crop-recommendation/notebooks/02_reproduce_eval_v1_colab.ipynb`). Library versions are now pinned in `01-crop-recommendation/requirements-eval.txt`, because other versions move the numbers.
+- 28 Oct, evening: the table fingerprint now ignores Windows line endings. `eval_v1/run_info.json` shows `e84d21c8...`, the Windows checkout of the table; the same table gives `5df52fa6...` with line endings normalised, which is what later runs record. The results do not change.

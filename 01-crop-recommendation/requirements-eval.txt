@@ -1,0 +1,11 @@
+# Library versions of the official evaluation run (reports/eval_v1/run_info.json).
+# Other versions can move the numbers: scikit-learn changes the 2 km folds and XGBoost changes its trees.
+# xgboost 3.4.1 needs Python 3.12 or newer.
+# Install:  python -m pip install -r 01-crop-recommendation/requirements-eval.txt
+numpy==2.3.5
+pandas==3.1.0
+scipy==1.16.3
+scikit-learn==1.7.2
+xgboost==3.4.1
+pyyaml
+tabulate

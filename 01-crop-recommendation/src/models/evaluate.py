@@ -117,11 +117,10 @@ def default_table() -> Path:
 
 
 def file_sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    """SHA-256 of the file with Windows line endings turned into Unix ones. Git on Windows adds a CR to every
+    line of the checked-out table, so without this the same table gets a different fingerprint on Windows
+    than on Linux or Colab."""
+    return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def _qc_mask(df: pd.DataFrame, min_elev: float, max_lon: float) -> pd.Series:

@@ -6,13 +6,13 @@
 | `rules/crop_suitability.yaml` | B1 rules as data. Every range cites `docs/baseline_research_notes.md`. Draft until each page is checked. |
 | `evaluate.py` | Evaluation harness v1. Follows `docs/training_protocol.md`: leave one district out (main test), new fields inside the known districts (second test), and both again on CIAT "Used" fields (second check). |
 
-Run the evaluation from the repository root (XGBoost is required: `python -m pip install xgboost`):
+Run the evaluation from the repository root. To get exactly the official numbers, install the pinned versions first (`python -m pip install -r 01-crop-recommendation/requirements-eval.txt`, Python 3.12 or newer):
 
 ```
 python 01-crop-recommendation/src/models/evaluate.py
 ```
 
-It reads `01-crop-recommendation/data/processed/feature_table_v2.csv` and writes `01-crop-recommendation/reports/eval_v1/`: `report.md`, one CSV per test, `confusion_counts.csv` and `run_info.json` (table fingerprint, code commit, settings, library versions). It takes one to three minutes on a laptop. Commit the code first, then run, so `run_info.json` points to the code that produced the numbers.
+It reads `01-crop-recommendation/data/processed/feature_table_v2.csv` and writes `01-crop-recommendation/reports/eval_v1/`: `report.md`, one CSV per test, `confusion_counts.csv` and `run_info.json` (table fingerprint, code commit, settings, library versions). It takes one to three minutes on a laptop. Commit the code first, then run, so `run_info.json` points to the code that produced the numbers. To check the results on Colab, use `../../notebooks/02_reproduce_eval_v1_colab.ipynb`: it reinstalls the pinned versions and compares every result file with the committed ones.
 
 Rules for using results:
 
