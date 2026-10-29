@@ -8,6 +8,7 @@ This folder holds the recommendation service and the fertiliser rule engine.
 | `district_profiles.json` | District summaries the service reads: CIAT elevation (median, 10th and 90th percentile), NASA POWER season normals (season B from 1 Feb to 30 Jun), crop shares, and how B1 scored in each district in `reports/eval_v1`. No farm-level data. |
 | `build_district_profiles.py` | Rebuilds `district_profiles.json` from Part A's files and the official evaluation. Run it when Part A updates the data or a new evaluation is committed. |
 | `fertiliser_engine.py`, `rules/fertiliser_rules.yaml` | Fertiliser rule engine. The rules file stays empty until the RAB guideline is confirmed. |
+| `map_model.py` | Recommendation for one point on the map (dashboard map page and Colab notebook 03): finds the district, builds the input row for the point, ranks the crops with XGBoost and with the B1 rules, and adds the tested score of each in that district. |
 
 Run the service from the repository root:
 
@@ -15,7 +16,20 @@ Run the service from the repository root:
 python -m uvicorn service:app --app-dir 01-crop-recommendation/src/recommendation --port 8001
 ```
 
-## Inputs
+## Map page (`map_model.py`)
+
+What happens when someone clicks a point:
+
+1. District: the outline the point falls in (`../../data/reference/rwanda_districts.geojson`, geoBoundaries, Open Data Rwanda, CC BY 4.0). Only the four pilot districts get a crop. A point within 1.5 km of a CIAT block just across a simplified outline counts as that block's district.
+2. Field inputs: the feature table no longer has coordinates, so soil (iSDAsoil) and elevation come from the CIAT fields in the same 2 km block (Part A's `block_id`), or from the nearest block in the district. The answer says how far that block is and warns beyond 5 km.
+3. District inputs: season B 2025 weather (NASA POWER) and NISR crop shares, the values the model learned from, so the map and the training data agree.
+4. Two methods side by side: XGBoost on all inputs, trained on all 1,904 fields with the protocol settings, and the B1 rules. Each comes with its tested macro-F1 in that district from `reports/eval_v1` (new fields, and district left out).
+5. Season: today's season is preselected (A from September to January, B from February to June, C in July and August). Only season B is in the training data, so another season gets the season B answer with a note.
+6. Fertiliser: the rule engine answers for XGBoost's first crop, which is `no_matching_rule` until the RAB guideline is in.
+
+Quick check from the repository root: `python 01-crop-recommendation/src/recommendation/map_model.py --lat -1.458 --lon 29.556`
+
+## Service inputs
 
 - A pilot district (Musanze, Nyabihu, Nyagatare, Ruhango), or `lat` and `lon`. A point is matched to the nearest district centre within 25 km.
 - The season (A, B or C).

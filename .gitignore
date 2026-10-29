@@ -64,3 +64,5 @@ lightning_logs/
 
 # Evaluation results are small summaries (no field data), so they are committed
 !01-crop-recommendation/reports/**/*.csv
+# Trained models are rebuilt in seconds from the code, so they are not committed
+01-crop-recommendation/reports/**/model/
