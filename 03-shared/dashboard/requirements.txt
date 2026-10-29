@@ -2,3 +2,7 @@ streamlit>=1.37
 httpx>=0.27
 fastapi>=0.110
 pydantic>=2.6
+# Map page: the map, and XGBoost with the same library versions as the official evaluation
+folium>=0.17
+streamlit-folium>=0.22
+-r ../../01-crop-recommendation/requirements-eval.txt
