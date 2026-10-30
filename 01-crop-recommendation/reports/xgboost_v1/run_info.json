@@ -1,0 +1,20 @@
+{
+  "protocol_version": "1.0",
+  "script": "src/models/train_xgboost.py",
+  "table": "01-crop-recommendation\\data\\processed\\feature_table_v2.csv",
+  "table_sha256": "5df52fa6350fa15efeb7a5bafdb92373c9f335de7d58be8e7024ad03fbd733cb",
+  "table_rows": 2739,
+  "training_fields": 1904,
+  "git_commit": "237c0a4537276da3e47297af5e792cb0e8875030",
+  "git_uncommitted_changes": false,
+  "versions": {
+    "python": "3.13.6",
+    "pandas": "3.1.0",
+    "numpy": "2.3.5",
+    "scikit-learn": "1.7.2",
+    "xgboost": "3.4.1"
+  },
+  "platform": "Windows-11-10.0.26200-SP0",
+  "finished_utc": "2026-10-30 23:26",
+  "seconds": 13.8
+}

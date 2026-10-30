@@ -6,6 +6,8 @@
 | `rules/crop_suitability.yaml` | B1 rules as data. Every range cites `docs/baseline_research_notes.md`. Draft until each page is checked. |
 | `evaluate.py` | Evaluation harness v1. Follows `docs/training_protocol.md`: leave one district out (main test), new fields inside the known districts (second test), and both again on CIAT "Used" fields (second check). |
 | `train_xgboost.py` | XGBoost training and scores (agreed at the stand-up of 28 Oct). Same folds and settings as `evaluate.py`, plus overall scores, scores per crop, confusion matrices, a check against `eval_v1`, and the final XGBoost on all inputs and all 1,904 fields (the model behind the dashboard map). |
+| `model_scores.py` | Reads the official evaluation (`reports/eval_v1`) and gives every score the dashboard and the notebooks show: main score per model and district, overall scores over all test fields, and precision, recall and F1 of each crop in each district. Needs only pandas and numpy. |
+| `compare_results.py` | Compares a rerun with the committed result files, file by file and model by model (used by the Colab notebooks). |
 
 Run the evaluation from the repository root. To get exactly the official numbers, install the pinned versions first (`python -m pip install -r 01-crop-recommendation/requirements-eval.txt`, Python 3.12 or newer):
 

@@ -1,0 +1,11 @@
+test,model,largest_difference,same_as_eval_v1
+new_district,B0_majority,0.0,yes
+new_district,B1_expert_rules,0.0,yes
+new_district,XGB[district],0.0,yes
+new_district,XGB[field],0.0,yes
+new_district,XGB[all],0.0,yes
+new_fields,B0_majority,0.0,yes
+new_fields,B1_expert_rules,0.0,yes
+new_fields,XGB[district],0.0,yes
+new_fields,XGB[field],0.0,yes
+new_fields,XGB[all],0.0,yes
