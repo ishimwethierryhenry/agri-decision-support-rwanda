@@ -41,6 +41,8 @@ def draw_map(rec: mm.MapRecommender, point: dict):
     """District outlines and CIAT blocks stay the same between clicks, so the map keeps its zoom.
     Only the marker of the selected point is redrawn."""
     m = folium.Map(location=[-1.94, 29.87], zoom_start=8, tiles="OpenStreetMap", control_scale=True)
+    # Chrome draws a black box around the last clicked district outline; hide it
+    m.get_root().header.add_child(folium.Element("<style>.leaflet-interactive:focus{outline:none;}</style>"))
     folium.GeoJson(
         rec.districts.geojson, name="Districts",
         style_function=lambda f: {
@@ -62,14 +64,41 @@ def draw_map(rec: mm.MapRecommender, point: dict):
                      feature_group_to_add=selected, key="crop_map")
 
 
+def tested_note(item: dict) -> str:
+    """How the method did for this crop in this district, on new fields (the situation of the map)."""
+    x = (item.get("tested_here") or {}).get("new_fields")
+    if not x:
+        return ""
+    if not x["scored"]:
+        return f", not tested here (only {x['fields']} field{'' if x['fields'] == 1 else 's'})"
+    return f", tested F1 here {x['f1']:.2f}"
+
+
 def ranking(title: str, rows: list, value_key: str, tested: dict, district: str):
     st.markdown(f"**{title}**")
     for r in rows:
         label = crop(r["crop"]) + (" (weak rule: no water-access data)" if r.get("weak") else "")
-        st.progress(min(max(float(r[value_key]), 0.0), 1.0), text=f"{label}: {r[value_key]:.2f}")
+        st.progress(min(max(float(r[value_key]), 0.0), 1.0), text=f"{label}: {r[value_key]:.2f}{tested_note(r)}")
     if tested.get("new_fields") is not None:
         st.caption(f"Tested score in {district}: {tested['new_fields']:.2f} on new fields, "
                    f"{tested.get('new_district', float('nan')):.2f} when {district} was left out of training.")
+
+
+def crop_table(rec: mm.MapRecommender, district: str, test: str) -> pd.DataFrame:
+    """Precision, recall and F1 of each crop in one district, for XGBoost and for the rules."""
+    rows = []
+    for c in mm.CROP_NAMES:
+        found = {name: rec.crop_tested.get(district, {}).get(method, {}).get(c, {}).get(test)
+                 for name, method in (("XGBoost", "model"), ("Rules", "rules"))}
+        if not found["XGBoost"]:
+            continue
+        row = {"Crop": crop(c), "Fields": found["XGBoost"]["fields"]}
+        # F1 first, so the main numbers are visible without scrolling in the narrow column
+        for key, label in (("f1", "F1"), ("precision", "precision"), ("recall", "recall")):
+            for name, x in found.items():
+                row[f"{name} {label}"] = float(x[key]) if x and x["scored"] else float("nan")
+        rows.append(row)
+    return pd.DataFrame(rows).set_index("Crop")
 
 
 def tested_table(rec: mm.MapRecommender) -> pd.DataFrame:
@@ -178,6 +207,21 @@ with right:
                     res["district"])
         with c2:
             ranking("Expert rules (B1)", res["rules"]["ranking"], "score", res["rules"]["tested"], res["district"])
+        with st.expander(f"How each method did in {res['district']}, crop by crop"):
+            test = st.radio("Test", ["new_fields", "new_district"], horizontal=True, key="crop_test",
+                            format_func={"new_fields": "New fields in this district",
+                                         "new_district": f"{res['district']} left out of training"}.get)
+            table = crop_table(rec, res["district"], test)
+            if len(table):
+                shown = table.copy()
+                for c in shown.columns:
+                    if c != "Fields":   # text, so a crop with too few fields reads "not scored" instead of None
+                        shown[c] = [("not scored" if pd.isna(v) else f"{v:.2f}") for v in table[c]]
+                st.dataframe(shown)
+            st.caption("Precision: when the method says this crop, how often it is right. Recall: of the fields "
+                       "with this crop, how many the method found. F1 combines the two, from 0 to 1. Crops with "
+                       "fewer than 5 fields in the district are not scored. From the official evaluation (eval_v1). "
+                       "The Model scores page has every model.")
         with st.expander("Why the rules say this"):
             for r in res["rules"]["ranking"]:
                 st.markdown(f"**{crop(r['crop'])}** ({r['score']:.2f})")

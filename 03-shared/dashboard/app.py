@@ -2,6 +2,7 @@
 
 Pages:
   Map            : click a point in a pilot district; XGBoost and the expert rules side by side (default page).
+  Model scores   : how well every model did in the official evaluation, per district and per crop.
   Recommendation : calls POST /v1/recommend (Part B).
   Diagnosis      : placeholder, built by the CV sub-team against /detect.
 The data source in the sidebar is for the Recommendation page. Baseline mode (default) runs the real service on
@@ -28,6 +29,7 @@ with st.sidebar:
 
 pages = [
     st.Page("pages/map.py", title="Map: crop for a field", default=True),
+    st.Page("pages/scores.py", title="Model scores"),
     st.Page("pages/recommendation.py", title="Crop and fertiliser"),
     st.Page("pages/diagnosis.py", title="Crop health diagnosis"),
 ]

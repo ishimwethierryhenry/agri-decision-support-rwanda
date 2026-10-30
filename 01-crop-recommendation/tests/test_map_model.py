@@ -116,3 +116,15 @@ def test_feature_importance_and_export(rec, tmp_path):
     assert set(imp["feature"]) <= set(rec.model.used_) and abs(imp["share"].sum() - 1) < 1e-9
     folder = rec.export(tmp_path / "xgb")
     assert (folder / "xgboost_all_inputs.json").exists() and (folder / "meta.json").exists()
+
+
+def test_each_ranked_crop_carries_its_tested_scores_in_the_district(rec):
+    r = rec.recommend(-1.350, 30.258, "B")                               # a Nyagatare block
+    maize = next(x for x in r["model"]["ranking"] if x["crop"] == "maize")
+    assert maize["tested_here"]["new_fields"]["fields"] == 792
+    assert round(maize["tested_here"]["new_fields"]["f1"], 2) == 0.80
+    rules_maize = next(x for x in r["rules"]["ranking"] if x["crop"] == "maize")
+    assert rules_maize["tested_here"]["new_fields"]["f1"] == 0.0
+    r = rec.recommend(-1.4580, 29.5560, "B")                             # Musanze: 1 rice field, not scored
+    rice = next(x for x in r["model"]["ranking"] if x["crop"] == "rice")
+    assert rice["tested_here"]["new_fields"]["scored"] is False

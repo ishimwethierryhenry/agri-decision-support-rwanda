@@ -10,6 +10,7 @@ What happens when someone clicks a point:
      learned from. The model only knows season B, so another season is shown as a note, not as an answer.
   4. Two methods side by side, each with its tested score in that district (reports/eval_v1):
      XGBoost on all inputs, trained on all 1,904 fields with the protocol settings, and the B1 expert rules.
+     Every crop in each ranking also carries its tested precision, recall and F1 in that district.
   5. Fertiliser: the rule engine answers for the model's first crop. Its rule file stays empty until the RAB
      guideline is in, so it says "no matching rule" instead of inventing a rate.
 
@@ -41,6 +42,7 @@ for _p in (HERE, HERE.parent / "models"):
 import evaluate as ev  # noqa: E402
 import expert_baseline as b1  # noqa: E402
 import fertiliser_engine as fert  # noqa: E402
+import model_scores as ms  # noqa: E402
 
 TABLE_PATH = MODULE / "data" / "processed" / "feature_table_v2.csv"
 BOUNDARIES_PATH = MODULE / "data" / "reference" / "rwanda_districts.geojson"
@@ -165,6 +167,7 @@ class MapRecommender:
         self.fert_rules = fert.load_rules(FERTILISER_RULES_PATH)
         self._build_lookup(raw)
         self.tested = self._load_tested(evaluation_dir)
+        self.crop_tested = self._load_crop_tested(evaluation_dir)
 
     @classmethod
     def load(cls, table: Path = TABLE_PATH, boundaries: Path = BOUNDARIES_PATH,
@@ -207,6 +210,22 @@ class MapRecommender:
             for method, model in (("model", MODEL_NAME), ("rules", ev.BASELINE)):
                 for _, r in res[res["model"] == model].iterrows():
                     out.setdefault(r["district"], {}).setdefault(method, {})[test] = round(float(r["macro_f1"]), 3)
+        return out
+
+    @staticmethod
+    def _load_crop_tested(evaluation_dir: Optional[Path]) -> dict:
+        """Precision, recall and F1 of each crop in each district for the model and the rules, from the official
+        confusion counts: {district: {method: {crop: {test: {...}}}}}. Crops with fewer than 5 fields are marked."""
+        out: dict = {}
+        if not evaluation_dir or not (Path(evaluation_dir) / "confusion_counts.csv").exists():
+            return out
+        scores = ms.Scores(evaluation_dir)
+        for test in ms.TESTS:
+            for method, model in (("model", MODEL_NAME), ("rules", ev.BASELINE)):
+                for r in scores.per_crop(test, model).itertuples():
+                    out.setdefault(r.district, {}).setdefault(method, {}).setdefault(r.crop, {})[test] = {
+                        "precision": float(r.precision), "recall": float(r.recall), "f1": float(r.f1),
+                        "fields": int(r.fields), "scored": bool(r.scored)}   # not rounded: the page rounds once
         return out
 
     # ----------------------------------------------------------- one point
@@ -290,14 +309,17 @@ class MapRecommender:
         }
         proba = self.model.predict_proba(pd.DataFrame([row]))[0]
         order = np.argsort(-proba)
+        crop_tested = self.crop_tested.get(district, {})
         out["model"] = {"name": "XGBoost, all inputs",
-                        "ranking": [{"crop": str(self.model.classes_[i]), "probability": round(float(proba[i]), 3)}
+                        "ranking": [{"crop": str(self.model.classes_[i]), "probability": round(float(proba[i]), 3),
+                                     "tested_here": crop_tested.get("model", {}).get(str(self.model.classes_[i]), {})}
                                     for i in order],
                         "tested": self.tested.get(district, {}).get("model", {})}
         ranked = [r for r in b1.rank_crops(row, self.rules, self.crop_prior) if r["score"] is not None]
         out["rules"] = {"name": "Expert rules (B1)",
                         "ranking": [{"crop": r["crop"], "score": round(float(r["score"]), 3),
-                                     "weak": r.get("reliability_cap") == "low", "reasons": r["reasons"]}
+                                     "weak": r.get("reliability_cap") == "low", "reasons": r["reasons"],
+                                     "tested_here": crop_tested.get("rules", {}).get(r["crop"], {})}
                                     for r in ranked],
                         "tested": self.tested.get(district, {}).get("rules", {})}
         if len(ranked) > 1:

@@ -73,3 +73,29 @@ def test_points_outside_the_pilot_districts_or_rwanda_get_no_crop():
     assert "not one of the four pilot districts" in at.warning[0].value
     at = _type_point(at, 10.0, 200.0)             # nowhere near Rwanda, and no crash on odd numbers
     assert at.subheader[0].value == "Outside Rwanda" and not _picks(at)
+
+
+def test_crop_by_crop_table_for_the_clicked_district():
+    at = _page()                                     # default point: Musanze
+    table = at.dataframe[-1].value
+    assert list(table.index) == ["Beans", "Irish potato", "Maize", "Rice"]
+    assert table.loc["Rice", "XGBoost F1"] == "not scored"            # 1 rice field in Musanze
+    assert table.loc["Irish potato", "XGBoost F1"] == "0.77"
+    at.radio(key="crop_test").set_value("new_district").run()
+    assert not at.exception
+
+
+def test_scores_page_shows_every_model():
+    at = st_testing.AppTest.from_file(str(DASH / "pages" / "scores.py"), default_timeout=60)
+    at.run()
+    assert not at.exception
+    assert "No trained model passes the adoption rule" in at.info[0].value
+    main = at.dataframe[0].value
+    assert len(main) == 12 and "Main score" in main.columns
+    at.radio(key="scores_test").set_value("new_fields").run()
+    assert not at.exception
+    at.selectbox(key="scores_district").set_value("Nyagatare").run()
+    crops = at.dataframe[3].value
+    assert crops.loc["Maize", "XGBoost F1"] == "0.80"
+    at.selectbox(key="scores_other").set_value("RF[all]").run()
+    assert not at.exception and "Random Forest, all inputs F1" in at.dataframe[3].value.columns
