@@ -94,10 +94,13 @@ def test_top_k_and_include_are_respected():
 def test_fertiliser_is_for_rank_1_or_the_named_crop_and_never_invented():
     resp, _ = ok({"district": "Musanze", "season": "B"})
     assert resp.fertiliser.crop == resp.crop_recommendations[0].crop
-    assert resp.fertiliser.status == "no_matching_rule" and resp.fertiliser.items == []
-    assert "NO_GUIDELINE_RULE_FOUND" in codes(resp)
+    assert resp.fertiliser.status == "ok" and resp.fertiliser.items
+    assert "FERTILISER_INTERIM" in codes(resp) and "NO_GUIDELINE_RULE_FOUND" not in codes(resp)
+    for item in resp.fertiliser.items:                      # interim rates: published, cited and labelled
+        assert item.source.document and item.source.url and item.explanation.startswith("Interim:")
     resp, _ = ok({"district": "Musanze", "season": "B", "crop": "maize"})
     assert resp.fertiliser.crop == "maize"
+    assert [(i.product, i.rate) for i in resp.fertiliser.items] == [("DAP (18-46-0)", 100), ("Urea (46% N)", 100)]
 
 
 def test_soil_values_are_recorded_with_their_source():

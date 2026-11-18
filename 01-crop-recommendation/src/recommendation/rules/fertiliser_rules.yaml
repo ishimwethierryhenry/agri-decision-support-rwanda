@@ -1,7 +1,16 @@
 # Fertiliser rules (data, not code).
 #
-# STATUS: EMPTY ON PURPOSE. No real rule has been entered yet because the RAB guideline
-# document has not been confirmed. Do not add a rule from memory or from a blog post.
+# STATUS: INTERIM (18 Nov 2026). The RAB fertiliser guideline has been requested but is not in yet. Until it
+# is, each crop has one general rule with the national blanket rate copied from a published source, with the
+# page and a link so anyone can check it. These rules
+# have status "interim": the app serves them with the label "not yet confirmed by RAB", and as soon as a
+# verified rule matches a crop, the interim rule of that crop is no longer used.
+#
+# When the RAB guideline arrives: enter its rules with status "verified", then delete the interim rules.
+# Do not add a rule from memory or from a blog post. Do not change a rate without its source.
+#
+# Not covered yet: lime. No published source we found gives a pH threshold and a lime rate for Rwanda, so
+# there is no lime rule.
 #
 # Every rule needs:
 #   id        unique, for example maize-lowph-lime-01
@@ -11,26 +20,88 @@
 #             Operators: lt, lte, gt, gte, eq, in, between ([low, high], inclusive).
 #             A rule with no 'when' applies to the crop in general.
 #   advice    list of items: input_type, product, rate, rate_unit (kg/ha or t/ha), timing, explanation
-#   source    document (required), section and page (required once status is verified), url
-#   status    draft (default, never served) or verified (a teammate checked it against the source)
+#   source    document (required), section or page (required for verified and interim), url (required for
+#             interim)
+#   status    draft (default, never served), interim (published rate, served with a label, see above) or
+#             verified (a teammate checked it against the RAB guideline)
 #   priority  optional integer; higher wins if two rules give the same input type
-#
-# Example of the shape (kept as a comment so it is never loaded):
-#
-#   - id: example-01
-#     crop: maize
-#     when:
-#       ph_water: {lt: 5.0}
-#     advice:
-#       - input_type: lime
-#         rate: 0
-#         rate_unit: t/ha
-#         explanation: "<copy the guideline sentence>"
-#     source:
-#       document: "<full title of the guideline>"
-#       section: "<section number>"
-#       page: "<page>"
-#     status: draft
+#   note      optional, for the team; not shown in the app
 
-version: "0.0-empty"
-rules: []
+version: "0.1-interim-2026-11-18"
+rules:
+  - id: maize-national-interim-01
+    crop: maize
+    advice:
+      - input_type: compound_fertiliser
+        product: "DAP (18-46-0)"
+        rate: 100
+        rate_unit: kg/ha
+        timing: "At planting"
+        explanation: "National blanket recommendation as used in the RAB and CGIAR maize trials: 100 kg/ha of DAP at planting."
+      - input_type: nitrogen
+        product: "Urea (46% N)"
+        rate: 100
+        rate_unit: kg/ha
+        timing: "Top dressing at 6 to 8 leaves, about 4 to 6 weeks after emergence"
+        explanation: "National blanket recommendation as used in the RAB and CGIAR maize trials: 100 kg/ha of urea as top dressing. An older report lists 50 kg/ha of urea for the government recommendation (IFDC, 2018, Table 2), so this rate needs RAB's confirmation."
+    source:
+      document: "B. T. Mudereri et al., Smart Fertiliser Recommendations for Maize in Rwanda, CGIAR Sustainable Farming Science Program Report, Nov. 2025"
+      section: "Table 2, treatment BR (blanket recommendation)"
+      page: "7"
+      url: "https://hdl.handle.net/10568/178714"
+    status: interim
+    note: "Trials of the RAB and CGIAR partnership (RwaSIS and the Sustainable Farming Program). IFDC (2018) and Cyamweshi et al. (2017, p. 165: 41 kg N and 46 kg P2O5 per ha) both match 100 kg DAP plus 50 kg urea, not 100 kg urea."
+
+  - id: beans-national-interim-01
+    crop: beans
+    advice:
+      - input_type: compound_fertiliser
+        product: "DAP (18-46-0)"
+        rate: 100
+        rate_unit: kg/ha
+        explanation: "Recommended rate for bean in Rwanda: 18 kg N and 46 kg P2O5 per ha. 100 kg/ha of DAP (18-46-0) gives exactly these amounts. The source gives the nutrients only, not the product or when to apply."
+    source:
+      document: "A. R. Cyamweshi, J. Kayumba and N. L. Nabahungu, Optimizing fertilizer use within the context of integrated soil fertility management in Rwanda, in Fertilizer Use Optimization in Sub-Saharan Africa, C. S. Wortmann and K. Sones, Eds. CABI, 2017, pp. 164-175"
+      page: "165"
+      url: "https://agronomy.unl.edu/sites/unl.edu.ianr.agronomy-horticulture/files/media/file/OFRA%20Chapter%2013_Rwanda_HR.pdf"
+    status: interim
+    note: "The source lists the same rate for bean and soybean. The CGIAR bean report of Dec. 2025 (hdl.handle.net/10568/179862) gives no rate."
+
+  - id: irish-potato-national-interim-01
+    crop: irish_potato
+    advice:
+      - input_type: compound_fertiliser
+        product: "NPK 17-17-17"
+        rate: 300
+        rate_unit: kg/ha
+        explanation: "One of the two government recommendations for Irish potato: 300 kg/ha of NPK 17-17-17. The other one is based on DAP, KCl and urea. The source does not say when to apply the NPK."
+    source:
+      document: "IFDC, Assessment of Fertilizer Distribution Systems and Opportunities for Developing Fertilizer Blends (Rwanda), with AFAP, for AGRA, Jun. 2018"
+      section: "Table 2"
+      page: "5-6"
+      url: "https://agra.org/archive/wp-content/uploads/2020/08/Rwanda-Report_Assessment-of-Fertilizer-Distribution-Systems-and-Opportunities-for-Developing-Fertilizer-Blends.pdf"
+    status: interim
+    note: "Second government option in the same table: 150 kg/ha DAP basal, 75 kg/ha KCl and 100 kg/ha urea top dressing (the table does not say clearly when the KCl goes in)."
+
+  - id: rice-national-interim-01
+    crop: rice
+    advice:
+      - input_type: compound_fertiliser
+        product: "NPK 17-17-17"
+        rate: 200
+        rate_unit: kg/ha
+        timing: "At planting, broadcast"
+        explanation: "Current practice and recommendation for irrigated rice in Rwanda: 200 kg/ha of NPK 17-17-17 as basal fertiliser."
+      - input_type: nitrogen
+        product: "Urea (46% N)"
+        rate: 100
+        rate_unit: kg/ha
+        timing: "Top dressing in two splits of 50 kg/ha, about 40 and 60 days after transplanting"
+        explanation: "Current practice: 100 kg/ha of urea as top dressing. With the NPK this gives 80 kg N, 34 kg P2O5 and 34 kg K2O per ha, the rate also listed for rice by Cyamweshi et al. (2017, p. 165)."
+    source:
+      document: "J. Kayumba et al., Urea briquettes combined with a fertilizer blend reduces fertilizer costs and improves yields of irrigated rice in Rwanda, Agronomy Journal, 2023"
+      section: "Abstract; 2.3"
+      page: "1, 3-4"
+      url: "https://doi.org/10.1002/agj2.21324"
+    status: interim
+    note: "Peer reviewed. IFDC (2018, Table 2) lists the same: NPK 17-17-17 basal and 100 kg/ha urea top dressing."

@@ -11,8 +11,9 @@ What happens when someone clicks a point:
   4. Two methods side by side, each with its tested score in that district (reports/eval_v1):
      XGBoost on all inputs, trained on all 1,904 fields with the protocol settings, and the B1 expert rules.
      Every crop in each ranking also carries its tested precision, recall and F1 in that district.
-  5. Fertiliser: the rule engine answers for the model's first crop. Its rule file stays empty until the RAB
-     guideline is in, so it says "no matching rule" instead of inventing a rate.
+  5. Fertiliser: the rule engine answers for the model's first crop. Until the RAB guideline is in, the rule file
+     holds interim national rates copied from published sources (page and link for each), shown as interim.
+     If no rule fits, it says "no matching rule" instead of inventing a rate.
 
 Quick check from the repo root:
     python 01-crop-recommendation/src/recommendation/map_model.py --lat -1.458 --lon 29.556
@@ -334,8 +335,10 @@ class MapRecommender:
         top = out["model"]["ranking"][0]["crop"]
         out["fertiliser"] = fert.recommend(self.fert_rules, top, {})
         if out["fertiliser"]["status"] == "no_matching_rule":
-            out["warnings"].append("No fertiliser advice yet: the rule file is waiting for the RAB fertiliser "
-                                   "guideline, so no rate is given.")
+            out["warnings"].append("No fertiliser rule fits this crop, so no rate is given.")
+        elif fert.interim_rules_used(self.fert_rules, out["fertiliser"]):
+            out["warnings"].append("Fertiliser rates are interim: national blanket rates from published sources, "
+                                   "not yet confirmed by RAB, and the same for every field.")
         return out
 
     # ----------------------------------------------------------- for the notebook

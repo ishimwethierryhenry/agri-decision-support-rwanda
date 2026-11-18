@@ -1,6 +1,6 @@
 # API contracts
 
-**Status:** DRAFT 0.2.1, proposed by Thierry (Part B, ML and Geospatial) on 20 October 2026 and updated on 28 October 2026. `POST /v1/recommend` now runs on the B1 expert-rules baseline (section 6). The examples below are still placeholders, not model output and not agronomic advice.
+**Status:** DRAFT 0.2.2, proposed by Thierry (Part B, ML and Geospatial) on 20 October 2026 and updated on 28 October and 18 November 2026. `POST /v1/recommend` now runs on the B1 expert-rules baseline (section 6). The examples below are still placeholders, not model output and not agronomic advice.
 
 **Reviewers needed:** Anny and Gabin (CV sub-team) for section 1 and the dashboard side. Arsene for the feature schema link and reliability levels. Calvin or Prof. Okeyo only if they want to see the format.
 
@@ -43,7 +43,7 @@ These are proposals. The goal is that the dashboard can call both services the s
 | Responsible workstream | Crop recommendation (ML and Geospatial, Part B), with the shared dashboard |
 | Purpose | An extension officer gives a location, a season and optional soil test values. The service returns ranked crops with reasons and a reliability level, and fertiliser guidance for one crop with the source of each rule. |
 | Method and route | `POST /v1/recommend` (proposed, not agreed) |
-| Contract version | 0.2.1 draft. Reviewer and review date: to fill in. |
+| Contract version | 0.2.2 draft. Reviewer and review date: to fill in. |
 
 ### 2.1 Input fields
 
@@ -138,7 +138,7 @@ Example response (placeholders only):
 ```json
 {
   "request_id": "example-0001",
-  "api_version": "0.2.1",
+  "api_version": "0.2.2",
   "model_version": null,
   "rules_version": "rules-0.1-example",
   "generated_at": "2026-10-21T08:00:00Z",
@@ -260,7 +260,7 @@ Example response when the service abstains:
 ```json
 {
   "request_id": "example-0002",
-  "api_version": "0.2.1",
+  "api_version": "0.2.2",
   "model_version": null,
   "rules_version": "rules-0.1-example",
   "generated_at": "2026-10-21T08:05:00Z",
@@ -311,6 +311,7 @@ Example response when the service abstains:
 | Valid request but no crop reaches the minimum score | `200`, `abstain: true`. Draft minimum score: 0.5 (set in the service, to be reviewed after ML). |
 | Point more than 25 km from every pilot district centre | `200`, reliability `low`, warning `DISTRICT_NOT_IN_TRAINING_DATA`. No climate is invented for it. |
 | No fertiliser rule fits | `200`, `fertiliser.status: "no_matching_rule"`, no items. The service never invents a rule. |
+| Only interim fertiliser rates exist for the crop (until the RAB guideline is in) | `200`, `fertiliser.status: "ok"`. Each item has `source.page` and `source.url`, its `explanation` starts with "Interim:", and the response has the warning `FERTILISER_INTERIM`. |
 | Model files not loaded | `503`, `MODEL_UNAVAILABLE`. Expert rules should still answer, so this is only for a full failure. |
 
 ### 2.4 Error responses
@@ -405,7 +406,7 @@ Key soil inputs are pH, organic carbon and total nitrogen, the same three as in 
 
 Reason codes in `reliability.reason_codes`: `ML_NOT_ADOPTED`, `MODEL_BEAT_BASELINE`, `DISTRICT_NOT_IN_TRAINING`, `SEASON_NOT_EVALUATED`, `RULES_WEAK_IN_DISTRICT`, `CROP_RULES_WEAK`, `INPUT_MISSING_<VARIABLE>` (for example `INPUT_MISSING_TOTAL_NITROGEN` or `INPUT_MISSING_WATER_ACCESS`), `SOIL_FROM_ISDASOIL`.
 
-Warning codes in `warnings[].code`: `DISTRICT_NOT_IN_TRAINING_DATA`, `LOCATION_MATCHED_TO_NEAREST_DISTRICT`, `DISTRICT_MISMATCH`, `ELEVATION_FROM_DISTRICT_MEDIAN`, `SEASON_NOT_EVALUATED`, `RULES_WEAK_IN_DISTRICT`, `CROPS_TIED`, `SOIL_VALUE_MISSING`, `SOIL_NOT_USED_BY_METHOD`, `SOIL_FROM_ISDASOIL`, `NO_CROP_ABOVE_MIN_SCORE`, `NO_GUIDELINE_RULE_FOUND`, `FERTILISER_SKIPPED`, `INPUT_OUT_OF_TYPICAL_RANGE`, `STUB_RESPONSE` (only the stub server).
+Warning codes in `warnings[].code`: `DISTRICT_NOT_IN_TRAINING_DATA`, `LOCATION_MATCHED_TO_NEAREST_DISTRICT`, `DISTRICT_MISMATCH`, `ELEVATION_FROM_DISTRICT_MEDIAN`, `SEASON_NOT_EVALUATED`, `RULES_WEAK_IN_DISTRICT`, `CROPS_TIED`, `SOIL_VALUE_MISSING`, `SOIL_NOT_USED_BY_METHOD`, `SOIL_FROM_ISDASOIL`, `NO_CROP_ABOVE_MIN_SCORE`, `NO_GUIDELINE_RULE_FOUND`, `FERTILISER_INTERIM`, `FERTILISER_SKIPPED`, `INPUT_OUT_OF_TYPICAL_RANGE`, `STUB_RESPONSE` (only the stub server).
 
 ## 6. The B1 service and the stub server
 
@@ -443,6 +444,7 @@ Then open http://127.0.0.1:8001/docs for the interactive page. The B1 service wi
 | 0.1.0 draft | 2026-10-20 | First draft of recommendation, metadata and health interfaces. |
 | 0.2.0 draft | 2026-10-27 | Optional `elevation_m` in the request; `inputs_used.site` in the response; B1 reliability rules; new warning and reason codes; draft abstain threshold. All changes are additive, so 0.1.0 requests still work. |
 | 0.2.1 draft | 2026-10-28 | Reliability now uses B1's tested score per district from `eval_v1` (new reason and warning code `RULES_WEAK_IN_DISTRICT`); new warning `CROPS_TIED` when crops fit the rules equally; season B climate normals now run from 1 February to 30 June, as in the training data. No field changes, so 0.2.0 clients still work. |
+| 0.2.2 draft | 2026-11-18 | Interim fertiliser rates: until the RAB guideline is in, each crop has the national blanket rate copied from a published source (page and link in `source`), served with the new warning `FERTILISER_INTERIM` and an explanation that starts with "Interim:". No field changes, so 0.2.1 clients still work. |
 
 ## Review checklist
 

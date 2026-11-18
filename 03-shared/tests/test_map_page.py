@@ -53,6 +53,15 @@ def test_default_point_shows_both_methods_with_inputs():
     assert any("the rules did better" in w.value for w in at.warning)
 
 
+def test_fertiliser_for_the_first_crop_is_interim_and_cited():
+    at = _page()
+    pick = _picks(at)[0][4:]                         # the model's first crop
+    text = " ".join(m.value for m in at.markdown)
+    assert f"**Fertiliser for {pick}**" in text and "kg/ha" in text
+    assert any(w.value.startswith("Interim rates") for w in at.warning)
+    assert any(c.value.startswith("Source: ") and "[link](https://" in c.value for c in at.caption)
+
+
 def test_season_follows_today_and_other_seasons_get_a_note():
     at = _page()
     at.selectbox[0].set_value("A").run()

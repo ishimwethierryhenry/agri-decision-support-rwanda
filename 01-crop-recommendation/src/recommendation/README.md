@@ -7,7 +7,7 @@ This folder holds the recommendation service and the fertiliser rule engine.
 | `service.py` | FastAPI service for `GET /v1/health`, `GET /v1/metadata` and `POST /v1/recommend` (contract in `docs/api_contracts.md`). |
 | `district_profiles.json` | District summaries the service reads: CIAT elevation (median, 10th and 90th percentile), NASA POWER season normals (season B from 1 Feb to 30 Jun), crop shares, and how B1 scored in each district in `reports/eval_v1`. No farm-level data. |
 | `build_district_profiles.py` | Rebuilds `district_profiles.json` from Part A's files and the official evaluation. Run it when Part A updates the data or a new evaluation is committed. |
-| `fertiliser_engine.py`, `rules/fertiliser_rules.yaml` | Fertiliser rule engine. The rules file stays empty until the RAB guideline is confirmed. |
+| `fertiliser_engine.py`, `rules/fertiliser_rules.yaml` | Fertiliser rule engine. Until the RAB guideline is confirmed, the rules file holds interim national rates copied from published sources (page and link for each), served with the label "Interim". |
 | `map_model.py` | Recommendation for one point on the map (dashboard map page and Colab notebook 03): finds the district, builds the input row for the point, ranks the crops with XGBoost and with the B1 rules, and adds the tested score of each in that district. |
 
 Run the service from the repository root:
@@ -25,7 +25,7 @@ What happens when someone clicks a point:
 3. District inputs: season B 2025 weather (NASA POWER) and NISR crop shares, the values the model learned from, so the map and the training data agree.
 4. Two methods side by side: XGBoost on all inputs, trained on all 1,904 fields with the protocol settings, and the B1 rules. Each comes with its tested macro-F1 in that district from `reports/eval_v1` (new fields, and district left out), and every crop in each ranking carries its tested precision, recall and F1 in that district (`tested_here`, from `../models/model_scores.py`). Crops with fewer than 5 fields in the district are marked as not scored.
 5. Season: today's season is preselected (A from September to January, B from February to June, C in July and August). Only season B is in the training data, so another season gets the season B answer with a note.
-6. Fertiliser: the rule engine answers for XGBoost's first crop, which is `no_matching_rule` until the RAB guideline is in.
+6. Fertiliser: the rule engine answers for XGBoost's first crop with the interim national rate for that crop, labelled as interim, until the RAB guideline is in.
 
 Quick check from the repository root: `python 01-crop-recommendation/src/recommendation/map_model.py --lat -1.458 --lon 29.556`
 

@@ -78,6 +78,7 @@ def test_recommendation_page_renders_and_submits_in_baseline_mode():
     at.button[0].click().run()
     assert not at.exception
     assert any("Suggested crops for" in s.value for s in at.subheader)
+    assert any(w.value.startswith("The fertiliser rates are interim") for w in at.warning)
     assert not any("placeholder" in w.value.lower() for w in at.warning)
 
 

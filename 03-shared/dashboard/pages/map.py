@@ -2,7 +2,7 @@
 
 Flow agreed at the stand-up of 28 Oct 2026: click a point, the page finds the district, reads the soil, elevation,
 weather and crop shares for that point, and shows the XGBoost ranking next to the expert rules, each with its
-tested score in that district, plus the fertiliser status. The season follows today's date.
+tested score in that district, plus the fertiliser advice for the model's first crop. The season follows today's date.
 The model runs inside the dashboard (no server needed). Logic: 01-crop-recommendation/src/recommendation/map_model.py
 """
 import sys
@@ -35,6 +35,31 @@ def recommender() -> mm.MapRecommender:
 
 def crop(c: str) -> str:
     return mm.CROP_NAMES.get(c, c)
+
+
+def show_fertiliser(items: list) -> None:
+    """Fertiliser items as short lines, then the label if the rates are interim, then each source once."""
+    interim = False
+    for item in items:
+        text = item.get("explanation") or ""
+        if text.startswith(mm.fert.INTERIM_NOTE):
+            interim, text = True, text[len(mm.fert.INTERIM_NOTE):].strip()
+        rate = f"{item['rate']:g} {item['rate_unit']}" if item.get("rate") is not None else "rate not given"
+        when = f", {item['timing'][0].lower()}{item['timing'][1:]}" if item.get("timing") else ""
+        st.write(f"- **{item.get('product') or item['input_type'].replace('_', ' ')}**: {rate}{when}")
+        if text:
+            st.caption(text)
+    if interim:
+        st.warning("Interim rates: national blanket rates from published sources, not yet confirmed by RAB, and the "
+                   "same for every field. Check with the local agronomist before applying.")
+    seen = []
+    for item in items:
+        src = item.get("source", {})
+        if src.get("document") and src["document"] not in seen:
+            seen.append(src["document"])
+            where = f", p. {src['page']}" if src.get("page") else ""
+            link = f" ([link]({src['url']}))" if src.get("url") else ""
+            st.caption(f"Source: {src['document']}{where}{link}")
 
 
 def draw_map(rec: mm.MapRecommender, point: dict):
@@ -130,7 +155,9 @@ with st.expander("How this page works"):
         "learned from.\n"
         "4. **Two methods**: XGBoost on all inputs, trained on all 1,904 CIAT fields with the protocol settings, "
         "and the expert rules (B1). Each shows its tested score in this district (eval_v1).\n"
-        "5. **Fertiliser**: no rate until the RAB guideline is in the rule file. Nothing is invented.")
+        "5. **Fertiliser**: for the model's first crop. Until the RAB guideline is in, the rates are interim: "
+        "national blanket rates copied from published sources, each shown with its page and link. Nothing is "
+        "invented.")
     st.markdown("**Tested scores (macro-F1, 0 to 1, protocol 1.0)**")
     st.dataframe(tested_table(rec).style.format("{:.2f}", na_rep=""))
     st.caption("New fields: fields from 2 km blocks the model never saw, in a district it knows. District left "
@@ -244,16 +271,12 @@ with right:
                      f"{clim['mean_temp_at_field_c']:.1f} C.")
             shares = ", ".join(f"{k} {v:.0%}" for k, v in inp["nisr_crop_shares"].items())
             st.write(f"District crop shares (NISR, area of the four crops): {shares}.")
-        st.markdown("**Fertiliser**")
+        st.markdown(f"**Fertiliser for {crop(top_model['crop'])}**")
         fert = res["fertiliser"]
         if fert["status"] == "no_matching_rule":
-            st.write(f"No advice yet for {crop(top_model['crop'])}: the rule file is waiting for the RAB fertiliser "
-                     "guideline, so no rate is given.")
+            st.write(f"No fertiliser rule fits {crop(top_model['crop'])}, so no rate is given.")
         else:
-            for item in fert.get("items", []):
-                rate = f"{item.get('rate')} {item.get('rate_unit') or ''}".strip()
-                st.write(f"- {item.get('input_type')}: {item.get('product') or ''} {rate}, {item.get('timing') or ''} "
-                         f"(source: {item.get('source', {}).get('document', 'not given')})")
+            show_fertiliser(fert["items"])
         if res["warnings"]:
             with st.expander("Notes"):
                 for w in res["warnings"]:

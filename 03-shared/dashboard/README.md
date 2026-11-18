@@ -6,7 +6,7 @@ Streamlit app (D6, task T037) with four pages:
 | --- | --- |
 | Map: crop for a field (default) | Click a point in Musanze, Nyabihu, Nyagatare or Ruhango. The page finds the district, shows the soil, elevation, weather and NISR crop shares used for that point, and ranks the crops with XGBoost and with the expert rules (B1), each with its tested score in that district. Next to each crop it shows how that method did for that crop in that district (tested F1), with precision and recall in a table. The season follows today's date. |
 | Model scores | How well every model did in the official evaluation (reports/eval_v1): main score of the 12 combinations on both tests, the score in each district, overall scores (accuracy, balanced accuracy, macro-F1, weighted F1, Cohen's kappa), and precision, recall and F1 of each crop in each district. |
-| Crop and fertiliser | Calls `POST /v1/recommend` (Part B service, contract 0.2.1). |
+| Crop and fertiliser | Calls `POST /v1/recommend` (Part B service, contract 0.2.2). |
 | Crop health diagnosis | Placeholder, built by the CV sub-team against `/detect`. |
 
 Run from this folder (Python 3.12 or newer, because of the pinned XGBoost):

@@ -1,12 +1,16 @@
-"""Fertiliser rule engine v0.
+"""Fertiliser rule engine.
 
 Rules live in data (YAML), not in code. The engine only loads, validates and matches them.
 Design rules:
   1. Every rule MUST have a real source (document name at least). A rule without one is rejected at load time.
   2. A rule marked status "draft" is never served unless the caller asks for drafts explicitly.
-  3. If a condition needs a soil value that was not given, the rule does not match. We never guess.
-  4. If no rule matches, the answer is status "no_matching_rule". The engine never invents advice.
-  5. RAG, if used later, may only write the explanation text. It cannot add or change an item.
+  3. A rule marked status "interim" copies a published rate (national blanket rates) while the RAB guideline is
+     not in. It needs the page or section and a link, so anyone can check it. It is served by default, its
+     explanation always starts with INTERIM_NOTE, and it is only a fallback: for a crop where a verified rule
+     matches, no interim rule is used.
+  4. If a condition needs a soil value that was not given, the rule does not match. We never guess.
+  5. If no rule matches, the answer is status "no_matching_rule". The engine never invents advice.
+  6. RAG, if used later, may only write the explanation text. It cannot add or change an item.
 
 The output is a plain dict that matches FertiliserAdvice in 03-shared/apis/recommend_schemas.py.
 """
@@ -18,14 +22,15 @@ from typing import Any, Optional
 
 import yaml
 
-ENGINE_VERSION = "0.1.0"
+ENGINE_VERSION = "0.2.0"
 SOIL_FIELDS = (
     "ph_water", "organic_carbon_pct", "total_nitrogen_pct",
     "phosphorus_mgkg", "potassium_cmolkg", "texture",
 )
 OPS = ("lt", "lte", "gt", "gte", "eq", "in", "between")
 PLACEHOLDER_MARKERS = ("todo", "tbd", "<", "fill in", "placeholder", "xxx")
-VALID_STATUS = ("verified", "draft")
+VALID_STATUS = ("verified", "interim", "draft")
+INTERIM_NOTE = "Interim: published national rate, not yet confirmed by RAB."
 VALID_RATE_UNITS = ("kg/ha", "t/ha")
 
 
@@ -89,8 +94,10 @@ def _parse_rule(raw: dict[str, Any]) -> Rule:
     status = raw.get("status", "draft")
     if status not in VALID_STATUS:
         raise RuleError(f"{rid}: status must be one of {VALID_STATUS}")
-    if status == "verified" and not (src.get("page") or src.get("section")):
-        raise RuleError(f"{rid}: a verified rule needs source.page or source.section")
+    if status in ("verified", "interim") and not (src.get("page") or src.get("section")):
+        raise RuleError(f"{rid}: a {status} rule needs source.page or source.section")
+    if status == "interim" and (not src.get("url") or _is_placeholder(src["url"])):
+        raise RuleError(f"{rid}: an interim rule needs source.url, so anyone can check the published rate")
     when = raw.get("when") or {}
     for var, cond in when.items():
         _check_condition(rid, var, cond)
@@ -164,19 +171,35 @@ def _describe(rule: Rule) -> str:
     return "; ".join(parts)
 
 
+def _explanation(rule: Rule, item: dict[str, Any]) -> Optional[str]:
+    text = item.get("explanation")
+    if rule.status != "interim":
+        return text
+    return f"{INTERIM_NOTE} {text}" if text else INTERIM_NOTE
+
+
+def interim_rules_used(ruleset: RuleSet, advice: dict[str, Any]) -> list[str]:
+    """Ids of the interim rules behind the items of an answer from recommend(), so callers can warn about them."""
+    status = {r.id: r.status for r in ruleset.rules}
+    used = {item["condition_matched"].split(":", 1)[0] for item in advice.get("items", [])}
+    return sorted(i for i in used if status.get(i) == "interim")
+
+
 def recommend(
     ruleset: RuleSet,
     crop: str,
     soil: Optional[dict[str, Any]] = None,
     allow_draft: bool = False,
+    allow_interim: bool = True,
 ) -> dict[str, Any]:
     """Return fertiliser advice for one crop as a dict shaped like FertiliserAdvice."""
     crop = crop.strip().lower()
     soil = {k: v for k, v in (soil or {}).items() if v is not None}
-    candidates = [
-        r for r in ruleset.rules
-        if r.crop == crop and (r.status == "verified" or allow_draft) and _matches(r, soil)
-    ]
+    matched = [r for r in ruleset.rules if r.crop == crop and _matches(r, soil)]
+    verified = [r for r in matched if r.status == "verified"]
+    interim = [r for r in matched if r.status == "interim"] if allow_interim else []
+    drafts = [r for r in matched if r.status == "draft"] if allow_draft else []
+    candidates = (verified or interim) + drafts      # interim rules only where no verified rule matches
     # For each input type keep the best rule: higher priority, then more conditions.
     best: dict[str, list[tuple[Rule, dict[str, Any]]]] = {}
     for r in candidates:
@@ -199,7 +222,7 @@ def recommend(
             "timing": a.get("timing"),
             "condition_matched": f"{rule.id}: {_describe(rule)}",
             "source": {k: v for k, v in rule.source.items() if k in ("document", "section", "page", "url") and v is not None},
-            "explanation": a.get("explanation"),
+            "explanation": _explanation(rule, a),
             "explanation_method": "rule_text",
         })
     return {
