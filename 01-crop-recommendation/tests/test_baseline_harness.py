@@ -245,7 +245,8 @@ def test_full_run_writes_report_and_run_info(tmp_path, monkeypatch):
     pytest.importorskip("xgboost")
     import evaluate
     full = evaluate.default_models
-    monkeypatch.setattr(evaluate, "default_models", lambda: full(n_estimators=10))  # same pipeline, faster
+    monkeypatch.setattr(evaluate, "default_models",                                 # same pipeline, faster
+                        lambda *views: full(*views, n_estimators=10))
     table, out = tmp_path / "feature_table_v2.csv", tmp_path / "eval"
     table_v2(n_per=60).to_csv(table, index=False)
     assert evaluate.main(["--table", str(table), "--out", str(out)]) == 0
@@ -257,6 +258,30 @@ def test_full_run_writes_report_and_run_info(tmp_path, monkeypatch):
     for name in ("main_lodo_results.csv", "main_blockcv_summary.csv", "used_only_lodo_summary.csv",
                  "confusion_counts.csv"):
         assert (out / name).exists()
+
+
+def test_protocol_1_1_adds_the_satellite_views_and_keeps_the_others(tmp_path, monkeypatch):
+    pytest.importorskip("xgboost")
+    import json
+
+    import evaluate
+    full = evaluate.default_models
+    monkeypatch.setattr(evaluate, "default_models", lambda *views: full(*views, n_estimators=10))
+    rng = np.random.default_rng(1)
+    df = table_v2(n_per=60)
+    for c in evaluate.SATELLITE:
+        df[c] = rng.normal(10, 2, len(df)) + (df["District"] == "A") * 3
+    table, old, new = tmp_path / "feature_table_v6b.csv", tmp_path / "v10", tmp_path / "v11"
+    df.to_csv(table, index=False)
+    assert evaluate.main(["--table", str(table), "--out", str(old), "--skip-second-check"]) == 0
+    assert evaluate.main(["--protocol", "1.1", "--table", str(table), "--out", str(new), "--skip-second-check"]) == 0
+    a = pd.read_csv(old / "main_lodo_results.csv")
+    b = pd.read_csv(new / "main_lodo_results.csv")
+    assert b["model"].nunique() == a["model"].nunique() + 6 == 18
+    assert {"LR[field_sat]", "RF[all_sat]", "XGB[all_sat]"} <= set(b["model"])
+    same = b[b["model"].isin(a["model"])].reset_index(drop=True)                 # the 12 of protocol 1.0
+    pd.testing.assert_frame_equal(a.reset_index(drop=True), same)
+    assert json.loads((new / "run_info.json").read_text(encoding="utf-8"))["protocol_version"] == "1.1"
 
 
 def test_expert_rules_rank_potato_high_and_beans_low_at_high_altitude():
