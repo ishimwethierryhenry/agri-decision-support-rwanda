@@ -53,6 +53,15 @@ def test_default_point_shows_both_methods_with_inputs():
     assert any("the rules did better" in w.value for w in at.warning)
 
 
+def test_fertiliser_for_the_first_crop_is_interim_and_cited():
+    at = _page()
+    pick = _picks(at)[0][4:]                         # the model's first crop
+    text = " ".join(m.value for m in at.markdown)
+    assert f"**Fertiliser for {pick}**" in text and "kg/ha" in text
+    assert any(w.value.startswith("Interim rates") for w in at.warning)
+    assert any(c.value.startswith("Source: ") and "[link](https://" in c.value for c in at.caption)
+
+
 def test_season_follows_today_and_other_seasons_get_a_note():
     at = _page()
     at.selectbox[0].set_value("A").run()
@@ -89,13 +98,19 @@ def test_scores_page_shows_every_model():
     at = st_testing.AppTest.from_file(str(DASH / "pages" / "scores.py"), default_timeout=60)
     at.run()
     assert not at.exception
-    assert "No trained model passes the adoption rule" in at.info[0].value
+    info = at.info[0].value
+    assert "No trained model passes the adoption rule" in info
+    assert "Random Forest, field + satellite inputs: 0.368 against 0.378" in info
     main = at.dataframe[0].value
-    assert len(main) == 12 and "Main score" in main.columns
+    assert len(main) == 18 and "Main score" in main.columns
+    effect = at.dataframe[1].value
+    assert list(effect.index) == ["Logistic Regression", "Random Forest", "XGBoost"]
     at.radio(key="scores_test").set_value("new_fields").run()
     assert not at.exception
+    assert any("within 0.003 of the best model" in c.value for c in at.caption)
     at.selectbox(key="scores_district").set_value("Nyagatare").run()
-    crops = at.dataframe[3].value
+    crops = at.dataframe[4].value
     assert crops.loc["Maize", "XGBoost F1"] == "0.80"
-    at.selectbox(key="scores_other").set_value("RF[all]").run()
-    assert not at.exception and "Random Forest, all inputs F1" in at.dataframe[3].value.columns
+    at.selectbox(key="scores_other").set_value("XGB[all_sat]").run()
+    assert not at.exception and "XGBoost, all + satellite inputs F1" in at.dataframe[4].value.columns
+    assert any("(+0.005)" in m.value for m in at.markdown)

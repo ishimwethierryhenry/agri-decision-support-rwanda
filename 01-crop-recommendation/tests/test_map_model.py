@@ -79,7 +79,8 @@ def test_answer_has_both_methods_with_tested_scores(rec):
     xgb = blockcv[(blockcv.model == "XGB[all]") & (blockcv.district == "Musanze")]["macro_f1"].iloc[0]
     assert abs(r["model"]["tested"]["new_fields"] - xgb) < 0.0005
     assert r["better_in_testing"] in {"model", "rules", "same"}
-    assert r["fertiliser"]["status"] == "no_matching_rule"
+    assert r["fertiliser"]["status"] == "ok" and r["fertiliser"]["crop"] == r["model"]["ranking"][0]["crop"]
+    assert any(w.startswith("Fertiliser rates are interim") for w in r["warnings"])
     assert not any("season" in w.lower() and "not in the training" in w for w in r["warnings"])
 
 

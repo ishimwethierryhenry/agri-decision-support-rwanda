@@ -35,9 +35,10 @@ from expert_baseline import ExpertRulesBaseline, MajorityBaseline, adjust_to_hei
 PROTOCOL_VERSION = "1.0"
 REPO = Path(__file__).resolve().parents[3]
 PROCESSED = REPO / "01-crop-recommendation" / "data" / "processed"
+REPORTS = REPO / "01-crop-recommendation" / "reports"
 # v2 is the training table. v1 is only a fallback for old checkouts; its crop-specific NISR columns are refused.
 TABLE_CANDIDATES = [PROCESSED / "feature_table_v2.csv", PROCESSED / "feature_table.csv"]
-DEFAULT_OUT = REPO / "01-crop-recommendation" / "reports" / "eval_v1"
+DEFAULT_OUT = REPORTS / "eval_v1"
 
 LABEL_MAP = {"Maize": "maize", "Beans": "beans", "Irish potatoes": "irish_potato", "Rice": "rice"}
 CROPS = sorted(LABEL_MAP.values())
@@ -70,8 +71,21 @@ VIEWS = {
 }
 EXTRA_VIEWS = {"all_subsoil": VIEWS["all"] + SOIL_SUB}  # extra test: soil at 20 to 50 cm (Random Forest only)
 
+# Protocol 1.1 (section 10): inputs measured at each field from satellites, known before planting.
+# ndvi_mean is not here on purpose: it is measured during the season, so it can show the planted crop.
+SATELLITE = ["srtm_elevation_m", "chirps_precip_mm", "ndvi_annual", "swir_ratio"]
+VIEWS_V11 = {**VIEWS, "field_sat": VIEWS["field"] + SATELLITE, "all_sat": VIEWS["all"] + SATELLITE}
+
+# Each protocol version: its views, its default table and where its report goes.
+PROTOCOLS = {
+    "1.0": {"views": VIEWS, "extra_views": EXTRA_VIEWS, "tables": TABLE_CANDIDATES, "out": REPORTS / "eval_v1"},
+    "1.1": {"views": VIEWS_V11, "extra_views": EXTRA_VIEWS, "tables": [PROCESSED / "feature_table_v6b.csv"],
+            "out": REPORTS / "eval_v2"},
+}
+
 # Only these columns may be used as model inputs. Anything else is refused.
-ALLOWED_FEATURES = list(dict.fromkeys(f for feats in {**VIEWS, **EXTRA_VIEWS}.values() for f in feats))
+ALLOWED_FEATURES = list(dict.fromkeys(
+    f for p in PROTOCOLS.values() for feats in {**p["views"], **p["extra_views"]}.values() for f in feats))
 # Columns that describe the crop, identify the field or the district, or come from CIAT's own selection.
 # Using them leaks the answer. NISR statistics looked up with a field's own crop (table v1) are refused;
 # district crop shares are allowed.
@@ -107,12 +121,13 @@ def _first_present(df: pd.DataFrame, names: list[str]) -> str:
     raise KeyError(f"none of these columns are in the table: {names}")
 
 
-def default_table() -> Path:
-    for p in TABLE_CANDIDATES:
+def default_table(candidates: Optional[list] = None) -> Path:
+    candidates = candidates or TABLE_CANDIDATES
+    for p in candidates:
         if p.exists():
             return p
     raise FileNotFoundError("No feature table found. Expected one of: "
-                            + ", ".join(str(p) for p in TABLE_CANDIDATES)
+                            + ", ".join(str(p) for p in candidates)
                             + ". Get the latest from Part A (git pull) or pass --table.")
 
 
@@ -395,6 +410,7 @@ def _section(title: str, df: pd.DataFrame, results: pd.DataFrame, summary: pd.Da
 
 
 def write_report(out: Path, info: dict, analyses: dict[str, pd.DataFrame], results: dict) -> Path:
+    version = info.get("protocol_version", PROTOCOL_VERSION)
     out.mkdir(parents=True, exist_ok=True)
     conf = []
     for name, res in results.items():
@@ -408,8 +424,8 @@ def write_report(out: Path, info: dict, analyses: dict[str, pd.DataFrame], resul
 
     main = analyses["main"]
     lines = [
-        "# Crop recommendation evaluation (eval_v1)", "",
-        f"Protocol: `docs/training_protocol.md` (version {PROTOCOL_VERSION}). Run at {info['run_at_utc']} UTC.",
+        f"# Crop recommendation evaluation ({out.name})", "",
+        f"Protocol: `docs/training_protocol.md` (version {version}). Run at {info['run_at_utc']} UTC.",
         f"Table: `{info['table']}` (SHA-256 `{info['table_sha256'][:16]}...`). Code commit: "
         f"`{(info['git_commit'] or 'unknown')[:10]}`"
         + (" (with uncommitted changes, so rerun after committing)." if info.get("uncommitted_changes") else "."),
@@ -450,7 +466,9 @@ def write_report(out: Path, info: dict, analyses: dict[str, pd.DataFrame], resul
         "already scores close to 100 percent.",
         "- B0 gives the training share of each crop. B1 uses published crop ranges only and is not trained.",
         "- Views: district = elevation, season climate and NISR district shares; field = elevation and soil "
-        "0 to 20 cm; all = both; all_subsoil = all plus soil 20 to 50 cm.",
+        "0 to 20 cm; all = both; all_subsoil = all plus soil 20 to 50 cm."
+        + (" Version 1.1 adds field_sat = field plus SRTM elevation, CHIRPS rainfall, 2024 vegetation index and "
+           "2024 shortwave infrared ratio, and all_sat = all plus the same four." if version != "1.0" else ""),
         "- Climate and NISR shares are one value per district, so in the main test they mostly tell the model "
         "which district it is in, and the held-out district has values the model has never seen.",
         "- Full numbers: the CSV files in this folder. Settings and versions: run_info.json.",
@@ -465,10 +483,11 @@ def evaluate(raw: pd.DataFrame, label_col: str = "Crop_plant", second_check: boo
     analyses = {"main": prepare(raw, label_col=label_col)}
     if second_check and "Status" in raw.columns:
         analyses["used_only"] = prepare(raw, label_col=label_col, status="Used")
-    missing = [f for f in ALLOWED_FEATURES if f not in analyses["main"].columns]
+    models = models or default_models()
+    needed = list(dict.fromkeys(f for m in models for f in getattr(m, "features", [])))
+    missing = [f for f in needed if f not in analyses["main"].columns]
     if missing:
         raise ValueError(f"the table is missing protocol features: {missing}")
-    models = models or default_models()
     results = {}
     for name, df in analyses.items():
         lodo, lodo_conf = run_lodo(df, models, analysis=name)
@@ -482,15 +501,20 @@ def evaluate(raw: pd.DataFrame, label_col: str = "Crop_plant", second_check: boo
 
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--table", default=None, help="Feature table CSV. Default: data/processed/feature_table_v2.csv.")
-    ap.add_argument("--out", default=str(DEFAULT_OUT))
+    ap.add_argument("--protocol", default=PROTOCOL_VERSION, choices=sorted(PROTOCOLS),
+                    help="Protocol version: 1.0 gives eval_v1 on feature_table_v2.csv, 1.1 gives eval_v2 on "
+                         "feature_table_v6b.csv (docs/training_protocol.md, section 10).")
+    ap.add_argument("--table", default=None, help="Feature table CSV. Default: the table of the protocol version.")
+    ap.add_argument("--out", default=None, help="Output folder. Default: eval_v1 for 1.0, eval_v2 for 1.1.")
     ap.add_argument("--label-col", default="Crop_plant")
     ap.add_argument("--skip-second-check", action="store_true", help="Do not rerun on CIAT 'Used' fields only.")
     args = ap.parse_args(argv)
-    table = Path(args.table) if args.table else default_table()
-    print(f"Feature table: {table}")
+    proto = PROTOCOLS[args.protocol]
+    table = Path(args.table) if args.table else default_table(proto["tables"])
+    out_dir = Path(args.out) if args.out else proto["out"]
+    print(f"Protocol {args.protocol}. Feature table: {table}")
     raw = pd.read_csv(table, low_memory=False)
-    models = default_models()
+    models = default_models(proto["views"], proto["extra_views"])
     analyses, results = evaluate(raw, args.label_col, not args.skip_second_check, models)
 
     import sklearn
@@ -501,7 +525,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         table_rel = str(table)
     main_df = analyses["main"]
     info = {
-        "protocol_version": PROTOCOL_VERSION,
+        "protocol_version": args.protocol,
         "run_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
         "table": table_rel, "table_sha256": file_sha256(table), "git_commit": _git_commit(),
         "uncommitted_changes": _git_has_uncommitted_changes(),
@@ -512,12 +536,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         "adoption": {"baseline": BASELINE, "margin": ADOPT_MARGIN, "min_districts": ADOPT_MIN_WINS},
         "tests": {"main": "leave one district out",
                   "second": f"{N_BLOCK_FOLDS} folds over {BLOCK_COL} (StratifiedGroupKFold, seed {SEED})"},
-        "views": {**VIEWS, **EXTRA_VIEWS},
+        "views": {**proto["views"], **proto["extra_views"]},
         "models": {m.name: (repr(m.estimator) if hasattr(m, "estimator") else type(m).__name__) for m in models},
         "versions": {"python": platform.python_version(), "pandas": pd.__version__, "numpy": np.__version__,
                      "scikit-learn": sklearn.__version__, "xgboost": xgboost.__version__},
     }
-    path = write_report(Path(args.out), info, analyses, results)
+    path = write_report(out_dir, info, analyses, results)
     for name, res in results.items():
         for test in ("lodo", "blockcv"):
             if test in res:

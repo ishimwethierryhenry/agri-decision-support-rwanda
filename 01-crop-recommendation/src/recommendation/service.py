@@ -50,6 +50,9 @@ KEY_SOIL_INPUTS = ("ph_water", "organic_carbon_pct", "total_nitrogen_pct")
 
 CROP_RULES = b1.load_rules()
 FERT_RULES = fert.load_rules(FERTILISER_RULES_PATH)
+FERTILISER_INTERIM_MESSAGE = ("The fertiliser rates are interim: national blanket rates copied from published "
+                              "sources, each with its page and link. RAB has not confirmed them yet, and they are "
+                              "the same for every field. Check with the local agronomist before applying.")
 PROFILES = json.loads(PROFILES_PATH.read_text(encoding="utf-8"))
 DISTRICTS = PROFILES["districts"]
 SUPPORTED_CROPS = sorted(CROP_RULES["crops"])
@@ -289,8 +292,10 @@ def recommend(req: RecommendRequest, request: Request):
             fertiliser = fert.recommend(FERT_RULES, target, soil_given)
             if fertiliser["status"] == "no_matching_rule":
                 warnings.append({"code": "NO_GUIDELINE_RULE_FOUND",
-                                 "message": "No fertiliser guideline rule fits. The rule file is waiting for the "
-                                            "RAB fertiliser guideline, so no fertiliser advice is given yet."})
+                                 "message": "No fertiliser guideline rule fits this crop and soil, so no fertiliser "
+                                            "advice is given."})
+            elif fert.interim_rules_used(FERT_RULES, fertiliser):
+                warnings.append({"code": "FERTILISER_INTERIM", "message": FERTILISER_INTERIM_MESSAGE})
         else:
             warnings.append({"code": "FERTILISER_SKIPPED",
                              "message": "No crop to give fertiliser advice for. Name a crop in the request."})

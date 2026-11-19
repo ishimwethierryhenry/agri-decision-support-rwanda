@@ -1,4 +1,5 @@
-"""Tests for the fertiliser engine. The rules below are TEST FIXTURES, not agronomic advice."""
+"""Tests for the fertiliser engine. The rules below are TEST FIXTURES, not agronomic advice, except the checks on
+the shipped rule file (interim national rates copied from published sources)."""
 import sys
 from pathlib import Path
 
@@ -8,7 +9,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "01-crop-recommendation" / "src" / "recommendation"))
 sys.path.insert(0, str(ROOT / "03-shared" / "apis"))
 
-from fertiliser_engine import RuleConflict, RuleError, load_rules, parse_rules, recommend  # noqa: E402
+from fertiliser_engine import (INTERIM_NOTE, RuleConflict, RuleError, interim_rules_used, load_rules,  # noqa: E402
+                               parse_rules, recommend)
 from recommend_schemas import FertiliserAdvice  # noqa: E402
 
 SRC = {"document": "TEST FIXTURE ONLY, not a real guideline", "section": "0", "page": "0"}
@@ -28,12 +30,58 @@ def rule(id="r1", crop="maize", when=None, advice=None, status="verified", **ext
     return base
 
 
-def test_shipped_rule_file_loads_and_is_empty():
-    path = ROOT / "01-crop-recommendation" / "src" / "recommendation" / "rules" / "fertiliser_rules.yaml"
-    loaded = load_rules(path)
-    assert loaded.rules == []
-    out = recommend(loaded, "maize", {"ph_water": 4.5})
-    assert out["status"] == "no_matching_rule" and out["items"] == []
+SHIPPED = ROOT / "01-crop-recommendation" / "src" / "recommendation" / "rules" / "fertiliser_rules.yaml"
+LINK = "https://example.org/published-guideline.pdf"
+
+
+def test_shipped_rule_file_has_one_interim_rule_per_crop():
+    loaded = load_rules(SHIPPED)
+    assert sorted(r.crop for r in loaded.rules) == ["beans", "irish_potato", "maize", "rice"]
+    for r in loaded.rules:
+        assert r.status == "interim" and not r.when                  # the same for every field
+        assert r.source["url"].startswith("https://") and r.source.get("page")
+        out = recommend(loaded, r.crop, {"ph_water": 4.5})
+        assert out["status"] == "ok" and interim_rules_used(loaded, out) == [r.id]
+        FertiliserAdvice(**out)
+        for item in out["items"]:
+            assert item["explanation"].startswith(INTERIM_NOTE) and item["product"] and item["rate_unit"] == "kg/ha"
+        assert recommend(loaded, r.crop, allow_interim=False)["status"] == "no_matching_rule"
+
+
+def test_shipped_interim_rates_are_the_published_ones():
+    """Guards against a rate being changed without its source (see the source of each rule in the YAML)."""
+    got = {(r.crop, a["product"]): a["rate"] for r in load_rules(SHIPPED).rules for a in r.advice}
+    assert got == {("maize", "DAP (18-46-0)"): 100, ("maize", "Urea (46% N)"): 100,     # Mudereri et al. 2025, p. 7
+                   ("beans", "DAP (18-46-0)"): 100,                                      # 18 N + 46 P2O5, OFRA 2017
+                   ("irish_potato", "NPK 17-17-17"): 300,                                # IFDC 2018, Table 2
+                   ("rice", "NPK 17-17-17"): 200, ("rice", "Urea (46% N)"): 100}         # Kayumba et al. 2023
+
+
+def test_interim_rule_needs_page_and_link():
+    r = rule(status="interim")                     # the fixture source has a page but no link
+    with pytest.raises(RuleError):
+        rs(r)
+    r["source"]["url"] = LINK
+    rs(r)
+    r["source"] = {"document": "Some real title", "url": LINK}
+    with pytest.raises(RuleError):
+        rs(r)
+
+
+def test_interim_rules_are_only_a_fallback_and_always_labelled():
+    interim = rule(id="interim", status="interim", source={**SRC, "url": LINK},
+                   advice=[{"input_type": "nitrogen", "rate": 50, "rate_unit": "kg/ha", "explanation": "From X."},
+                           {"input_type": "lime", "rate": 1.0, "rate_unit": "t/ha"}])
+    verified = rule(id="verified", when={"ph_water": {"lt": 5.5}},
+                    advice=[{"input_type": "lime", "rate": 2.0, "rate_unit": "t/ha"}])
+    r = rs(interim, verified)
+    out = recommend(r, "maize", {"ph_water": 5.0})            # a verified rule fits: no interim item at all
+    assert [i["condition_matched"].split(":")[0] for i in out["items"]] == ["verified"]
+    assert interim_rules_used(r, out) == []
+    out = recommend(r, "maize", {"ph_water": 6.0})            # no verified rule fits: the interim rule answers
+    assert interim_rules_used(r, out) == ["interim"]
+    assert [i["explanation"] for i in out["items"]] == [INTERIM_NOTE, f"{INTERIM_NOTE} From X."]
+    assert recommend(r, "maize", {"ph_water": 6.0}, allow_interim=False)["status"] == "no_matching_rule"
 
 
 def test_match_and_output_fits_the_api_contract():

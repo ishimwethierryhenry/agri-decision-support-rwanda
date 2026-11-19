@@ -107,15 +107,22 @@ if res:
         st.subheader(f"Fertiliser guidance for {fert['crop'].replace('_', ' ')}")
         if fert["status"] == "no_matching_rule":
             st.info("No guideline rule fits these conditions, so no fertiliser advice is given.")
+        for w in res.get("warnings", []):
+            if w["code"] == "FERTILISER_INTERIM":
+                st.warning(w["message"])
         for it in fert["items"]:
             with st.container(border=True):
-                rate = f"{it['rate']} {it['rate_unit']}" if it.get("rate") is not None else "rate not set"
-                st.markdown(f"**{it['input_type'].replace('_', ' ').title()}**: {rate}")
+                rate = f"{it['rate']:g} {it['rate_unit']}" if it.get("rate") is not None else "rate not set"
+                name = it.get("product") or it["input_type"].replace("_", " ").title()
+                st.markdown(f"**{name}**: {rate}" + (f", {it['timing'][0].lower()}{it['timing'][1:]}"
+                                                    if it.get("timing") else ""))
                 st.caption(f"Matched rule: {it['condition_matched']}")
                 if it.get("explanation"):
                     st.write(it["explanation"])
                 src = it["source"]
-                st.caption("Source: " + ", ".join(str(v) for v in (src.get("document"), src.get("section"), src.get("page")) if v))
+                where = ", ".join(str(v) for v in (src.get("document"), src.get("section"),
+                                                   f"p. {src['page']}" if src.get("page") else None) if v)
+                st.caption("Source: " + where + (f" ([link]({src['url']}))" if src.get("url") else ""))
     used = res.get("inputs_used", {})
     with st.expander("Inputs used and notes"):
         for key, v in used.get("site", {}).items():

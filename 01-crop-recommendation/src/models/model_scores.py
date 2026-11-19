@@ -1,7 +1,9 @@
-"""Scores of every model, read from the official evaluation (reports/eval_v1). Used by the dashboard and the notebooks.
+"""Scores of every model, read from the official evaluation. Used by the dashboard and the notebooks.
 
+The default is reports/eval_v2 (protocol 1.1, 18 Nov 2026): the 12 combinations of the midterm evaluation
+(reports/eval_v1, protocol 1.0) with exactly the same numbers, plus 6 combinations with the satellite inputs.
 Everything is recomputed from the committed result files, so the pages always show the official numbers:
-  - the main score of each model, overall and per district (protocol 1.0, rule 5);
+  - the main score of each model, overall and per district (protocol, rule 5);
   - overall scores over all test fields: accuracy, balanced accuracy, macro-F1, weighted F1, Cohen's kappa;
   - precision, recall and F1 of each crop in each district, from the confusion counts.
 
@@ -16,7 +18,9 @@ import numpy as np
 import pandas as pd
 
 MODULE = Path(__file__).resolve().parents[2]          # 01-crop-recommendation
-EVAL_DIR = MODULE / "reports" / "eval_v1"
+EVAL_V1 = MODULE / "reports" / "eval_v1"            # midterm, protocol 1.0 (12 combinations)
+EVAL_V2 = MODULE / "reports" / "eval_v2"            # protocol 1.1 (18 combinations, satellite inputs added)
+EVAL_DIR = EVAL_V2
 CROPS = ["beans", "irish_potato", "maize", "rice"]
 CROP_NAMES = {"beans": "Beans", "irish_potato": "Irish potato", "maize": "Maize", "rice": "Rice"}
 DISTRICTS = ["Musanze", "Nyabihu", "Nyagatare", "Ruhango"]
@@ -26,11 +30,16 @@ BASELINE = "B1_expert_rules"
 TESTS = {"new_district": ("leave_one_district_out", "lodo"), "new_fields": ("new_fields_known_districts", "blockcv")}
 TEST_NAMES = {"new_district": "A district the model never saw (main test)",
               "new_fields": "New fields in the four known districts"}
-MODEL_ORDER = ["B0_majority", "B1_expert_rules", "LR[district]", "LR[field]", "LR[all]", "RF[district]",
-               "RF[field]", "RF[all]", "RF[all_subsoil]", "XGB[district]", "XGB[field]", "XGB[all]"]
+MODEL_ORDER = ["B0_majority", "B1_expert_rules",
+               "LR[district]", "LR[field]", "LR[field_sat]", "LR[all]", "LR[all_sat]",
+               "RF[district]", "RF[field]", "RF[field_sat]", "RF[all]", "RF[all_sat]", "RF[all_subsoil]",
+               "XGB[district]", "XGB[field]", "XGB[field_sat]", "XGB[all]", "XGB[all_sat]"]
 _ALGO = {"LR": "Logistic Regression", "RF": "Random Forest", "XGB": "XGBoost"}
 _FIXED = {"B0_majority": ("B0, most common crop", "none"), "B1_expert_rules": ("B1, expert rules", "rules")}
-_VIEWS = {"district": "district (12)", "field": "field (10)", "all": "all (21)", "all_subsoil": "all + subsoil (30)"}
+_VIEWS = {"district": "district (12)", "field": "field (10)", "field_sat": "field + satellite (14)",
+          "all": "all (21)", "all_sat": "all + satellite (25)", "all_subsoil": "all + subsoil (30)"}
+# the same inputs without and with the four satellite inputs of protocol 1.1
+SATELLITE_PAIRS = {"field": "field_sat", "all": "all_sat"}
 
 
 def model_label(model: str) -> tuple[str, str]:
@@ -110,6 +119,25 @@ class Scores:
                          "Beats B1 in": "" if pd.isna(wins) else f"{int(wins)} of 4 districts",
                          "Passes rule": "" if pd.isna(s.loc[m, "passes_rule"]) else s.loc[m, "passes_rule"]})
         return pd.DataFrame(rows)
+
+    def satellite_effect(self, test: str) -> pd.DataFrame:
+        """Main score of each method on the same inputs without and with the four satellite inputs (protocol 1.1).
+        Scores are rounded to 3 decimals, as shown, before the change is taken, so the table adds up on screen.
+        Empty for an evaluation without them (eval_v1)."""
+        s = self.summary[test].set_index("model")["macro_f1_mean"].round(3)
+        rows = []
+        for algo, name in _ALGO.items():
+            row = {}
+            for base, sat in SATELLITE_PAIRS.items():
+                a, b = f"{algo}[{base}]", f"{algo}[{sat}]"
+                if a not in s.index or b not in s.index:
+                    continue
+                label = _VIEWS[base].split(" (")[0].capitalize()
+                row.update({label: s[a], f"{label} + satellite": s[b],
+                            f"Change ({label.lower()})": round(s[b] - s[a], 3)})
+            if row:
+                rows.append({"Model": name, **row})
+        return pd.DataFrame(rows).set_index("Model") if rows else pd.DataFrame()
 
     def per_district(self, test: str) -> pd.DataFrame:
         """Main score (macro-F1 over the crops with at least 5 fields) of every model in every district."""

@@ -85,3 +85,37 @@ Any change after seeing results (rules, inputs, filters, settings, models) is re
 - 28 Oct, evening: official run on Thierry's laptop (Windows, Python 3.13), committed as `eval_v1`. Rerun on Colab Pro (Linux, Python 3.12) with the same library versions: every result file was identical (`01-crop-recommendation/notebooks/02_reproduce_eval_v1_colab.ipynb`). Library versions are now pinned in `01-crop-recommendation/requirements-eval.txt`, because other versions move the numbers.
 - 28 Oct, evening: the table fingerprint now ignores Windows line endings. `eval_v1/run_info.json` shows `e84d21c8...`, the Windows checkout of the table; the same table gives `5df52fa6...` with line endings normalised, which is what later runs record. The results do not change.
 - 29 Oct: XGBoost training and scores, as agreed at the stand-up of 28 Oct (`src/models/train_xgboost.py`, run on Colab with `notebooks/03_xgboost_training_and_map_colab.ipynb`; results go to `reports/xgboost_v1/`). Same folds and settings as eval_v1, and every score per district is the same as in eval_v1. It adds overall scores, scores per crop and confusion matrices. Nothing in this protocol changes and neither does the decision: B1 stays the default in the API. The final XGBoost on all inputs, trained on all 1,904 fields, is shown next to B1 on the dashboard map page, each with its tested score in the clicked district.
+- 18 Nov: version 1.1 written down (section 10) before any run on the satellite inputs.
+- 18 Nov, evening: official run of version 1.1, committed as `eval_v2`. Built-in check passed: the 12 combinations of version 1.0 give exactly the `eval_v1` numbers. No model passes the adoption rule, so B1 stays the default of the API. Main test: the best trained model is now Random Forest on field + satellite inputs, 0.368 against 0.378 for B1, ahead in 2 of 4 districts (at the midterm the best was 0.365). New fields: XGBoost on all + satellite inputs is best, 0.456 against 0.451 for XGBoost on all inputs. Expectation (a) held for all three methods; expectation (b) held for Random Forest only. The map keeps XGBoost on all inputs, because the gain is too small to change it.
+
+## 10. Version 1.1 (18 Nov 2026): inputs measured at each field from satellites
+
+Written on 18 Nov 2026 by Thierry, before any run on these inputs. Everything in sections 1 to 8 stays the same unless this section says otherwise. Results go to `01-crop-recommendation/reports/eval_v2/`; `eval_v1` is not touched.
+
+Why: at the midterm, no model beat the expert rules in a district it had never seen (best 0.365 against 0.378). More than half of XGBoost's gain came from inputs that are the same for a whole district (rainfall above all), so the models partly learned which district a field is in. Part A has now added inputs that change from field to field and exist for any point on a map.
+
+**Table.** `01-crop-recommendation/data/processed/feature_table_v6b.csv`, built by `src/data_processing/build_feature_table_v6b.py`: the columns of `feature_table_v5.csv` (same rows, same order and same model inputs as v2) with the satellite values of Part A's `feature_table_v6.csv`, matched on `F_id`. v5 had joined its satellite values on `F_index`, which 274 pairs of fields share, so 548 rows had another field's values; v6 fixed that. v6 itself is not used for training because it lost `qc_ok`, `block_id` and the NISR crop shares and contains the field coordinates. Check: SRTM elevation against the CIAT GPS elevation, r = 0.995, median difference 11 m.
+
+**New inputs** (all measured at the field and known before planting):
+
+- `srtm_elevation_m`: SRTM elevation, 30 m. Saved under this name because `elevation_m` is already the GPS elevation.
+- `chirps_precip_mm`: CHIRPS rainfall at the field's pixel (about 5 km), 1 February to 30 June 2025, the same window as the climate inputs.
+- `ndvi_annual`: Sentinel-2 vegetation index, median over 2024, the year before the season.
+- `swir_ratio`: Sentinel-2 shortwave infrared ratio (B11/B8), median over 2024. It is higher on flooded rice paddies.
+
+**Not used:** `ndvi_mean` (Sentinel-2 during season B 2025). Section 3 already rules out satellite data from the same season, because it can show the crop that is planted.
+
+**New views** (the four views of version 1.0 do not change):
+
+| View | Inputs |
+| --- | --- |
+| field_sat | field, plus the four new inputs (14) |
+| all_sat | all, plus the four new inputs (25) |
+
+Logistic Regression, Random Forest and XGBoost run on both, with the settings of section 6: 6 new combinations, 18 in total.
+
+**Unchanged:** rows (1,904 fields, and the 650 "Used" fields as the second check), both tests, the main score, the adoption rule, the model settings and seed 0.
+
+**Expected before the run:** (a) on new fields in known districts, all_sat should beat all; (b) field_sat has no input that is the same for a whole district, so it is the best chance to transfer to a district never seen. If any model passes the adoption rule on the main test, it replaces B1 as the default answer of the API.
+
+**Built-in check:** the 12 combinations of version 1.0 use exactly the same inputs and rows in v6b as in v2, so their results in `eval_v2` must equal `eval_v1`.
