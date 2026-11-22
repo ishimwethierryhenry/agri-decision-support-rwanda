@@ -79,9 +79,43 @@ def test_answer_has_both_methods_with_tested_scores(rec):
     xgb = blockcv[(blockcv.model == "XGB[all]") & (blockcv.district == "Musanze")]["macro_f1"].iloc[0]
     assert abs(r["model"]["tested"]["new_fields"] - xgb) < 0.0005
     assert r["better_in_testing"] in {"model", "rules", "same"}
-    assert r["fertiliser"]["status"] == "ok" and r["fertiliser"]["crop"] == r["model"]["ranking"][0]["crop"]
+    assert r["fertiliser"]["status"] == "ok" and r["fertiliser"]["crop"] == r["answer"]["crop"]
     assert any(w.startswith("Fertiliser rates are interim") for w in r["warnings"])
     assert not any("season" in w.lower() and "not in the training" in w for w in r["warnings"])
+
+
+def test_one_answer_comes_from_the_method_that_tested_better_in_the_district(rec):
+    assert {d: rec.method_for(d) for d in sorted(PILOTS)} == {
+        "Musanze": "rules", "Nyabihu": "rules", "Nyagatare": "model", "Ruhango": "model"}
+    blockcv = pd.read_csv(mm.EVAL_DIR / "main_blockcv_results.csv")
+    for d in PILOTS:
+        for method, model in (("model", "XGB[all]"), ("rules", "B1_expert_rules")):
+            top1 = blockcv[(blockcv.model == model) & (blockcv.district == d)]["top1"].iloc[0]
+            assert rec.hit_rates[d][method] == round(top1, 3)
+    r = rec.recommend(-1.4580, 29.5560, "B")                       # a Musanze block: the rules answer
+    a = r["answer"]
+    assert a["method"] == "rules" and a["crop"] == r["rules"]["ranking"][0]["crop"] == "irish_potato"
+    assert a["confidence"] == "medium" and a["hit_rate"] == rec.hit_rates["Musanze"]["rules"]
+    assert a["others"] == [x["crop"] for x in r["rules"]["ranking"][1:]] and a["close_second"] is None
+    assert a["why"][0].startswith("In Musanze, the expert rules did as well as or better than XGBoost")
+    r = rec.recommend(-1.35, 30.30, "B")                           # Nyagatare: XGBoost answers
+    assert r["answer"]["method"] == "model" and r["answer"]["crop"] == r["model"]["ranking"][0]["crop"]
+    assert r["fertiliser"]["crop"] == r["answer"]["crop"]
+    a = rec.recommend(-1.35, 30.30, "A")["answer"]                      # a season never tested
+    assert a["confidence"] == "low" and a["lowered_by"] == ["this season was never tested"]
+    assert r["answer"]["lowered_by"] == []
+    r = rec.recommend(-1.62, 29.50, "B")                           # Nyabihu: the rules rate crops equally
+    assert r["district"] == "Nyabihu" and r["answer"]["close_second"] is not None
+    assert r["answer"]["confidence"] == "low" and any("fits just as well" in w for w in r["answer"]["why"])
+
+
+@pytest.mark.parametrize("hit,season,close,far,expected", [
+    (0.80, True, False, False, "high"), (0.80, True, True, False, "medium"), (0.80, True, True, True, "low"),
+    (0.62, True, False, False, "medium"), (0.62, True, True, False, "low"), (0.62, True, False, True, "low"),
+    (0.62, False, False, False, "low"), (0.40, True, False, False, "low"), (None, True, False, False, "low"),
+])
+def test_confidence_levels(hit, season, close, far, expected):
+    assert mm.confidence_level(hit, season, close, far) == expected
 
 
 def test_other_seasons_are_answered_for_season_b_with_a_note(rec):

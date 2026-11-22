@@ -8,10 +8,16 @@ What happens when someone clicks a point:
      in the same district. The answer says how far that block is.
   3. District inputs: season climate (NASA POWER) and NISR crop shares of season B 2025, the season the model
      learned from. The model only knows season B, so another season is shown as a note, not as an answer.
-  4. Two methods side by side, each with its tested score in that district (reports/eval_v1):
-     XGBoost on all inputs, trained on all 1,904 fields with the protocol settings, and the B1 expert rules.
-     Every crop in each ranking also carries its tested precision, recall and F1 in that district.
-  5. Fertiliser: the rule engine answers for the model's first crop. Until the RAB guideline is in, the rule file
+  4. Two methods, each with its tested score in that district (reports/eval_v1): XGBoost on all inputs, trained
+     on all 1,904 fields with the protocol settings, and the B1 expert rules. Every crop in each ranking also
+     carries its tested precision, recall and F1 in that district.
+  5. One answer for the user (client feedback, 19 Nov 2026: show one recommendation and its confidence, not the
+     comparison). In each district the answer comes from the method that did better in testing on new fields
+     there (main score, ahead by more than 0.01; otherwise the rules, the API default). The confidence level
+     starts from how often that method named the right crop first in that test, in that district, and goes down
+     when the first two crops are close, when the nearest CIAT data is far, or when the season was never tested.
+     The thresholds are simple and fixed, not tuned (see confidence_level).
+  6. Fertiliser: the rule engine answers for the recommended crop. Until the RAB guideline is in, the rule file
      holds interim national rates copied from published sources (page and link for each), shown as interim.
      If no rule fits, it says "no matching rule" instead of inventing a rate.
 
@@ -56,6 +62,11 @@ MODEL_SEASON = "B"         # the only season in the training data (CIAT, season 
 NEAR_KM = 5.0              # nearest CIAT block further than this: the answer warns that the data is far away
 BORDER_KM = 1.5            # a point this close to a CIAT block, just across a district line, uses that block
 CROP_NAMES = {"beans": "Beans", "irish_potato": "Irish potato", "maize": "Maize", "rice": "Rice"}
+METHOD_NAMES = {"model": "XGBoost", "rules": "the expert rules"}
+CHOICE_MARGIN = 0.01       # same margin as the adoption rule: a method answers only if it is ahead by more than this
+HIGH_HIT, LOW_HIT = 0.75, 0.50   # tested hit rate bands for the confidence level (simple, fixed, not tuned)
+CLOSE_CALL = 0.10          # first and second crop closer than this in the method's own score: a close call
+LEVELS = ("low", "medium", "high")
 SEASON_NAMES = {"A": "Season A (Sep to Jan)", "B": "Season B (Feb to Jun)", "C": "Season C (Jul to Aug)"}
 
 
@@ -69,6 +80,17 @@ def current_season(day: Optional[date] = None) -> str:
     if 2 <= m <= 6:
         return "B"
     return "C"
+
+
+def confidence_level(hit_rate: Optional[float], season_tested: bool = True, close_call: bool = False,
+                     far: bool = False) -> str:
+    """Confidence of one answer. The base is the tested hit rate of the method in the district (share of new fields
+    where its first crop was right): high from 0.75, medium from 0.50, low below. A close call and data far from
+    the point each lower it by one step. A season that was never tested, or no tested hit rate, gives low."""
+    if hit_rate is None or not season_tested or hit_rate < LOW_HIT:
+        return "low"
+    step = (2 if hit_rate >= HIGH_HIT else 1) - int(close_call) - int(far)
+    return LEVELS[max(step, 0)]
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -168,6 +190,7 @@ class MapRecommender:
         self.fert_rules = fert.load_rules(FERTILISER_RULES_PATH)
         self._build_lookup(raw)
         self.tested = self._load_tested(evaluation_dir)
+        self.hit_rates = self._load_hit_rates(evaluation_dir)
         self.crop_tested = self._load_crop_tested(evaluation_dir)
 
     @classmethod
@@ -212,6 +235,26 @@ class MapRecommender:
                 for _, r in res[res["model"] == model].iterrows():
                     out.setdefault(r["district"], {}).setdefault(method, {})[test] = round(float(r["macro_f1"]), 3)
         return out
+
+    @staticmethod
+    def _load_hit_rates(evaluation_dir: Optional[Path]) -> dict:
+        """Share of new fields where the first crop was right (top-1), per district, for the model and the rules."""
+        out: dict = {}
+        path = Path(evaluation_dir) / "main_blockcv_results.csv" if evaluation_dir else None
+        if not path or not path.exists():
+            return out
+        res = pd.read_csv(path)
+        for method, model in (("model", MODEL_NAME), ("rules", ev.BASELINE)):
+            for _, r in res[res["model"] == model].iterrows():
+                out.setdefault(r["district"], {})[method] = round(float(r["top1"]), 3)
+        return out
+
+    def method_for(self, district: str) -> str:
+        """The method that answers in a district: the model only if it did better than the rules in testing on new
+        fields there by more than CHOICE_MARGIN; otherwise the rules, the API default."""
+        t = self.tested.get(district, {})
+        m, r = t.get("model", {}).get("new_fields"), t.get("rules", {}).get("new_fields")
+        return "model" if m is not None and r is not None and m > r + CHOICE_MARGIN else "rules"
 
     @staticmethod
     def _load_crop_tested(evaluation_dir: Optional[Path]) -> dict:
@@ -332,7 +375,9 @@ class MapRecommender:
         r_t = out["rules"]["tested"].get("new_fields")
         out["better_in_testing"] = (None if m_t is None or r_t is None
                                     else "model" if m_t > r_t + 0.01 else "rules" if r_t > m_t + 0.01 else "same")
-        top = out["model"]["ranking"][0]["crop"]
+        out["answer"] = self._answer(out, district, season_tested=asked == MODEL_SEASON,
+                                     far=info["distance_km"] > NEAR_KM)
+        top = out["answer"]["crop"]
         out["fertiliser"] = fert.recommend(self.fert_rules, top, {})
         if out["fertiliser"]["status"] == "no_matching_rule":
             out["warnings"].append("No fertiliser rule fits this crop, so no rate is given.")
@@ -340,6 +385,50 @@ class MapRecommender:
             out["warnings"].append("Fertiliser rates are interim: national blanket rates from published sources, "
                                    "not yet confirmed by RAB, and the same for every field.")
         return out
+
+    def _answer(self, out: dict, district: str, season_tested: bool, far: bool) -> dict[str, Any]:
+        """The one recommendation shown to the user, with its confidence and the reasons behind both."""
+        method = self.method_for(district)
+        if method == "rules" and not out["rules"]["ranking"]:
+            method = "model"
+        key = "probability" if method == "model" else "score"
+        ranked = out[method]["ranking"]
+        first, second = ranked[0], (ranked[1] if len(ranked) > 1 else None)
+        close = second is not None and first[key] - second[key] < CLOSE_CALL
+        hit = self.hit_rates.get(district, {}).get(method)
+        level = confidence_level(hit, season_tested, close, far)
+        other = "rules" if method == "model" else "model"
+        mine = out[method]["tested"].get("new_fields")
+        theirs = out[other]["tested"].get("new_fields")
+        if mine is not None and theirs is not None and method == "model":
+            why = [f"In {district}, XGBoost did better than the expert rules in testing on new fields "
+                   f"({mine:.2f} against {theirs:.2f}, main score), so the answer comes from XGBoost."]
+        elif mine is not None and theirs is not None:
+            why = [f"In {district}, the expert rules did as well as or better than XGBoost in testing on new fields "
+                   f"({mine:.2f} against {theirs:.2f}, main score), so the answer comes from the rules."]
+        else:
+            why = [f"The answer comes from {METHOD_NAMES[method]}."]
+        if hit is not None:
+            why.append(f"In that test, its first crop was the right one for {hit:.0%} of the fields in {district}.")
+        if method == "rules":
+            why += [r["text"] for r in first.get("reasons", [])]
+        if close and abs(first[key] - second[key]) < 1e-9:
+            why.append(f"{CROP_NAMES[second['crop']]} fits just as well ({first[key]:.2f} each), so the confidence is "
+                       "one step lower.")
+        elif close:
+            why.append(f"{CROP_NAMES[second['crop']]} is close behind ({first[key]:.2f} against {second[key]:.2f}), "
+                       "so the confidence is one step lower.")
+        if far:
+            why.append(f"The nearest CIAT data is more than {NEAR_KM:.0f} km away, so the confidence is one step "
+                       "lower.")
+        if not season_tested:
+            why.append("The season you picked was never tested, so the confidence is low. The answer is for season B.")
+        lowered = ((["this season was never tested"] if not season_tested else [])
+                   + (["another crop fits almost as well"] if close else [])
+                   + ([f"the nearest CIAT data is more than {NEAR_KM:.0f} km away"] if far else []))
+        return {"crop": first["crop"], "method": method, "method_name": out[method]["name"], "confidence": level,
+                "hit_rate": hit, "close_second": second["crop"] if close else None, "lowered_by": lowered,
+                "others": [r["crop"] for r in ranked[1:]], "why": why}
 
     # ----------------------------------------------------------- for the notebook
     def feature_importance(self) -> pd.DataFrame:
@@ -387,6 +476,9 @@ def _print(result: dict) -> None:
         print("  Rules:   " + ", ".join(f"{CROP_NAMES[r['crop']]} {r['score']:.2f}" for r in result["rules"]["ranking"]))
         print(f"  tested on new fields here: model {result['model']['tested'].get('new_fields')}, "
               f"rules {result['rules']['tested'].get('new_fields')}")
+        a = result["answer"]
+        print(f"  answer: {CROP_NAMES[a['crop']]} (from {METHOD_NAMES[a['method']]}), "
+              f"confidence {a['confidence']}")
     for w in result["warnings"]:
         print("  note: " + w)
 

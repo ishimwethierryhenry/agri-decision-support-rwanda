@@ -89,6 +89,9 @@ def draw_map(rec: mm.MapRecommender, point: dict):
                      feature_group_to_add=selected, key="crop_map")
 
 
+LEVELS = {"high": ":green[**High**]", "medium": ":orange[**Medium**]", "low": ":red[**Low**]"}
+
+
 def tested_note(item: dict) -> str:
     """How the method did for this crop in this district, on new fields (the situation of the map)."""
     x = (item.get("tested_here") or {}).get("new_fields")
@@ -139,11 +142,14 @@ def tested_table(rec: mm.MapRecommender) -> pd.DataFrame:
 
 
 st.header("Click a field on the map")
-st.caption("XGBoost and the expert rules side by side, for any point in Musanze, Nyabihu, Nyagatare or Ruhango. "
-           "Team 8 prototype. Not agronomic advice.")
+st.caption("The recommended crop, how sure we are, and its fertiliser, for any point in Musanze, Nyabihu, Nyagatare "
+           "or Ruhango. Team 8 prototype. Not agronomic advice.")
 
 rec = recommender()
 st.session_state.setdefault("point", dict(START))
+evaluation = st.sidebar.toggle("Evaluation view", key="eval_view",
+                               help="For the team: both methods at this point, with their tested scores.")
+answered_by = {d: rec.method_for(d) for d in PILOTS}
 
 with st.expander("How this page works"):
     st.markdown(
@@ -153,16 +159,17 @@ with st.expander("How this page works"):
         "block, or from the nearest block in the district. The page says how far that block is.\n"
         "3. **District inputs**: season B 2025 weather (NASA POWER) and NISR crop shares, the values the model "
         "learned from.\n"
-        "4. **Two methods**: XGBoost on all inputs, trained on all 1,904 CIAT fields with the protocol settings, "
-        "and the expert rules (B1). Each shows its tested score in this district (eval_v1).\n"
-        "5. **Fertiliser**: for the model's first crop. Until the RAB guideline is in, the rates are interim: "
+        "4. **One answer**: two methods were tested, XGBoost on all inputs (trained on all 1,904 CIAT fields) "
+        "and the expert rules (B1). In each district, the answer comes from the one that did better in testing "
+        "on new fields there: "
+        + ", ".join(f"{'XGBoost' if answered_by[d] == 'model' else 'the rules'} in {d}" for d in PILOTS) + ".\n"
+        "5. **Confidence**: how often that method named the right crop first in testing on new fields in the "
+        "district. High from 75%, medium from 50%, low below. One step lower when two crops are close or when the "
+        "nearest CIAT data is more than 5 km away; low for a season that was never tested.\n"
+        "6. **Fertiliser**: for the recommended crop. Until the RAB guideline is in, the rates are interim: "
         "national blanket rates copied from published sources, each shown with its page and link. Nothing is "
-        "invented.")
-    st.markdown("**Tested scores (macro-F1, 0 to 1, protocol 1.0)**")
-    st.dataframe(tested_table(rec).style.format("{:.2f}", na_rep=""))
-    st.caption("New fields: fields from 2 km blocks the model never saw, in a district it knows. District left "
-               "out: the model never saw the district at all. The API default stays the rules, because no model "
-               "passed the adoption rule when a district was left out.")
+        "invented.\n\n"
+        "Turn on **Evaluation view** in the sidebar to see both methods and their tested scores.")
 
 today = mm.current_season()
 seasons = list(mm.SEASON_NAMES)
@@ -210,51 +217,28 @@ with right:
         if res["season"]["asked"] != res["season"]["used"]:
             st.info(f"{mm.SEASON_NAMES[res['season']['asked']]} is not in the training data yet. The answer below "
                     "is for season B (from 1 February), the only season the model and the rules were tested on.")
-        top_model, top_rules = res["model"]["ranking"][0], res["rules"]["ranking"][0]
-        b1, b2 = st.columns(2)
-        b1.caption("XGBoost suggests")
-        b1.markdown(f"### {crop(top_model['crop'])}")
-        b1.caption(f"Model score {top_model['probability']:.2f} out of 1")
-        b2.caption("Expert rules suggest")
-        b2.markdown(f"### {crop(top_rules['crop'])}")
-        b2.caption(f"Rule score {top_rules['score']:.2f} out of 1")
-        better = res["better_in_testing"]
-        mt, rt = res["model"]["tested"].get("new_fields"), res["rules"]["tested"].get("new_fields")
-        if better == "model":
-            st.success(f"On new fields in {res['district']}, XGBoost did better than the rules in testing "
-                       f"({mt:.2f} against {rt:.2f}).")
-        elif better == "rules":
-            st.warning(f"On new fields in {res['district']}, the rules did better than XGBoost in testing "
-                       f"({rt:.2f} against {mt:.2f}). Read both rankings.")
-        elif better == "same":
-            st.info(f"On new fields in {res['district']}, XGBoost and the rules scored about the same in testing.")
-        c1, c2 = st.columns(2)
-        with c1:
-            ranking("XGBoost (all inputs)", res["model"]["ranking"], "probability", res["model"]["tested"],
-                    res["district"])
-        with c2:
-            ranking("Expert rules (B1)", res["rules"]["ranking"], "score", res["rules"]["tested"], res["district"])
-        with st.expander(f"How each method did in {res['district']}, crop by crop"):
-            test = st.radio("Test", ["new_fields", "new_district"], horizontal=True, key="crop_test",
-                            format_func={"new_fields": "New fields in this district",
-                                         "new_district": f"{res['district']} left out of training"}.get)
-            table = crop_table(rec, res["district"], test)
-            if len(table):
-                shown = table.copy()
-                for c in shown.columns:
-                    if c != "Fields":   # text, so a crop with too few fields reads "not scored" instead of None
-                        shown[c] = [("not scored" if pd.isna(v) else f"{v:.2f}") for v in table[c]]
-                st.dataframe(shown)
-            st.caption("Precision: when the method says this crop, how often it is right. Recall: of the fields "
-                       "with this crop, how many the method found. F1 combines the two, from 0 to 1. Crops with "
-                       "fewer than 5 fields in the district are not scored. From the official evaluation (eval_v1). "
-                       "The Model scores page has every model.")
-        with st.expander("Why the rules say this"):
-            for r in res["rules"]["ranking"]:
-                st.markdown(f"**{crop(r['crop'])}** ({r['score']:.2f})")
-                for reason in r["reasons"]:
-                    st.write(f"- {reason['text']}")
-        with st.expander("Inputs for this point", expanded=True):
+        ans = res["answer"]
+        st.caption("Recommended crop")
+        st.markdown(f"## {crop(ans['crop'])}")
+        st.markdown(f"Confidence: {LEVELS[ans['confidence']]}")
+        if ans["hit_rate"] is not None:
+            st.caption(f"In testing on new fields in {res['district']}, the first crop was right about "
+                       f"{round(ans['hit_rate'] * 10)} times out of 10."
+                       + (f" Lower here because {' and '.join(ans['lowered_by'])}." if ans["lowered_by"] else ""))
+        if ans["close_second"]:
+            st.caption(f"{crop(ans['close_second'])} fits almost as well here.")
+        with st.expander("Why this crop and this confidence"):
+            for line in ans["why"]:
+                st.write(f"- {line}")
+            if ans["others"]:
+                st.write("Next in order: " + ", ".join(crop(c) for c in ans["others"]) + ".")
+        st.markdown(f"**Fertiliser for {crop(ans['crop'])}**")
+        fert = res["fertiliser"]
+        if fert["status"] == "no_matching_rule":
+            st.write(f"No fertiliser rule fits {crop(ans['crop'])}, so no rate is given.")
+        else:
+            show_fertiliser(fert["items"])
+        with st.expander("Inputs for this point"):
             blk = inp["block"]
             where = ("the same 2 km block" if blk["distance_km"] == 0
                      else f"the nearest 2 km block, {blk['distance_km']:.1f} km away")
@@ -271,13 +255,61 @@ with right:
                      f"{clim['mean_temp_at_field_c']:.1f} C.")
             shares = ", ".join(f"{k} {v:.0%}" for k, v in inp["nisr_crop_shares"].items())
             st.write(f"District crop shares (NISR, area of the four crops): {shares}.")
-        st.markdown(f"**Fertiliser for {crop(top_model['crop'])}**")
-        fert = res["fertiliser"]
-        if fert["status"] == "no_matching_rule":
-            st.write(f"No fertiliser rule fits {crop(top_model['crop'])}, so no rate is given.")
-        else:
-            show_fertiliser(fert["items"])
         if res["warnings"]:
             with st.expander("Notes"):
                 for w in res["warnings"]:
                     st.write(f"- {w}")
+        if evaluation:
+            st.divider()
+            st.markdown("#### Evaluation view: both methods at this point")
+            st.caption("For the team. Users only see the answer above.")
+            st.markdown("**Tested scores (macro-F1, 0 to 1, protocol 1.0)**")
+            st.dataframe(tested_table(rec).style.format("{:.2f}", na_rep=""))
+            st.caption("New fields: fields from 2 km blocks the model never saw, in a district it knows. District "
+                       "left out: the model never saw the district at all. The API default stays the rules, because "
+                       "no model passed the adoption rule when a district was left out.")
+            top_model, top_rules = res["model"]["ranking"][0], res["rules"]["ranking"][0]
+            b1, b2 = st.columns(2)
+            b1.caption("XGBoost suggests")
+            b1.markdown(f"### {crop(top_model['crop'])}")
+            b1.caption(f"Model score {top_model['probability']:.2f} out of 1")
+            b2.caption("Expert rules suggest")
+            b2.markdown(f"### {crop(top_rules['crop'])}")
+            b2.caption(f"Rule score {top_rules['score']:.2f} out of 1")
+            better = res["better_in_testing"]
+            mt, rt = res["model"]["tested"].get("new_fields"), res["rules"]["tested"].get("new_fields")
+            if better == "model":
+                st.success(f"On new fields in {res['district']}, XGBoost did better than the rules in testing "
+                           f"({mt:.2f} against {rt:.2f}).")
+            elif better == "rules":
+                st.warning(f"On new fields in {res['district']}, the rules did better than XGBoost in testing "
+                           f"({rt:.2f} against {mt:.2f}). Read both rankings.")
+            elif better == "same":
+                st.info(f"On new fields in {res['district']}, XGBoost and the rules scored about the same in "
+                        "testing.")
+            c1, c2 = st.columns(2)
+            with c1:
+                ranking("XGBoost (all inputs)", res["model"]["ranking"], "probability", res["model"]["tested"],
+                        res["district"])
+            with c2:
+                ranking("Expert rules (B1)", res["rules"]["ranking"], "score", res["rules"]["tested"], res["district"])
+            with st.expander(f"How each method did in {res['district']}, crop by crop"):
+                test = st.radio("Test", ["new_fields", "new_district"], horizontal=True, key="crop_test",
+                                format_func={"new_fields": "New fields in this district",
+                                             "new_district": f"{res['district']} left out of training"}.get)
+                table = crop_table(rec, res["district"], test)
+                if len(table):
+                    shown = table.copy()
+                    for c in shown.columns:
+                        if c != "Fields":   # text, so a crop with too few fields reads "not scored" instead of None
+                            shown[c] = [("not scored" if pd.isna(v) else f"{v:.2f}") for v in table[c]]
+                    st.dataframe(shown)
+                st.caption("Precision: when the method says this crop, how often it is right. Recall: of the fields "
+                           "with this crop, how many the method found. F1 combines the two, from 0 to 1. Crops with "
+                           "fewer than 5 fields in the district are not scored. From the official evaluation "
+                           "(eval_v1). The Model scores page has every model.")
+            with st.expander("Why the rules say this"):
+                for r in res["rules"]["ranking"]:
+                    st.markdown(f"**{crop(r['crop'])}** ({r['score']:.2f})")
+                    for reason in r["reasons"]:
+                        st.write(f"- {reason['text']}")
