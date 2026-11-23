@@ -1,0 +1,88 @@
+{
+  "protocol_version": "1.2",
+  "quick_check_only": false,
+  "run_at_utc": "2026-11-23 11:57",
+  "compute_hours": 1.3169747992356617,
+  "wall_hours_this_call": 0.00033904479609595407,
+  "workers": 2,
+  "job_minutes": {
+    "RF[all]": 13.8,
+    "RF[field_sat]": 14.8,
+    "RF[all_sat]": 17.9,
+    "XGB[all]": 8.2,
+    "XGB[field_sat]": 8.2,
+    "XGB[all_sat]": 10.6,
+    "LR[all]": 1.7,
+    "LR[field_sat]": 1.5,
+    "LR[all_sat]": 2.2
+  },
+  "table": "01-crop-recommendation/data/processed/feature_table_v6b.csv",
+  "table_sha256": "0bb9096237a38bc0a3aff73a72130bbea72726154f92093d39ea0eb0683a49be",
+  "git_commit": "06026db1017ffc3ea85c2e172713a7a434d4c5e1",
+  "uncommitted_changes": false,
+  "report_rebuilt_at_commit": "cc891c8a46ef515a8779c621743d2c24c104e074",
+  "report_rebuilt_with_uncommitted_changes": false,
+  "rows": {
+    "before_filters": 2739,
+    "after_qc_ok": 2728,
+    "main": 1904
+  },
+  "methods": [
+    "LR",
+    "RF",
+    "XGB"
+  ],
+  "views": [
+    "all",
+    "field_sat",
+    "all_sat"
+  ],
+  "n_draws": 60,
+  "n_candidates": 61,
+  "inner_block_folds": 3,
+  "n_shuffles": 5,
+  "seed": 0,
+  "tests": {
+    "main": "leave one district out; inside: leave each training district out in turn",
+    "second": "5 folds over block_id (StratifiedGroupKFold, seed 0); inside: 3 folds over block_id, seed 0"
+  },
+  "builtin_check": {
+    "compared_with": "01-crop-recommendation/reports/eval_v2",
+    "rows_compared": 88,
+    "mismatches": [],
+    "passed": true
+  },
+  "decisions": {
+    "adoption": {
+      "passing": [],
+      "best_tuned": "XGB[field_sat] tuned",
+      "best_tuned_score": 0.3263430454933933,
+      "best_tuned_wins": 2,
+      "b1_score": 0.37833722260517505
+    },
+    "map": {
+      "today": "XGB[all]",
+      "today_score": 0.45146624502490373,
+      "margin": 0.01,
+      "beating": {
+        "XGB[field_sat] tuned": 0.5089523319341616,
+        "RF[all_sat] tuned": 0.5140788351964372,
+        "RF[all] tuned": 0.4615852720676875,
+        "LR[all_sat] tuned": 0.4680759949106438,
+        "RF[field_sat] tuned": 0.48381496084741793,
+        "XGB[all] tuned": 0.46292385272905995,
+        "LR[field_sat] tuned": 0.4696082928875779,
+        "XGB[all_sat] tuned": 0.4847034157739596
+      },
+      "serve": "RF[all_sat] tuned",
+      "changes": true
+    }
+  },
+  "versions": {
+    "python": "3.12.3",
+    "pandas": "3.1.0",
+    "numpy": "2.3.5",
+    "scikit-learn": "1.7.2",
+    "xgboost": "3.4.1"
+  }
+}
