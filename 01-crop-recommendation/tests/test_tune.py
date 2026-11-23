@@ -164,6 +164,21 @@ def test_shuffling_an_input_the_model_ignores_changes_nothing(df):
     assert all((again[k] == v).all() for k, v in out.items())
 
 
+# ------------------------------------------------------------------ the model the map serves
+def test_final_model_uses_the_nested_comparison_on_all_fields(df, tmp_path):
+    decisions = {"map": {"serve": "LR[field_sat] tuned", "today_score": 0.451,
+                         "beating": {"LR[field_sat] tuned": 0.47}}}
+    (tmp_path / "run_info.json").write_text(json.dumps({"decisions": decisions, "n_draws": 1}), encoding="utf-8")
+    final = tune.final_model(df, tmp_path, log=lambda *a: None)
+    saved = json.loads((tmp_path / tune.FINAL_FILE).read_text(encoding="utf-8"))
+    assert saved == json.loads(json.dumps(final, default=str))
+    assert final["method"] == "LR" and final["view"] == "field_sat" and final["tuned"]
+    assert final["features"] == ev.VIEWS_V11["field_sat"] and final["trained_on_fields"] == len(df)
+    assert len(final["comparison_scores"]) == 2 and final["candidate"] == tune.pick(final["comparison_scores"])
+    assert final["settings"] == tune.candidates("LR", 1)[final["candidate"]]
+    assert final["tested_main_score_new_fields"] == 0.47
+
+
 # ------------------------------------------------------------------ one small job, end to end
 def test_a_small_job_end_to_end_with_the_builtin_check(df, tmp_path, monkeypatch):
     monkeypatch.setattr(tune, "MAP_MODEL", "LR[field_sat]")      # the only model of this small run

@@ -868,6 +868,52 @@ def write_report(out: Path, info: dict, df: pd.DataFrame, res: dict) -> Path:
     return path
 
 
+# ------------------------------------------------------------------ the model the map serves
+FINAL_FILE = "final_model.json"
+
+
+def final_model(df: pd.DataFrame, out: Path = DEFAULT_OUT, log: Callable = print) -> dict:
+    """The model the map serves under decision 2 of section 11, written to <out>/final_model.json.
+
+    Its settings come from the same comparison as inside the nested test, run once on all training fields: every
+    candidate is scored on 3 folds over 2 km blocks (seed 0), main score per district then the mean, and a tie goes
+    to the candidate drawn first. The nested test measured this exact procedure, so its scores are the tested scores
+    of the model trained here. If decision 2 kept the untuned model, its protocol settings are used."""
+    info = json.loads((Path(out) / "run_info.json").read_text(encoding="utf-8"))
+    serve = info["decisions"]["map"]["serve"]
+    method, view = serve.replace(TUNED, "").rstrip("]").split("[")
+    cands = candidates(method, info["n_draws"])
+    scores: list[float] = []
+    best = 0
+    if serve.endswith(TUNED):
+        t0 = time.time()
+        folds = ev.block_folds(df, n_splits=INNER_BLOCK_FOLDS, seed=SEED)
+        scores = [block_score(df, oof_proba(df, folds, (lambda c=c: Tunable(method, c, view)))) for c in cands]
+        best = pick(scores)
+        log(f"{serve}: candidate {best} chosen on all {len(df)} fields (comparison score {scores[best]:.3f}, "
+            f"protocol settings {scores[0]:.3f}), {time.time() - t0:.0f} s")
+    import sklearn
+    result = {
+        "model": serve, "method": method, "view": view, "tuned": serve.endswith(TUNED),
+        "features": list(ev.VIEWS_V11[view]), "candidate": best, "settings": cands[best],
+        "chosen_by": (f"same comparison as inside the nested test, on all {len(df)} fields: {INNER_BLOCK_FOLDS} folds "
+                      f"over {ev.BLOCK_COL} (seed {SEED}), main score per district then the mean; ties go to the "
+                      "candidate drawn first" if serve.endswith(TUNED) else "protocol settings (section 6)"),
+        "comparison_scores": [round(s, 6) for s in scores],
+        "tested_main_score_new_fields": info["decisions"]["map"]["beating"].get(serve,
+                                                                                 info["decisions"]["map"]["today_score"]),
+        "trained_on_fields": int(len(df)), "decided_by": "decision 2 of docs/training_protocol.md, section 11",
+        "run_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"), "git_commit": ev._git_commit(),
+        "uncommitted_changes": ev._git_has_uncommitted_changes(),
+        "versions": {"python": platform.python_version(), "pandas": pd.__version__, "numpy": np.__version__,
+                     "scikit-learn": sklearn.__version__},
+    }
+    path = Path(out) / FINAL_FILE
+    path.write_text(json.dumps(result, indent=2, default=str) + "\n", encoding="utf-8")
+    log(f"Written to {path}")
+    return result
+
+
 # ------------------------------------------------------------------ command line
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -877,9 +923,16 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--quick", action="store_true",
                     help="Tiny run (2 random draws, 1 shuffle, two views) to check the code. Never reported.")
     ap.add_argument("--assemble-only", action="store_true", help="Rebuild the report from the saved jobs.")
+    ap.add_argument("--final", action="store_true",
+                    help="After the run: choose the settings of the model the map serves (decision 2) on all fields "
+                         "and write final_model.json next to the report.")
     args = ap.parse_args(argv)
 
     table = Path(args.table) if args.table else TABLE
+    if args.final:
+        out = Path(args.out) if args.out else DEFAULT_OUT
+        final_model(ev.prepare(pd.read_csv(table, low_memory=False)), out, log=lambda s: print(s, flush=True))
+        return 0
     if args.quick:
         methods, views, n_draws, n_shuffles = METHODS, ("all", "field_sat"), 2, 1
         out = Path(args.out) if args.out else Path(tempfile.gettempdir()) / "tuning_quick"
