@@ -1,0 +1,1431 @@
+analysis,test,model,district,true,predicted,count
+main,leave_one_district_out,B0_majority,Musanze,beans,maize,47
+main,leave_one_district_out,B0_majority,Musanze,irish_potato,maize,92
+main,leave_one_district_out,B0_majority,Musanze,maize,maize,24
+main,leave_one_district_out,B0_majority,Musanze,rice,maize,1
+main,leave_one_district_out,B1_expert_rules,Musanze,beans,beans,36
+main,leave_one_district_out,B1_expert_rules,Musanze,irish_potato,beans,11
+main,leave_one_district_out,B1_expert_rules,Musanze,maize,beans,5
+main,leave_one_district_out,B1_expert_rules,Musanze,rice,beans,1
+main,leave_one_district_out,B1_expert_rules,Musanze,beans,irish_potato,2
+main,leave_one_district_out,B1_expert_rules,Musanze,irish_potato,irish_potato,52
+main,leave_one_district_out,B1_expert_rules,Musanze,maize,irish_potato,5
+main,leave_one_district_out,B1_expert_rules,Musanze,beans,maize,9
+main,leave_one_district_out,B1_expert_rules,Musanze,irish_potato,maize,29
+main,leave_one_district_out,B1_expert_rules,Musanze,maize,maize,14
+main,leave_one_district_out,B0_majority,Nyabihu,beans,maize,28
+main,leave_one_district_out,B0_majority,Nyabihu,irish_potato,maize,103
+main,leave_one_district_out,B0_majority,Nyabihu,maize,maize,37
+main,leave_one_district_out,B1_expert_rules,Nyabihu,beans,beans,17
+main,leave_one_district_out,B1_expert_rules,Nyabihu,maize,beans,4
+main,leave_one_district_out,B1_expert_rules,Nyabihu,beans,irish_potato,1
+main,leave_one_district_out,B1_expert_rules,Nyabihu,irish_potato,irish_potato,68
+main,leave_one_district_out,B1_expert_rules,Nyabihu,maize,irish_potato,7
+main,leave_one_district_out,B1_expert_rules,Nyabihu,beans,maize,10
+main,leave_one_district_out,B1_expert_rules,Nyabihu,irish_potato,maize,35
+main,leave_one_district_out,B1_expert_rules,Nyabihu,maize,maize,26
+main,leave_one_district_out,B0_majority,Nyagatare,beans,beans,237
+main,leave_one_district_out,B0_majority,Nyagatare,irish_potato,beans,19
+main,leave_one_district_out,B0_majority,Nyagatare,maize,beans,792
+main,leave_one_district_out,B0_majority,Nyagatare,rice,beans,36
+main,leave_one_district_out,B1_expert_rules,Nyagatare,beans,beans,237
+main,leave_one_district_out,B1_expert_rules,Nyagatare,irish_potato,beans,19
+main,leave_one_district_out,B1_expert_rules,Nyagatare,maize,beans,792
+main,leave_one_district_out,B1_expert_rules,Nyagatare,rice,beans,36
+main,leave_one_district_out,B0_majority,Ruhango,beans,maize,289
+main,leave_one_district_out,B0_majority,Ruhango,irish_potato,maize,32
+main,leave_one_district_out,B0_majority,Ruhango,maize,maize,157
+main,leave_one_district_out,B0_majority,Ruhango,rice,maize,10
+main,leave_one_district_out,B1_expert_rules,Ruhango,beans,beans,289
+main,leave_one_district_out,B1_expert_rules,Ruhango,irish_potato,beans,32
+main,leave_one_district_out,B1_expert_rules,Ruhango,maize,beans,156
+main,leave_one_district_out,B1_expert_rules,Ruhango,rice,beans,10
+main,leave_one_district_out,B1_expert_rules,Ruhango,maize,irish_potato,1
+main,new_fields_known_districts,B0_majority,Musanze,beans,maize,47
+main,new_fields_known_districts,B0_majority,Musanze,irish_potato,maize,92
+main,new_fields_known_districts,B0_majority,Musanze,maize,maize,24
+main,new_fields_known_districts,B0_majority,Musanze,rice,maize,1
+main,new_fields_known_districts,B0_majority,Nyabihu,beans,maize,28
+main,new_fields_known_districts,B0_majority,Nyabihu,irish_potato,maize,103
+main,new_fields_known_districts,B0_majority,Nyabihu,maize,maize,37
+main,new_fields_known_districts,B0_majority,Nyagatare,beans,maize,237
+main,new_fields_known_districts,B0_majority,Nyagatare,irish_potato,maize,19
+main,new_fields_known_districts,B0_majority,Nyagatare,maize,maize,792
+main,new_fields_known_districts,B0_majority,Nyagatare,rice,maize,36
+main,new_fields_known_districts,B0_majority,Ruhango,beans,maize,289
+main,new_fields_known_districts,B0_majority,Ruhango,irish_potato,maize,32
+main,new_fields_known_districts,B0_majority,Ruhango,maize,maize,157
+main,new_fields_known_districts,B0_majority,Ruhango,rice,maize,10
+main,new_fields_known_districts,B0d_district_majority,Musanze,beans,irish_potato,47
+main,new_fields_known_districts,B0d_district_majority,Musanze,irish_potato,irish_potato,92
+main,new_fields_known_districts,B0d_district_majority,Musanze,maize,irish_potato,24
+main,new_fields_known_districts,B0d_district_majority,Musanze,rice,irish_potato,1
+main,new_fields_known_districts,B0d_district_majority,Nyabihu,beans,irish_potato,28
+main,new_fields_known_districts,B0d_district_majority,Nyabihu,irish_potato,irish_potato,103
+main,new_fields_known_districts,B0d_district_majority,Nyabihu,maize,irish_potato,37
+main,new_fields_known_districts,B0d_district_majority,Nyagatare,beans,maize,237
+main,new_fields_known_districts,B0d_district_majority,Nyagatare,irish_potato,maize,19
+main,new_fields_known_districts,B0d_district_majority,Nyagatare,maize,maize,792
+main,new_fields_known_districts,B0d_district_majority,Nyagatare,rice,maize,36
+main,new_fields_known_districts,B0d_district_majority,Ruhango,beans,beans,289
+main,new_fields_known_districts,B0d_district_majority,Ruhango,irish_potato,beans,32
+main,new_fields_known_districts,B0d_district_majority,Ruhango,maize,beans,157
+main,new_fields_known_districts,B0d_district_majority,Ruhango,rice,beans,10
+main,new_fields_known_districts,B1_expert_rules,Musanze,beans,beans,36
+main,new_fields_known_districts,B1_expert_rules,Musanze,irish_potato,beans,11
+main,new_fields_known_districts,B1_expert_rules,Musanze,maize,beans,5
+main,new_fields_known_districts,B1_expert_rules,Musanze,rice,beans,1
+main,new_fields_known_districts,B1_expert_rules,Musanze,beans,irish_potato,2
+main,new_fields_known_districts,B1_expert_rules,Musanze,irish_potato,irish_potato,52
+main,new_fields_known_districts,B1_expert_rules,Musanze,maize,irish_potato,5
+main,new_fields_known_districts,B1_expert_rules,Musanze,beans,maize,9
+main,new_fields_known_districts,B1_expert_rules,Musanze,irish_potato,maize,29
+main,new_fields_known_districts,B1_expert_rules,Musanze,maize,maize,14
+main,new_fields_known_districts,B1_expert_rules,Nyabihu,beans,beans,17
+main,new_fields_known_districts,B1_expert_rules,Nyabihu,maize,beans,4
+main,new_fields_known_districts,B1_expert_rules,Nyabihu,beans,irish_potato,1
+main,new_fields_known_districts,B1_expert_rules,Nyabihu,irish_potato,irish_potato,68
+main,new_fields_known_districts,B1_expert_rules,Nyabihu,maize,irish_potato,7
+main,new_fields_known_districts,B1_expert_rules,Nyabihu,beans,maize,10
+main,new_fields_known_districts,B1_expert_rules,Nyabihu,irish_potato,maize,35
+main,new_fields_known_districts,B1_expert_rules,Nyabihu,maize,maize,26
+main,new_fields_known_districts,B1_expert_rules,Nyagatare,beans,beans,237
+main,new_fields_known_districts,B1_expert_rules,Nyagatare,irish_potato,beans,19
+main,new_fields_known_districts,B1_expert_rules,Nyagatare,maize,beans,792
+main,new_fields_known_districts,B1_expert_rules,Nyagatare,rice,beans,36
+main,new_fields_known_districts,B1_expert_rules,Ruhango,beans,beans,289
+main,new_fields_known_districts,B1_expert_rules,Ruhango,irish_potato,beans,32
+main,new_fields_known_districts,B1_expert_rules,Ruhango,maize,beans,156
+main,new_fields_known_districts,B1_expert_rules,Ruhango,rice,beans,10
+main,new_fields_known_districts,B1_expert_rules,Ruhango,maize,irish_potato,1
+main,leave_one_district_out,RF[all],Musanze,beans,beans,30
+main,leave_one_district_out,RF[all],Musanze,irish_potato,beans,10
+main,leave_one_district_out,RF[all],Musanze,maize,beans,5
+main,leave_one_district_out,RF[all],Musanze,rice,beans,1
+main,leave_one_district_out,RF[all],Musanze,beans,irish_potato,17
+main,leave_one_district_out,RF[all],Musanze,irish_potato,irish_potato,82
+main,leave_one_district_out,RF[all],Musanze,maize,irish_potato,19
+main,leave_one_district_out,RF[all] tuned,Musanze,beans,beans,29
+main,leave_one_district_out,RF[all] tuned,Musanze,irish_potato,beans,10
+main,leave_one_district_out,RF[all] tuned,Musanze,maize,beans,4
+main,leave_one_district_out,RF[all] tuned,Musanze,rice,beans,1
+main,leave_one_district_out,RF[all] tuned,Musanze,beans,irish_potato,18
+main,leave_one_district_out,RF[all] tuned,Musanze,irish_potato,irish_potato,82
+main,leave_one_district_out,RF[all] tuned,Musanze,maize,irish_potato,20
+main,leave_one_district_out,RF[all],Nyabihu,beans,beans,13
+main,leave_one_district_out,RF[all],Nyabihu,maize,beans,7
+main,leave_one_district_out,RF[all],Nyabihu,beans,irish_potato,9
+main,leave_one_district_out,RF[all],Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,RF[all],Nyabihu,maize,irish_potato,29
+main,leave_one_district_out,RF[all],Nyabihu,beans,rice,6
+main,leave_one_district_out,RF[all],Nyabihu,maize,rice,1
+main,leave_one_district_out,RF[all] tuned,Nyabihu,beans,beans,13
+main,leave_one_district_out,RF[all] tuned,Nyabihu,maize,beans,7
+main,leave_one_district_out,RF[all] tuned,Nyabihu,beans,irish_potato,9
+main,leave_one_district_out,RF[all] tuned,Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,RF[all] tuned,Nyabihu,maize,irish_potato,28
+main,leave_one_district_out,RF[all] tuned,Nyabihu,beans,rice,6
+main,leave_one_district_out,RF[all] tuned,Nyabihu,maize,rice,2
+main,leave_one_district_out,RF[all],Nyagatare,beans,beans,26
+main,leave_one_district_out,RF[all],Nyagatare,irish_potato,beans,6
+main,leave_one_district_out,RF[all],Nyagatare,maize,beans,56
+main,leave_one_district_out,RF[all],Nyagatare,rice,beans,11
+main,leave_one_district_out,RF[all],Nyagatare,beans,maize,211
+main,leave_one_district_out,RF[all],Nyagatare,irish_potato,maize,13
+main,leave_one_district_out,RF[all],Nyagatare,maize,maize,733
+main,leave_one_district_out,RF[all],Nyagatare,rice,maize,25
+main,leave_one_district_out,RF[all],Nyagatare,maize,rice,3
+main,leave_one_district_out,RF[all] tuned,Nyagatare,beans,beans,131
+main,leave_one_district_out,RF[all] tuned,Nyagatare,irish_potato,beans,12
+main,leave_one_district_out,RF[all] tuned,Nyagatare,maize,beans,443
+main,leave_one_district_out,RF[all] tuned,Nyagatare,rice,beans,28
+main,leave_one_district_out,RF[all] tuned,Nyagatare,beans,maize,106
+main,leave_one_district_out,RF[all] tuned,Nyagatare,irish_potato,maize,7
+main,leave_one_district_out,RF[all] tuned,Nyagatare,maize,maize,349
+main,leave_one_district_out,RF[all] tuned,Nyagatare,rice,maize,8
+main,leave_one_district_out,RF[all],Ruhango,beans,beans,27
+main,leave_one_district_out,RF[all],Ruhango,irish_potato,beans,3
+main,leave_one_district_out,RF[all],Ruhango,maize,beans,22
+main,leave_one_district_out,RF[all],Ruhango,beans,maize,262
+main,leave_one_district_out,RF[all],Ruhango,irish_potato,maize,29
+main,leave_one_district_out,RF[all],Ruhango,maize,maize,135
+main,leave_one_district_out,RF[all],Ruhango,rice,maize,10
+main,leave_one_district_out,RF[all] tuned,Ruhango,beans,maize,289
+main,leave_one_district_out,RF[all] tuned,Ruhango,irish_potato,maize,32
+main,leave_one_district_out,RF[all] tuned,Ruhango,maize,maize,157
+main,leave_one_district_out,RF[all] tuned,Ruhango,rice,maize,10
+main,new_fields_known_districts,RF[all],Musanze,beans,beans,30
+main,new_fields_known_districts,RF[all],Musanze,irish_potato,beans,10
+main,new_fields_known_districts,RF[all],Musanze,maize,beans,8
+main,new_fields_known_districts,RF[all],Musanze,rice,beans,1
+main,new_fields_known_districts,RF[all],Musanze,beans,irish_potato,17
+main,new_fields_known_districts,RF[all],Musanze,irish_potato,irish_potato,82
+main,new_fields_known_districts,RF[all],Musanze,maize,irish_potato,16
+main,new_fields_known_districts,RF[all],Nyabihu,beans,beans,20
+main,new_fields_known_districts,RF[all],Nyabihu,irish_potato,beans,1
+main,new_fields_known_districts,RF[all],Nyabihu,maize,beans,15
+main,new_fields_known_districts,RF[all],Nyabihu,beans,irish_potato,4
+main,new_fields_known_districts,RF[all],Nyabihu,irish_potato,irish_potato,101
+main,new_fields_known_districts,RF[all],Nyabihu,maize,irish_potato,18
+main,new_fields_known_districts,RF[all],Nyabihu,beans,maize,4
+main,new_fields_known_districts,RF[all],Nyabihu,irish_potato,maize,1
+main,new_fields_known_districts,RF[all],Nyabihu,maize,maize,4
+main,new_fields_known_districts,RF[all],Nyagatare,beans,beans,21
+main,new_fields_known_districts,RF[all],Nyagatare,irish_potato,beans,1
+main,new_fields_known_districts,RF[all],Nyagatare,maize,beans,32
+main,new_fields_known_districts,RF[all],Nyagatare,beans,maize,210
+main,new_fields_known_districts,RF[all],Nyagatare,irish_potato,maize,14
+main,new_fields_known_districts,RF[all],Nyagatare,maize,maize,733
+main,new_fields_known_districts,RF[all],Nyagatare,rice,maize,8
+main,new_fields_known_districts,RF[all],Nyagatare,beans,rice,6
+main,new_fields_known_districts,RF[all],Nyagatare,irish_potato,rice,4
+main,new_fields_known_districts,RF[all],Nyagatare,maize,rice,27
+main,new_fields_known_districts,RF[all],Nyagatare,rice,rice,28
+main,new_fields_known_districts,RF[all],Ruhango,beans,beans,261
+main,new_fields_known_districts,RF[all],Ruhango,irish_potato,beans,28
+main,new_fields_known_districts,RF[all],Ruhango,maize,beans,119
+main,new_fields_known_districts,RF[all],Ruhango,rice,beans,8
+main,new_fields_known_districts,RF[all],Ruhango,beans,irish_potato,2
+main,new_fields_known_districts,RF[all],Ruhango,maize,irish_potato,1
+main,new_fields_known_districts,RF[all],Ruhango,beans,maize,19
+main,new_fields_known_districts,RF[all],Ruhango,irish_potato,maize,4
+main,new_fields_known_districts,RF[all],Ruhango,maize,maize,30
+main,new_fields_known_districts,RF[all],Ruhango,rice,maize,1
+main,new_fields_known_districts,RF[all],Ruhango,beans,rice,7
+main,new_fields_known_districts,RF[all],Ruhango,maize,rice,7
+main,new_fields_known_districts,RF[all],Ruhango,rice,rice,1
+main,new_fields_known_districts,RF[all] tuned,Musanze,beans,beans,38
+main,new_fields_known_districts,RF[all] tuned,Musanze,irish_potato,beans,10
+main,new_fields_known_districts,RF[all] tuned,Musanze,maize,beans,9
+main,new_fields_known_districts,RF[all] tuned,Musanze,rice,beans,1
+main,new_fields_known_districts,RF[all] tuned,Musanze,beans,irish_potato,6
+main,new_fields_known_districts,RF[all] tuned,Musanze,irish_potato,irish_potato,82
+main,new_fields_known_districts,RF[all] tuned,Musanze,maize,irish_potato,13
+main,new_fields_known_districts,RF[all] tuned,Musanze,beans,maize,3
+main,new_fields_known_districts,RF[all] tuned,Musanze,maize,maize,2
+main,new_fields_known_districts,RF[all] tuned,Nyabihu,beans,beans,20
+main,new_fields_known_districts,RF[all] tuned,Nyabihu,irish_potato,beans,1
+main,new_fields_known_districts,RF[all] tuned,Nyabihu,maize,beans,13
+main,new_fields_known_districts,RF[all] tuned,Nyabihu,beans,irish_potato,1
+main,new_fields_known_districts,RF[all] tuned,Nyabihu,irish_potato,irish_potato,98
+main,new_fields_known_districts,RF[all] tuned,Nyabihu,maize,irish_potato,16
+main,new_fields_known_districts,RF[all] tuned,Nyabihu,beans,maize,7
+main,new_fields_known_districts,RF[all] tuned,Nyabihu,irish_potato,maize,4
+main,new_fields_known_districts,RF[all] tuned,Nyabihu,maize,maize,8
+main,new_fields_known_districts,RF[all] tuned,Nyagatare,beans,beans,7
+main,new_fields_known_districts,RF[all] tuned,Nyagatare,maize,beans,17
+main,new_fields_known_districts,RF[all] tuned,Nyagatare,beans,maize,229
+main,new_fields_known_districts,RF[all] tuned,Nyagatare,irish_potato,maize,17
+main,new_fields_known_districts,RF[all] tuned,Nyagatare,maize,maize,761
+main,new_fields_known_districts,RF[all] tuned,Nyagatare,rice,maize,17
+main,new_fields_known_districts,RF[all] tuned,Nyagatare,beans,rice,1
+main,new_fields_known_districts,RF[all] tuned,Nyagatare,irish_potato,rice,2
+main,new_fields_known_districts,RF[all] tuned,Nyagatare,maize,rice,14
+main,new_fields_known_districts,RF[all] tuned,Nyagatare,rice,rice,19
+main,new_fields_known_districts,RF[all] tuned,Ruhango,beans,beans,253
+main,new_fields_known_districts,RF[all] tuned,Ruhango,irish_potato,beans,28
+main,new_fields_known_districts,RF[all] tuned,Ruhango,maize,beans,112
+main,new_fields_known_districts,RF[all] tuned,Ruhango,rice,beans,7
+main,new_fields_known_districts,RF[all] tuned,Ruhango,beans,irish_potato,1
+main,new_fields_known_districts,RF[all] tuned,Ruhango,beans,maize,33
+main,new_fields_known_districts,RF[all] tuned,Ruhango,irish_potato,maize,4
+main,new_fields_known_districts,RF[all] tuned,Ruhango,maize,maize,44
+main,new_fields_known_districts,RF[all] tuned,Ruhango,rice,maize,2
+main,new_fields_known_districts,RF[all] tuned,Ruhango,beans,rice,2
+main,new_fields_known_districts,RF[all] tuned,Ruhango,maize,rice,1
+main,new_fields_known_districts,RF[all] tuned,Ruhango,rice,rice,1
+main,leave_one_district_out,RF[field_sat],Musanze,beans,beans,29
+main,leave_one_district_out,RF[field_sat],Musanze,irish_potato,beans,10
+main,leave_one_district_out,RF[field_sat],Musanze,maize,beans,4
+main,leave_one_district_out,RF[field_sat],Musanze,rice,beans,1
+main,leave_one_district_out,RF[field_sat],Musanze,beans,irish_potato,18
+main,leave_one_district_out,RF[field_sat],Musanze,irish_potato,irish_potato,81
+main,leave_one_district_out,RF[field_sat],Musanze,maize,irish_potato,19
+main,leave_one_district_out,RF[field_sat],Musanze,irish_potato,maize,1
+main,leave_one_district_out,RF[field_sat],Musanze,maize,maize,1
+main,leave_one_district_out,RF[field_sat] tuned,Musanze,beans,beans,9
+main,leave_one_district_out,RF[field_sat] tuned,Musanze,irish_potato,beans,2
+main,leave_one_district_out,RF[field_sat] tuned,Musanze,rice,beans,1
+main,leave_one_district_out,RF[field_sat] tuned,Musanze,beans,irish_potato,38
+main,leave_one_district_out,RF[field_sat] tuned,Musanze,irish_potato,irish_potato,90
+main,leave_one_district_out,RF[field_sat] tuned,Musanze,maize,irish_potato,24
+main,leave_one_district_out,RF[field_sat],Nyabihu,beans,beans,17
+main,leave_one_district_out,RF[field_sat],Nyabihu,maize,beans,4
+main,leave_one_district_out,RF[field_sat],Nyabihu,beans,irish_potato,9
+main,leave_one_district_out,RF[field_sat],Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,RF[field_sat],Nyabihu,maize,irish_potato,33
+main,leave_one_district_out,RF[field_sat],Nyabihu,beans,maize,1
+main,leave_one_district_out,RF[field_sat],Nyabihu,beans,rice,1
+main,leave_one_district_out,RF[field_sat] tuned,Nyabihu,beans,beans,14
+main,leave_one_district_out,RF[field_sat] tuned,Nyabihu,maize,beans,3
+main,leave_one_district_out,RF[field_sat] tuned,Nyabihu,beans,irish_potato,9
+main,leave_one_district_out,RF[field_sat] tuned,Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,RF[field_sat] tuned,Nyabihu,maize,irish_potato,34
+main,leave_one_district_out,RF[field_sat] tuned,Nyabihu,beans,rice,5
+main,leave_one_district_out,RF[field_sat],Nyagatare,beans,beans,51
+main,leave_one_district_out,RF[field_sat],Nyagatare,irish_potato,beans,4
+main,leave_one_district_out,RF[field_sat],Nyagatare,maize,beans,186
+main,leave_one_district_out,RF[field_sat],Nyagatare,rice,beans,21
+main,leave_one_district_out,RF[field_sat],Nyagatare,beans,maize,186
+main,leave_one_district_out,RF[field_sat],Nyagatare,irish_potato,maize,15
+main,leave_one_district_out,RF[field_sat],Nyagatare,maize,maize,603
+main,leave_one_district_out,RF[field_sat],Nyagatare,rice,maize,15
+main,leave_one_district_out,RF[field_sat],Nyagatare,maize,rice,3
+main,leave_one_district_out,RF[field_sat] tuned,Nyagatare,beans,beans,225
+main,leave_one_district_out,RF[field_sat] tuned,Nyagatare,irish_potato,beans,16
+main,leave_one_district_out,RF[field_sat] tuned,Nyagatare,maize,beans,760
+main,leave_one_district_out,RF[field_sat] tuned,Nyagatare,rice,beans,36
+main,leave_one_district_out,RF[field_sat] tuned,Nyagatare,beans,maize,12
+main,leave_one_district_out,RF[field_sat] tuned,Nyagatare,irish_potato,maize,3
+main,leave_one_district_out,RF[field_sat] tuned,Nyagatare,maize,maize,32
+main,leave_one_district_out,RF[field_sat],Ruhango,beans,beans,97
+main,leave_one_district_out,RF[field_sat],Ruhango,irish_potato,beans,5
+main,leave_one_district_out,RF[field_sat],Ruhango,maize,beans,40
+main,leave_one_district_out,RF[field_sat],Ruhango,rice,beans,4
+main,leave_one_district_out,RF[field_sat],Ruhango,beans,maize,192
+main,leave_one_district_out,RF[field_sat],Ruhango,irish_potato,maize,27
+main,leave_one_district_out,RF[field_sat],Ruhango,maize,maize,117
+main,leave_one_district_out,RF[field_sat],Ruhango,rice,maize,6
+main,leave_one_district_out,RF[field_sat] tuned,Ruhango,beans,beans,29
+main,leave_one_district_out,RF[field_sat] tuned,Ruhango,irish_potato,beans,1
+main,leave_one_district_out,RF[field_sat] tuned,Ruhango,maize,beans,9
+main,leave_one_district_out,RF[field_sat] tuned,Ruhango,beans,maize,260
+main,leave_one_district_out,RF[field_sat] tuned,Ruhango,irish_potato,maize,31
+main,leave_one_district_out,RF[field_sat] tuned,Ruhango,maize,maize,148
+main,leave_one_district_out,RF[field_sat] tuned,Ruhango,rice,maize,10
+main,new_fields_known_districts,RF[field_sat],Musanze,beans,beans,31
+main,new_fields_known_districts,RF[field_sat],Musanze,irish_potato,beans,11
+main,new_fields_known_districts,RF[field_sat],Musanze,maize,beans,9
+main,new_fields_known_districts,RF[field_sat],Musanze,rice,beans,1
+main,new_fields_known_districts,RF[field_sat],Musanze,beans,irish_potato,16
+main,new_fields_known_districts,RF[field_sat],Musanze,irish_potato,irish_potato,81
+main,new_fields_known_districts,RF[field_sat],Musanze,maize,irish_potato,15
+main,new_fields_known_districts,RF[field_sat],Nyabihu,beans,beans,20
+main,new_fields_known_districts,RF[field_sat],Nyabihu,irish_potato,beans,2
+main,new_fields_known_districts,RF[field_sat],Nyabihu,maize,beans,12
+main,new_fields_known_districts,RF[field_sat],Nyabihu,beans,irish_potato,5
+main,new_fields_known_districts,RF[field_sat],Nyabihu,irish_potato,irish_potato,100
+main,new_fields_known_districts,RF[field_sat],Nyabihu,maize,irish_potato,23
+main,new_fields_known_districts,RF[field_sat],Nyabihu,beans,maize,3
+main,new_fields_known_districts,RF[field_sat],Nyabihu,irish_potato,maize,1
+main,new_fields_known_districts,RF[field_sat],Nyabihu,maize,maize,2
+main,new_fields_known_districts,RF[field_sat],Nyagatare,beans,beans,68
+main,new_fields_known_districts,RF[field_sat],Nyagatare,maize,beans,45
+main,new_fields_known_districts,RF[field_sat],Nyagatare,beans,maize,169
+main,new_fields_known_districts,RF[field_sat],Nyagatare,irish_potato,maize,15
+main,new_fields_known_districts,RF[field_sat],Nyagatare,maize,maize,725
+main,new_fields_known_districts,RF[field_sat],Nyagatare,rice,maize,13
+main,new_fields_known_districts,RF[field_sat],Nyagatare,irish_potato,rice,4
+main,new_fields_known_districts,RF[field_sat],Nyagatare,maize,rice,22
+main,new_fields_known_districts,RF[field_sat],Nyagatare,rice,rice,23
+main,new_fields_known_districts,RF[field_sat],Ruhango,beans,beans,259
+main,new_fields_known_districts,RF[field_sat],Ruhango,irish_potato,beans,28
+main,new_fields_known_districts,RF[field_sat],Ruhango,maize,beans,110
+main,new_fields_known_districts,RF[field_sat],Ruhango,rice,beans,7
+main,new_fields_known_districts,RF[field_sat],Ruhango,maize,irish_potato,1
+main,new_fields_known_districts,RF[field_sat],Ruhango,beans,maize,28
+main,new_fields_known_districts,RF[field_sat],Ruhango,irish_potato,maize,4
+main,new_fields_known_districts,RF[field_sat],Ruhango,maize,maize,45
+main,new_fields_known_districts,RF[field_sat],Ruhango,rice,maize,2
+main,new_fields_known_districts,RF[field_sat],Ruhango,beans,rice,2
+main,new_fields_known_districts,RF[field_sat],Ruhango,maize,rice,1
+main,new_fields_known_districts,RF[field_sat],Ruhango,rice,rice,1
+main,new_fields_known_districts,RF[field_sat] tuned,Musanze,beans,beans,35
+main,new_fields_known_districts,RF[field_sat] tuned,Musanze,irish_potato,beans,10
+main,new_fields_known_districts,RF[field_sat] tuned,Musanze,maize,beans,11
+main,new_fields_known_districts,RF[field_sat] tuned,Musanze,rice,beans,1
+main,new_fields_known_districts,RF[field_sat] tuned,Musanze,beans,irish_potato,7
+main,new_fields_known_districts,RF[field_sat] tuned,Musanze,irish_potato,irish_potato,77
+main,new_fields_known_districts,RF[field_sat] tuned,Musanze,maize,irish_potato,10
+main,new_fields_known_districts,RF[field_sat] tuned,Musanze,beans,maize,5
+main,new_fields_known_districts,RF[field_sat] tuned,Musanze,irish_potato,maize,5
+main,new_fields_known_districts,RF[field_sat] tuned,Musanze,maize,maize,3
+main,new_fields_known_districts,RF[field_sat] tuned,Nyabihu,beans,beans,18
+main,new_fields_known_districts,RF[field_sat] tuned,Nyabihu,irish_potato,beans,1
+main,new_fields_known_districts,RF[field_sat] tuned,Nyabihu,maize,beans,9
+main,new_fields_known_districts,RF[field_sat] tuned,Nyabihu,beans,irish_potato,4
+main,new_fields_known_districts,RF[field_sat] tuned,Nyabihu,irish_potato,irish_potato,92
+main,new_fields_known_districts,RF[field_sat] tuned,Nyabihu,maize,irish_potato,14
+main,new_fields_known_districts,RF[field_sat] tuned,Nyabihu,beans,maize,6
+main,new_fields_known_districts,RF[field_sat] tuned,Nyabihu,irish_potato,maize,10
+main,new_fields_known_districts,RF[field_sat] tuned,Nyabihu,maize,maize,14
+main,new_fields_known_districts,RF[field_sat] tuned,Nyagatare,beans,beans,73
+main,new_fields_known_districts,RF[field_sat] tuned,Nyagatare,maize,beans,47
+main,new_fields_known_districts,RF[field_sat] tuned,Nyagatare,beans,maize,164
+main,new_fields_known_districts,RF[field_sat] tuned,Nyagatare,irish_potato,maize,17
+main,new_fields_known_districts,RF[field_sat] tuned,Nyagatare,maize,maize,737
+main,new_fields_known_districts,RF[field_sat] tuned,Nyagatare,rice,maize,21
+main,new_fields_known_districts,RF[field_sat] tuned,Nyagatare,irish_potato,rice,2
+main,new_fields_known_districts,RF[field_sat] tuned,Nyagatare,maize,rice,8
+main,new_fields_known_districts,RF[field_sat] tuned,Nyagatare,rice,rice,15
+main,new_fields_known_districts,RF[field_sat] tuned,Ruhango,beans,beans,237
+main,new_fields_known_districts,RF[field_sat] tuned,Ruhango,irish_potato,beans,24
+main,new_fields_known_districts,RF[field_sat] tuned,Ruhango,maize,beans,89
+main,new_fields_known_districts,RF[field_sat] tuned,Ruhango,rice,beans,5
+main,new_fields_known_districts,RF[field_sat] tuned,Ruhango,beans,maize,52
+main,new_fields_known_districts,RF[field_sat] tuned,Ruhango,irish_potato,maize,8
+main,new_fields_known_districts,RF[field_sat] tuned,Ruhango,maize,maize,68
+main,new_fields_known_districts,RF[field_sat] tuned,Ruhango,rice,maize,5
+main,leave_one_district_out,RF[all_sat],Musanze,beans,beans,37
+main,leave_one_district_out,RF[all_sat],Musanze,irish_potato,beans,11
+main,leave_one_district_out,RF[all_sat],Musanze,maize,beans,5
+main,leave_one_district_out,RF[all_sat],Musanze,rice,beans,1
+main,leave_one_district_out,RF[all_sat],Musanze,beans,irish_potato,10
+main,leave_one_district_out,RF[all_sat],Musanze,irish_potato,irish_potato,81
+main,leave_one_district_out,RF[all_sat],Musanze,maize,irish_potato,19
+main,leave_one_district_out,RF[all_sat] tuned,Musanze,beans,beans,29
+main,leave_one_district_out,RF[all_sat] tuned,Musanze,irish_potato,beans,10
+main,leave_one_district_out,RF[all_sat] tuned,Musanze,maize,beans,4
+main,leave_one_district_out,RF[all_sat] tuned,Musanze,rice,beans,1
+main,leave_one_district_out,RF[all_sat] tuned,Musanze,beans,irish_potato,18
+main,leave_one_district_out,RF[all_sat] tuned,Musanze,irish_potato,irish_potato,82
+main,leave_one_district_out,RF[all_sat] tuned,Musanze,maize,irish_potato,20
+main,leave_one_district_out,RF[all_sat],Nyabihu,beans,beans,15
+main,leave_one_district_out,RF[all_sat],Nyabihu,maize,beans,4
+main,leave_one_district_out,RF[all_sat],Nyabihu,beans,irish_potato,9
+main,leave_one_district_out,RF[all_sat],Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,RF[all_sat],Nyabihu,maize,irish_potato,32
+main,leave_one_district_out,RF[all_sat],Nyabihu,beans,rice,4
+main,leave_one_district_out,RF[all_sat],Nyabihu,maize,rice,1
+main,leave_one_district_out,RF[all_sat] tuned,Nyabihu,beans,beans,12
+main,leave_one_district_out,RF[all_sat] tuned,Nyabihu,maize,beans,3
+main,leave_one_district_out,RF[all_sat] tuned,Nyabihu,beans,irish_potato,9
+main,leave_one_district_out,RF[all_sat] tuned,Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,RF[all_sat] tuned,Nyabihu,maize,irish_potato,32
+main,leave_one_district_out,RF[all_sat] tuned,Nyabihu,beans,rice,7
+main,leave_one_district_out,RF[all_sat] tuned,Nyabihu,maize,rice,2
+main,leave_one_district_out,RF[all_sat],Nyagatare,beans,beans,28
+main,leave_one_district_out,RF[all_sat],Nyagatare,irish_potato,beans,3
+main,leave_one_district_out,RF[all_sat],Nyagatare,maize,beans,93
+main,leave_one_district_out,RF[all_sat],Nyagatare,rice,beans,16
+main,leave_one_district_out,RF[all_sat],Nyagatare,beans,maize,209
+main,leave_one_district_out,RF[all_sat],Nyagatare,irish_potato,maize,16
+main,leave_one_district_out,RF[all_sat],Nyagatare,maize,maize,698
+main,leave_one_district_out,RF[all_sat],Nyagatare,rice,maize,18
+main,leave_one_district_out,RF[all_sat],Nyagatare,maize,rice,1
+main,leave_one_district_out,RF[all_sat],Nyagatare,rice,rice,2
+main,leave_one_district_out,RF[all_sat] tuned,Nyagatare,beans,beans,148
+main,leave_one_district_out,RF[all_sat] tuned,Nyagatare,irish_potato,beans,9
+main,leave_one_district_out,RF[all_sat] tuned,Nyagatare,maize,beans,441
+main,leave_one_district_out,RF[all_sat] tuned,Nyagatare,rice,beans,34
+main,leave_one_district_out,RF[all_sat] tuned,Nyagatare,beans,maize,89
+main,leave_one_district_out,RF[all_sat] tuned,Nyagatare,irish_potato,maize,10
+main,leave_one_district_out,RF[all_sat] tuned,Nyagatare,maize,maize,351
+main,leave_one_district_out,RF[all_sat] tuned,Nyagatare,rice,maize,2
+main,leave_one_district_out,RF[all_sat],Ruhango,beans,beans,21
+main,leave_one_district_out,RF[all_sat],Ruhango,irish_potato,beans,1
+main,leave_one_district_out,RF[all_sat],Ruhango,maize,beans,9
+main,leave_one_district_out,RF[all_sat],Ruhango,beans,maize,268
+main,leave_one_district_out,RF[all_sat],Ruhango,irish_potato,maize,31
+main,leave_one_district_out,RF[all_sat],Ruhango,maize,maize,148
+main,leave_one_district_out,RF[all_sat],Ruhango,rice,maize,10
+main,leave_one_district_out,RF[all_sat] tuned,Ruhango,beans,maize,289
+main,leave_one_district_out,RF[all_sat] tuned,Ruhango,irish_potato,maize,32
+main,leave_one_district_out,RF[all_sat] tuned,Ruhango,maize,maize,157
+main,leave_one_district_out,RF[all_sat] tuned,Ruhango,rice,maize,10
+main,new_fields_known_districts,RF[all_sat],Musanze,beans,beans,31
+main,new_fields_known_districts,RF[all_sat],Musanze,irish_potato,beans,10
+main,new_fields_known_districts,RF[all_sat],Musanze,maize,beans,10
+main,new_fields_known_districts,RF[all_sat],Musanze,rice,beans,1
+main,new_fields_known_districts,RF[all_sat],Musanze,beans,irish_potato,16
+main,new_fields_known_districts,RF[all_sat],Musanze,irish_potato,irish_potato,82
+main,new_fields_known_districts,RF[all_sat],Musanze,maize,irish_potato,14
+main,new_fields_known_districts,RF[all_sat],Nyabihu,beans,beans,20
+main,new_fields_known_districts,RF[all_sat],Nyabihu,irish_potato,beans,1
+main,new_fields_known_districts,RF[all_sat],Nyabihu,maize,beans,16
+main,new_fields_known_districts,RF[all_sat],Nyabihu,beans,irish_potato,4
+main,new_fields_known_districts,RF[all_sat],Nyabihu,irish_potato,irish_potato,101
+main,new_fields_known_districts,RF[all_sat],Nyabihu,maize,irish_potato,19
+main,new_fields_known_districts,RF[all_sat],Nyabihu,beans,maize,4
+main,new_fields_known_districts,RF[all_sat],Nyabihu,irish_potato,maize,1
+main,new_fields_known_districts,RF[all_sat],Nyabihu,maize,maize,2
+main,new_fields_known_districts,RF[all_sat],Nyagatare,beans,beans,61
+main,new_fields_known_districts,RF[all_sat],Nyagatare,maize,beans,37
+main,new_fields_known_districts,RF[all_sat],Nyagatare,beans,maize,176
+main,new_fields_known_districts,RF[all_sat],Nyagatare,irish_potato,maize,15
+main,new_fields_known_districts,RF[all_sat],Nyagatare,maize,maize,735
+main,new_fields_known_districts,RF[all_sat],Nyagatare,rice,maize,12
+main,new_fields_known_districts,RF[all_sat],Nyagatare,irish_potato,rice,4
+main,new_fields_known_districts,RF[all_sat],Nyagatare,maize,rice,20
+main,new_fields_known_districts,RF[all_sat],Nyagatare,rice,rice,24
+main,new_fields_known_districts,RF[all_sat],Ruhango,beans,beans,266
+main,new_fields_known_districts,RF[all_sat],Ruhango,irish_potato,beans,27
+main,new_fields_known_districts,RF[all_sat],Ruhango,maize,beans,107
+main,new_fields_known_districts,RF[all_sat],Ruhango,rice,beans,7
+main,new_fields_known_districts,RF[all_sat],Ruhango,beans,irish_potato,1
+main,new_fields_known_districts,RF[all_sat],Ruhango,maize,irish_potato,1
+main,new_fields_known_districts,RF[all_sat],Ruhango,beans,maize,18
+main,new_fields_known_districts,RF[all_sat],Ruhango,irish_potato,maize,5
+main,new_fields_known_districts,RF[all_sat],Ruhango,maize,maize,42
+main,new_fields_known_districts,RF[all_sat],Ruhango,rice,maize,2
+main,new_fields_known_districts,RF[all_sat],Ruhango,beans,rice,4
+main,new_fields_known_districts,RF[all_sat],Ruhango,maize,rice,7
+main,new_fields_known_districts,RF[all_sat],Ruhango,rice,rice,1
+main,new_fields_known_districts,RF[all_sat] tuned,Musanze,beans,beans,38
+main,new_fields_known_districts,RF[all_sat] tuned,Musanze,irish_potato,beans,10
+main,new_fields_known_districts,RF[all_sat] tuned,Musanze,maize,beans,6
+main,new_fields_known_districts,RF[all_sat] tuned,Musanze,rice,beans,1
+main,new_fields_known_districts,RF[all_sat] tuned,Musanze,beans,irish_potato,7
+main,new_fields_known_districts,RF[all_sat] tuned,Musanze,irish_potato,irish_potato,77
+main,new_fields_known_districts,RF[all_sat] tuned,Musanze,maize,irish_potato,10
+main,new_fields_known_districts,RF[all_sat] tuned,Musanze,beans,maize,2
+main,new_fields_known_districts,RF[all_sat] tuned,Musanze,irish_potato,maize,5
+main,new_fields_known_districts,RF[all_sat] tuned,Musanze,maize,maize,8
+main,new_fields_known_districts,RF[all_sat] tuned,Nyabihu,beans,beans,20
+main,new_fields_known_districts,RF[all_sat] tuned,Nyabihu,irish_potato,beans,1
+main,new_fields_known_districts,RF[all_sat] tuned,Nyabihu,maize,beans,11
+main,new_fields_known_districts,RF[all_sat] tuned,Nyabihu,beans,irish_potato,2
+main,new_fields_known_districts,RF[all_sat] tuned,Nyabihu,irish_potato,irish_potato,95
+main,new_fields_known_districts,RF[all_sat] tuned,Nyabihu,maize,irish_potato,16
+main,new_fields_known_districts,RF[all_sat] tuned,Nyabihu,beans,maize,6
+main,new_fields_known_districts,RF[all_sat] tuned,Nyabihu,irish_potato,maize,7
+main,new_fields_known_districts,RF[all_sat] tuned,Nyabihu,maize,maize,10
+main,new_fields_known_districts,RF[all_sat] tuned,Nyagatare,beans,beans,67
+main,new_fields_known_districts,RF[all_sat] tuned,Nyagatare,maize,beans,44
+main,new_fields_known_districts,RF[all_sat] tuned,Nyagatare,beans,maize,170
+main,new_fields_known_districts,RF[all_sat] tuned,Nyagatare,irish_potato,maize,16
+main,new_fields_known_districts,RF[all_sat] tuned,Nyagatare,maize,maize,741
+main,new_fields_known_districts,RF[all_sat] tuned,Nyagatare,rice,maize,21
+main,new_fields_known_districts,RF[all_sat] tuned,Nyagatare,irish_potato,rice,3
+main,new_fields_known_districts,RF[all_sat] tuned,Nyagatare,maize,rice,7
+main,new_fields_known_districts,RF[all_sat] tuned,Nyagatare,rice,rice,15
+main,new_fields_known_districts,RF[all_sat] tuned,Ruhango,beans,beans,252
+main,new_fields_known_districts,RF[all_sat] tuned,Ruhango,irish_potato,beans,24
+main,new_fields_known_districts,RF[all_sat] tuned,Ruhango,maize,beans,103
+main,new_fields_known_districts,RF[all_sat] tuned,Ruhango,rice,beans,5
+main,new_fields_known_districts,RF[all_sat] tuned,Ruhango,beans,maize,37
+main,new_fields_known_districts,RF[all_sat] tuned,Ruhango,irish_potato,maize,8
+main,new_fields_known_districts,RF[all_sat] tuned,Ruhango,maize,maize,54
+main,new_fields_known_districts,RF[all_sat] tuned,Ruhango,rice,maize,4
+main,new_fields_known_districts,RF[all_sat] tuned,Ruhango,rice,rice,1
+main,leave_one_district_out,XGB[all],Musanze,beans,beans,8
+main,leave_one_district_out,XGB[all],Musanze,irish_potato,beans,1
+main,leave_one_district_out,XGB[all],Musanze,maize,beans,1
+main,leave_one_district_out,XGB[all],Musanze,rice,beans,1
+main,leave_one_district_out,XGB[all],Musanze,beans,irish_potato,35
+main,leave_one_district_out,XGB[all],Musanze,irish_potato,irish_potato,90
+main,leave_one_district_out,XGB[all],Musanze,maize,irish_potato,23
+main,leave_one_district_out,XGB[all],Musanze,beans,maize,4
+main,leave_one_district_out,XGB[all],Musanze,irish_potato,maize,1
+main,leave_one_district_out,XGB[all] tuned,Musanze,beans,beans,4
+main,leave_one_district_out,XGB[all] tuned,Musanze,irish_potato,beans,2
+main,leave_one_district_out,XGB[all] tuned,Musanze,rice,beans,1
+main,leave_one_district_out,XGB[all] tuned,Musanze,beans,irish_potato,40
+main,leave_one_district_out,XGB[all] tuned,Musanze,irish_potato,irish_potato,90
+main,leave_one_district_out,XGB[all] tuned,Musanze,maize,irish_potato,24
+main,leave_one_district_out,XGB[all] tuned,Musanze,beans,maize,3
+main,leave_one_district_out,XGB[all],Nyabihu,beans,beans,6
+main,leave_one_district_out,XGB[all],Nyabihu,maize,beans,6
+main,leave_one_district_out,XGB[all],Nyabihu,beans,irish_potato,14
+main,leave_one_district_out,XGB[all],Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,XGB[all],Nyabihu,maize,irish_potato,29
+main,leave_one_district_out,XGB[all],Nyabihu,beans,rice,8
+main,leave_one_district_out,XGB[all],Nyabihu,maize,rice,2
+main,leave_one_district_out,XGB[all] tuned,Nyabihu,beans,beans,7
+main,leave_one_district_out,XGB[all] tuned,Nyabihu,irish_potato,beans,3
+main,leave_one_district_out,XGB[all] tuned,Nyabihu,maize,beans,14
+main,leave_one_district_out,XGB[all] tuned,Nyabihu,beans,irish_potato,6
+main,leave_one_district_out,XGB[all] tuned,Nyabihu,irish_potato,irish_potato,99
+main,leave_one_district_out,XGB[all] tuned,Nyabihu,maize,irish_potato,18
+main,leave_one_district_out,XGB[all] tuned,Nyabihu,irish_potato,maize,1
+main,leave_one_district_out,XGB[all] tuned,Nyabihu,maize,maize,1
+main,leave_one_district_out,XGB[all] tuned,Nyabihu,beans,rice,15
+main,leave_one_district_out,XGB[all] tuned,Nyabihu,maize,rice,4
+main,leave_one_district_out,XGB[all],Nyagatare,beans,beans,109
+main,leave_one_district_out,XGB[all],Nyagatare,irish_potato,beans,6
+main,leave_one_district_out,XGB[all],Nyagatare,maize,beans,314
+main,leave_one_district_out,XGB[all],Nyagatare,rice,beans,17
+main,leave_one_district_out,XGB[all],Nyagatare,beans,irish_potato,1
+main,leave_one_district_out,XGB[all],Nyagatare,maize,irish_potato,12
+main,leave_one_district_out,XGB[all],Nyagatare,beans,maize,120
+main,leave_one_district_out,XGB[all],Nyagatare,irish_potato,maize,13
+main,leave_one_district_out,XGB[all],Nyagatare,maize,maize,452
+main,leave_one_district_out,XGB[all],Nyagatare,rice,maize,19
+main,leave_one_district_out,XGB[all],Nyagatare,beans,rice,7
+main,leave_one_district_out,XGB[all],Nyagatare,maize,rice,14
+main,leave_one_district_out,XGB[all] tuned,Nyagatare,beans,beans,115
+main,leave_one_district_out,XGB[all] tuned,Nyagatare,irish_potato,beans,8
+main,leave_one_district_out,XGB[all] tuned,Nyagatare,maize,beans,294
+main,leave_one_district_out,XGB[all] tuned,Nyagatare,rice,beans,20
+main,leave_one_district_out,XGB[all] tuned,Nyagatare,maize,irish_potato,1
+main,leave_one_district_out,XGB[all] tuned,Nyagatare,beans,maize,122
+main,leave_one_district_out,XGB[all] tuned,Nyagatare,irish_potato,maize,11
+main,leave_one_district_out,XGB[all] tuned,Nyagatare,maize,maize,497
+main,leave_one_district_out,XGB[all] tuned,Nyagatare,rice,maize,16
+main,leave_one_district_out,XGB[all],Ruhango,beans,beans,174
+main,leave_one_district_out,XGB[all],Ruhango,irish_potato,beans,22
+main,leave_one_district_out,XGB[all],Ruhango,maize,beans,110
+main,leave_one_district_out,XGB[all],Ruhango,rice,beans,5
+main,leave_one_district_out,XGB[all],Ruhango,beans,maize,115
+main,leave_one_district_out,XGB[all],Ruhango,irish_potato,maize,10
+main,leave_one_district_out,XGB[all],Ruhango,maize,maize,47
+main,leave_one_district_out,XGB[all],Ruhango,rice,maize,5
+main,leave_one_district_out,XGB[all] tuned,Ruhango,beans,beans,2
+main,leave_one_district_out,XGB[all] tuned,Ruhango,maize,beans,1
+main,leave_one_district_out,XGB[all] tuned,Ruhango,beans,maize,287
+main,leave_one_district_out,XGB[all] tuned,Ruhango,irish_potato,maize,32
+main,leave_one_district_out,XGB[all] tuned,Ruhango,maize,maize,156
+main,leave_one_district_out,XGB[all] tuned,Ruhango,rice,maize,10
+main,new_fields_known_districts,XGB[all],Musanze,beans,beans,23
+main,new_fields_known_districts,XGB[all],Musanze,irish_potato,beans,10
+main,new_fields_known_districts,XGB[all],Musanze,maize,beans,7
+main,new_fields_known_districts,XGB[all],Musanze,rice,beans,1
+main,new_fields_known_districts,XGB[all],Musanze,beans,irish_potato,21
+main,new_fields_known_districts,XGB[all],Musanze,irish_potato,irish_potato,79
+main,new_fields_known_districts,XGB[all],Musanze,maize,irish_potato,12
+main,new_fields_known_districts,XGB[all],Musanze,beans,maize,3
+main,new_fields_known_districts,XGB[all],Musanze,irish_potato,maize,3
+main,new_fields_known_districts,XGB[all],Musanze,maize,maize,5
+main,new_fields_known_districts,XGB[all],Nyabihu,beans,beans,17
+main,new_fields_known_districts,XGB[all],Nyabihu,irish_potato,beans,1
+main,new_fields_known_districts,XGB[all],Nyabihu,maize,beans,13
+main,new_fields_known_districts,XGB[all],Nyabihu,beans,irish_potato,5
+main,new_fields_known_districts,XGB[all],Nyabihu,irish_potato,irish_potato,96
+main,new_fields_known_districts,XGB[all],Nyabihu,maize,irish_potato,16
+main,new_fields_known_districts,XGB[all],Nyabihu,beans,maize,6
+main,new_fields_known_districts,XGB[all],Nyabihu,irish_potato,maize,6
+main,new_fields_known_districts,XGB[all],Nyabihu,maize,maize,8
+main,new_fields_known_districts,XGB[all],Nyagatare,beans,beans,42
+main,new_fields_known_districts,XGB[all],Nyagatare,irish_potato,beans,1
+main,new_fields_known_districts,XGB[all],Nyagatare,maize,beans,83
+main,new_fields_known_districts,XGB[all],Nyagatare,rice,beans,1
+main,new_fields_known_districts,XGB[all],Nyagatare,beans,irish_potato,2
+main,new_fields_known_districts,XGB[all],Nyagatare,maize,irish_potato,6
+main,new_fields_known_districts,XGB[all],Nyagatare,rice,irish_potato,2
+main,new_fields_known_districts,XGB[all],Nyagatare,beans,maize,188
+main,new_fields_known_districts,XGB[all],Nyagatare,irish_potato,maize,14
+main,new_fields_known_districts,XGB[all],Nyagatare,maize,maize,673
+main,new_fields_known_districts,XGB[all],Nyagatare,rice,maize,11
+main,new_fields_known_districts,XGB[all],Nyagatare,beans,rice,5
+main,new_fields_known_districts,XGB[all],Nyagatare,irish_potato,rice,4
+main,new_fields_known_districts,XGB[all],Nyagatare,maize,rice,30
+main,new_fields_known_districts,XGB[all],Nyagatare,rice,rice,22
+main,new_fields_known_districts,XGB[all],Ruhango,beans,beans,251
+main,new_fields_known_districts,XGB[all],Ruhango,irish_potato,beans,29
+main,new_fields_known_districts,XGB[all],Ruhango,maize,beans,118
+main,new_fields_known_districts,XGB[all],Ruhango,rice,beans,4
+main,new_fields_known_districts,XGB[all],Ruhango,beans,irish_potato,8
+main,new_fields_known_districts,XGB[all],Ruhango,maize,irish_potato,7
+main,new_fields_known_districts,XGB[all],Ruhango,rice,irish_potato,1
+main,new_fields_known_districts,XGB[all],Ruhango,beans,maize,22
+main,new_fields_known_districts,XGB[all],Ruhango,irish_potato,maize,3
+main,new_fields_known_districts,XGB[all],Ruhango,maize,maize,29
+main,new_fields_known_districts,XGB[all],Ruhango,rice,maize,1
+main,new_fields_known_districts,XGB[all],Ruhango,beans,rice,8
+main,new_fields_known_districts,XGB[all],Ruhango,maize,rice,3
+main,new_fields_known_districts,XGB[all],Ruhango,rice,rice,4
+main,new_fields_known_districts,XGB[all] tuned,Musanze,beans,beans,27
+main,new_fields_known_districts,XGB[all] tuned,Musanze,irish_potato,beans,12
+main,new_fields_known_districts,XGB[all] tuned,Musanze,maize,beans,8
+main,new_fields_known_districts,XGB[all] tuned,Musanze,rice,beans,1
+main,new_fields_known_districts,XGB[all] tuned,Musanze,beans,irish_potato,15
+main,new_fields_known_districts,XGB[all] tuned,Musanze,irish_potato,irish_potato,76
+main,new_fields_known_districts,XGB[all] tuned,Musanze,maize,irish_potato,8
+main,new_fields_known_districts,XGB[all] tuned,Musanze,beans,maize,4
+main,new_fields_known_districts,XGB[all] tuned,Musanze,irish_potato,maize,4
+main,new_fields_known_districts,XGB[all] tuned,Musanze,maize,maize,8
+main,new_fields_known_districts,XGB[all] tuned,Musanze,beans,rice,1
+main,new_fields_known_districts,XGB[all] tuned,Nyabihu,beans,beans,14
+main,new_fields_known_districts,XGB[all] tuned,Nyabihu,irish_potato,beans,1
+main,new_fields_known_districts,XGB[all] tuned,Nyabihu,maize,beans,10
+main,new_fields_known_districts,XGB[all] tuned,Nyabihu,beans,irish_potato,4
+main,new_fields_known_districts,XGB[all] tuned,Nyabihu,irish_potato,irish_potato,92
+main,new_fields_known_districts,XGB[all] tuned,Nyabihu,maize,irish_potato,15
+main,new_fields_known_districts,XGB[all] tuned,Nyabihu,beans,maize,10
+main,new_fields_known_districts,XGB[all] tuned,Nyabihu,irish_potato,maize,10
+main,new_fields_known_districts,XGB[all] tuned,Nyabihu,maize,maize,12
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,beans,beans,44
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,irish_potato,beans,1
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,maize,beans,84
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,rice,beans,1
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,maize,irish_potato,2
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,rice,irish_potato,1
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,beans,maize,192
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,irish_potato,maize,15
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,maize,maize,691
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,rice,maize,16
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,beans,rice,1
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,irish_potato,rice,3
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,maize,rice,15
+main,new_fields_known_districts,XGB[all] tuned,Nyagatare,rice,rice,18
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,beans,beans,245
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,irish_potato,beans,22
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,maize,beans,105
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,rice,beans,3
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,beans,irish_potato,4
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,maize,irish_potato,7
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,beans,maize,36
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,irish_potato,maize,10
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,maize,maize,43
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,rice,maize,6
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,beans,rice,4
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,maize,rice,2
+main,new_fields_known_districts,XGB[all] tuned,Ruhango,rice,rice,1
+main,leave_one_district_out,XGB[field_sat],Musanze,beans,beans,18
+main,leave_one_district_out,XGB[field_sat],Musanze,irish_potato,beans,3
+main,leave_one_district_out,XGB[field_sat],Musanze,maize,beans,1
+main,leave_one_district_out,XGB[field_sat],Musanze,rice,beans,1
+main,leave_one_district_out,XGB[field_sat],Musanze,beans,irish_potato,25
+main,leave_one_district_out,XGB[field_sat],Musanze,irish_potato,irish_potato,89
+main,leave_one_district_out,XGB[field_sat],Musanze,maize,irish_potato,23
+main,leave_one_district_out,XGB[field_sat],Musanze,beans,maize,4
+main,leave_one_district_out,XGB[field_sat] tuned,Musanze,beans,beans,8
+main,leave_one_district_out,XGB[field_sat] tuned,Musanze,irish_potato,beans,2
+main,leave_one_district_out,XGB[field_sat] tuned,Musanze,rice,beans,1
+main,leave_one_district_out,XGB[field_sat] tuned,Musanze,beans,irish_potato,39
+main,leave_one_district_out,XGB[field_sat] tuned,Musanze,irish_potato,irish_potato,90
+main,leave_one_district_out,XGB[field_sat] tuned,Musanze,maize,irish_potato,24
+main,leave_one_district_out,XGB[field_sat],Nyabihu,beans,beans,16
+main,leave_one_district_out,XGB[field_sat],Nyabihu,irish_potato,beans,3
+main,leave_one_district_out,XGB[field_sat],Nyabihu,maize,beans,8
+main,leave_one_district_out,XGB[field_sat],Nyabihu,beans,irish_potato,9
+main,leave_one_district_out,XGB[field_sat],Nyabihu,irish_potato,irish_potato,100
+main,leave_one_district_out,XGB[field_sat],Nyabihu,maize,irish_potato,29
+main,leave_one_district_out,XGB[field_sat],Nyabihu,beans,rice,3
+main,leave_one_district_out,XGB[field_sat] tuned,Nyabihu,beans,beans,17
+main,leave_one_district_out,XGB[field_sat] tuned,Nyabihu,maize,beans,9
+main,leave_one_district_out,XGB[field_sat] tuned,Nyabihu,beans,irish_potato,8
+main,leave_one_district_out,XGB[field_sat] tuned,Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,XGB[field_sat] tuned,Nyabihu,maize,irish_potato,28
+main,leave_one_district_out,XGB[field_sat] tuned,Nyabihu,beans,rice,3
+main,leave_one_district_out,XGB[field_sat],Nyagatare,beans,beans,214
+main,leave_one_district_out,XGB[field_sat],Nyagatare,irish_potato,beans,17
+main,leave_one_district_out,XGB[field_sat],Nyagatare,maize,beans,682
+main,leave_one_district_out,XGB[field_sat],Nyagatare,rice,beans,36
+main,leave_one_district_out,XGB[field_sat],Nyagatare,beans,maize,22
+main,leave_one_district_out,XGB[field_sat],Nyagatare,irish_potato,maize,2
+main,leave_one_district_out,XGB[field_sat],Nyagatare,maize,maize,109
+main,leave_one_district_out,XGB[field_sat],Nyagatare,beans,rice,1
+main,leave_one_district_out,XGB[field_sat],Nyagatare,maize,rice,1
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,beans,beans,131
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,irish_potato,beans,11
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,maize,beans,419
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,rice,beans,18
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,beans,maize,103
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,irish_potato,maize,5
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,maize,maize,348
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,rice,maize,10
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,beans,rice,3
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,irish_potato,rice,3
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,maize,rice,25
+main,leave_one_district_out,XGB[field_sat] tuned,Nyagatare,rice,rice,8
+main,leave_one_district_out,XGB[field_sat],Ruhango,beans,beans,42
+main,leave_one_district_out,XGB[field_sat],Ruhango,irish_potato,beans,1
+main,leave_one_district_out,XGB[field_sat],Ruhango,maize,beans,13
+main,leave_one_district_out,XGB[field_sat],Ruhango,rice,beans,1
+main,leave_one_district_out,XGB[field_sat],Ruhango,beans,maize,247
+main,leave_one_district_out,XGB[field_sat],Ruhango,irish_potato,maize,31
+main,leave_one_district_out,XGB[field_sat],Ruhango,maize,maize,144
+main,leave_one_district_out,XGB[field_sat],Ruhango,rice,maize,9
+main,leave_one_district_out,XGB[field_sat] tuned,Ruhango,beans,beans,61
+main,leave_one_district_out,XGB[field_sat] tuned,Ruhango,irish_potato,beans,1
+main,leave_one_district_out,XGB[field_sat] tuned,Ruhango,maize,beans,21
+main,leave_one_district_out,XGB[field_sat] tuned,Ruhango,rice,beans,2
+main,leave_one_district_out,XGB[field_sat] tuned,Ruhango,beans,maize,228
+main,leave_one_district_out,XGB[field_sat] tuned,Ruhango,irish_potato,maize,31
+main,leave_one_district_out,XGB[field_sat] tuned,Ruhango,maize,maize,136
+main,leave_one_district_out,XGB[field_sat] tuned,Ruhango,rice,maize,8
+main,new_fields_known_districts,XGB[field_sat],Musanze,beans,beans,22
+main,new_fields_known_districts,XGB[field_sat],Musanze,irish_potato,beans,11
+main,new_fields_known_districts,XGB[field_sat],Musanze,maize,beans,4
+main,new_fields_known_districts,XGB[field_sat],Musanze,rice,beans,1
+main,new_fields_known_districts,XGB[field_sat],Musanze,beans,irish_potato,21
+main,new_fields_known_districts,XGB[field_sat],Musanze,irish_potato,irish_potato,77
+main,new_fields_known_districts,XGB[field_sat],Musanze,maize,irish_potato,17
+main,new_fields_known_districts,XGB[field_sat],Musanze,beans,maize,4
+main,new_fields_known_districts,XGB[field_sat],Musanze,irish_potato,maize,4
+main,new_fields_known_districts,XGB[field_sat],Musanze,maize,maize,3
+main,new_fields_known_districts,XGB[field_sat],Nyabihu,beans,beans,17
+main,new_fields_known_districts,XGB[field_sat],Nyabihu,maize,beans,13
+main,new_fields_known_districts,XGB[field_sat],Nyabihu,beans,irish_potato,6
+main,new_fields_known_districts,XGB[field_sat],Nyabihu,irish_potato,irish_potato,99
+main,new_fields_known_districts,XGB[field_sat],Nyabihu,maize,irish_potato,18
+main,new_fields_known_districts,XGB[field_sat],Nyabihu,beans,maize,5
+main,new_fields_known_districts,XGB[field_sat],Nyabihu,irish_potato,maize,4
+main,new_fields_known_districts,XGB[field_sat],Nyabihu,maize,maize,6
+main,new_fields_known_districts,XGB[field_sat],Nyagatare,beans,beans,83
+main,new_fields_known_districts,XGB[field_sat],Nyagatare,maize,beans,77
+main,new_fields_known_districts,XGB[field_sat],Nyagatare,maize,irish_potato,2
+main,new_fields_known_districts,XGB[field_sat],Nyagatare,beans,maize,153
+main,new_fields_known_districts,XGB[field_sat],Nyagatare,irish_potato,maize,16
+main,new_fields_known_districts,XGB[field_sat],Nyagatare,maize,maize,696
+main,new_fields_known_districts,XGB[field_sat],Nyagatare,rice,maize,15
+main,new_fields_known_districts,XGB[field_sat],Nyagatare,beans,rice,1
+main,new_fields_known_districts,XGB[field_sat],Nyagatare,irish_potato,rice,3
+main,new_fields_known_districts,XGB[field_sat],Nyagatare,maize,rice,17
+main,new_fields_known_districts,XGB[field_sat],Nyagatare,rice,rice,21
+main,new_fields_known_districts,XGB[field_sat],Ruhango,beans,beans,248
+main,new_fields_known_districts,XGB[field_sat],Ruhango,irish_potato,beans,28
+main,new_fields_known_districts,XGB[field_sat],Ruhango,maize,beans,115
+main,new_fields_known_districts,XGB[field_sat],Ruhango,rice,beans,4
+main,new_fields_known_districts,XGB[field_sat],Ruhango,beans,irish_potato,12
+main,new_fields_known_districts,XGB[field_sat],Ruhango,maize,irish_potato,3
+main,new_fields_known_districts,XGB[field_sat],Ruhango,beans,maize,26
+main,new_fields_known_districts,XGB[field_sat],Ruhango,irish_potato,maize,4
+main,new_fields_known_districts,XGB[field_sat],Ruhango,maize,maize,37
+main,new_fields_known_districts,XGB[field_sat],Ruhango,rice,maize,4
+main,new_fields_known_districts,XGB[field_sat],Ruhango,beans,rice,3
+main,new_fields_known_districts,XGB[field_sat],Ruhango,maize,rice,2
+main,new_fields_known_districts,XGB[field_sat],Ruhango,rice,rice,2
+main,new_fields_known_districts,XGB[field_sat] tuned,Musanze,beans,beans,35
+main,new_fields_known_districts,XGB[field_sat] tuned,Musanze,irish_potato,beans,11
+main,new_fields_known_districts,XGB[field_sat] tuned,Musanze,maize,beans,6
+main,new_fields_known_districts,XGB[field_sat] tuned,Musanze,rice,beans,1
+main,new_fields_known_districts,XGB[field_sat] tuned,Musanze,beans,irish_potato,8
+main,new_fields_known_districts,XGB[field_sat] tuned,Musanze,irish_potato,irish_potato,77
+main,new_fields_known_districts,XGB[field_sat] tuned,Musanze,maize,irish_potato,10
+main,new_fields_known_districts,XGB[field_sat] tuned,Musanze,beans,maize,4
+main,new_fields_known_districts,XGB[field_sat] tuned,Musanze,irish_potato,maize,4
+main,new_fields_known_districts,XGB[field_sat] tuned,Musanze,maize,maize,8
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyabihu,beans,beans,13
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyabihu,irish_potato,beans,1
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyabihu,maize,beans,5
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyabihu,beans,irish_potato,4
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyabihu,irish_potato,irish_potato,95
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyabihu,maize,irish_potato,19
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyabihu,beans,maize,11
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyabihu,irish_potato,maize,7
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyabihu,maize,maize,13
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyagatare,beans,beans,78
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyagatare,maize,beans,75
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyagatare,maize,irish_potato,2
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyagatare,beans,maize,159
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyagatare,irish_potato,maize,15
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyagatare,maize,maize,708
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyagatare,rice,maize,17
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyagatare,irish_potato,rice,4
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyagatare,maize,rice,7
+main,new_fields_known_districts,XGB[field_sat] tuned,Nyagatare,rice,rice,19
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,beans,beans,225
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,irish_potato,beans,20
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,maize,beans,90
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,rice,beans,2
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,beans,irish_potato,1
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,irish_potato,irish_potato,1
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,maize,irish_potato,1
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,beans,maize,63
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,irish_potato,maize,11
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,maize,maize,65
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,rice,maize,7
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,maize,rice,1
+main,new_fields_known_districts,XGB[field_sat] tuned,Ruhango,rice,rice,1
+main,leave_one_district_out,XGB[all_sat],Musanze,beans,beans,16
+main,leave_one_district_out,XGB[all_sat],Musanze,irish_potato,beans,3
+main,leave_one_district_out,XGB[all_sat],Musanze,rice,beans,1
+main,leave_one_district_out,XGB[all_sat],Musanze,beans,irish_potato,25
+main,leave_one_district_out,XGB[all_sat],Musanze,irish_potato,irish_potato,88
+main,leave_one_district_out,XGB[all_sat],Musanze,maize,irish_potato,23
+main,leave_one_district_out,XGB[all_sat],Musanze,beans,maize,6
+main,leave_one_district_out,XGB[all_sat],Musanze,irish_potato,maize,1
+main,leave_one_district_out,XGB[all_sat],Musanze,maize,maize,1
+main,leave_one_district_out,XGB[all_sat] tuned,Musanze,beans,beans,5
+main,leave_one_district_out,XGB[all_sat] tuned,Musanze,irish_potato,beans,1
+main,leave_one_district_out,XGB[all_sat] tuned,Musanze,rice,beans,1
+main,leave_one_district_out,XGB[all_sat] tuned,Musanze,beans,irish_potato,42
+main,leave_one_district_out,XGB[all_sat] tuned,Musanze,irish_potato,irish_potato,90
+main,leave_one_district_out,XGB[all_sat] tuned,Musanze,maize,irish_potato,24
+main,leave_one_district_out,XGB[all_sat] tuned,Musanze,irish_potato,maize,1
+main,leave_one_district_out,XGB[all_sat],Nyabihu,beans,beans,7
+main,leave_one_district_out,XGB[all_sat],Nyabihu,irish_potato,beans,3
+main,leave_one_district_out,XGB[all_sat],Nyabihu,maize,beans,8
+main,leave_one_district_out,XGB[all_sat],Nyabihu,beans,irish_potato,7
+main,leave_one_district_out,XGB[all_sat],Nyabihu,irish_potato,irish_potato,100
+main,leave_one_district_out,XGB[all_sat],Nyabihu,maize,irish_potato,27
+main,leave_one_district_out,XGB[all_sat],Nyabihu,beans,rice,14
+main,leave_one_district_out,XGB[all_sat],Nyabihu,maize,rice,2
+main,leave_one_district_out,XGB[all_sat] tuned,Nyabihu,beans,beans,9
+main,leave_one_district_out,XGB[all_sat] tuned,Nyabihu,irish_potato,beans,8
+main,leave_one_district_out,XGB[all_sat] tuned,Nyabihu,maize,beans,17
+main,leave_one_district_out,XGB[all_sat] tuned,Nyabihu,beans,irish_potato,7
+main,leave_one_district_out,XGB[all_sat] tuned,Nyabihu,irish_potato,irish_potato,94
+main,leave_one_district_out,XGB[all_sat] tuned,Nyabihu,maize,irish_potato,17
+main,leave_one_district_out,XGB[all_sat] tuned,Nyabihu,irish_potato,maize,1
+main,leave_one_district_out,XGB[all_sat] tuned,Nyabihu,maize,maize,1
+main,leave_one_district_out,XGB[all_sat] tuned,Nyabihu,beans,rice,12
+main,leave_one_district_out,XGB[all_sat] tuned,Nyabihu,maize,rice,2
+main,leave_one_district_out,XGB[all_sat],Nyagatare,beans,beans,181
+main,leave_one_district_out,XGB[all_sat],Nyagatare,irish_potato,beans,14
+main,leave_one_district_out,XGB[all_sat],Nyagatare,maize,beans,542
+main,leave_one_district_out,XGB[all_sat],Nyagatare,rice,beans,30
+main,leave_one_district_out,XGB[all_sat],Nyagatare,beans,maize,56
+main,leave_one_district_out,XGB[all_sat],Nyagatare,irish_potato,maize,5
+main,leave_one_district_out,XGB[all_sat],Nyagatare,maize,maize,248
+main,leave_one_district_out,XGB[all_sat],Nyagatare,rice,maize,6
+main,leave_one_district_out,XGB[all_sat],Nyagatare,maize,rice,2
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,beans,beans,176
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,irish_potato,beans,13
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,maize,beans,547
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,rice,beans,29
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,beans,irish_potato,1
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,maize,irish_potato,3
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,beans,maize,60
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,irish_potato,maize,6
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,maize,maize,230
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,rice,maize,6
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,maize,rice,12
+main,leave_one_district_out,XGB[all_sat] tuned,Nyagatare,rice,rice,1
+main,leave_one_district_out,XGB[all_sat],Ruhango,beans,beans,28
+main,leave_one_district_out,XGB[all_sat],Ruhango,irish_potato,beans,2
+main,leave_one_district_out,XGB[all_sat],Ruhango,maize,beans,14
+main,leave_one_district_out,XGB[all_sat],Ruhango,rice,beans,2
+main,leave_one_district_out,XGB[all_sat],Ruhango,beans,maize,261
+main,leave_one_district_out,XGB[all_sat],Ruhango,irish_potato,maize,30
+main,leave_one_district_out,XGB[all_sat],Ruhango,maize,maize,143
+main,leave_one_district_out,XGB[all_sat],Ruhango,rice,maize,8
+main,leave_one_district_out,XGB[all_sat] tuned,Ruhango,beans,beans,24
+main,leave_one_district_out,XGB[all_sat] tuned,Ruhango,maize,beans,9
+main,leave_one_district_out,XGB[all_sat] tuned,Ruhango,beans,maize,265
+main,leave_one_district_out,XGB[all_sat] tuned,Ruhango,irish_potato,maize,32
+main,leave_one_district_out,XGB[all_sat] tuned,Ruhango,maize,maize,148
+main,leave_one_district_out,XGB[all_sat] tuned,Ruhango,rice,maize,10
+main,new_fields_known_districts,XGB[all_sat],Musanze,beans,beans,22
+main,new_fields_known_districts,XGB[all_sat],Musanze,irish_potato,beans,11
+main,new_fields_known_districts,XGB[all_sat],Musanze,maize,beans,9
+main,new_fields_known_districts,XGB[all_sat],Musanze,rice,beans,1
+main,new_fields_known_districts,XGB[all_sat],Musanze,beans,irish_potato,21
+main,new_fields_known_districts,XGB[all_sat],Musanze,irish_potato,irish_potato,78
+main,new_fields_known_districts,XGB[all_sat],Musanze,maize,irish_potato,12
+main,new_fields_known_districts,XGB[all_sat],Musanze,beans,maize,4
+main,new_fields_known_districts,XGB[all_sat],Musanze,irish_potato,maize,3
+main,new_fields_known_districts,XGB[all_sat],Musanze,maize,maize,3
+main,new_fields_known_districts,XGB[all_sat],Nyabihu,beans,beans,17
+main,new_fields_known_districts,XGB[all_sat],Nyabihu,maize,beans,15
+main,new_fields_known_districts,XGB[all_sat],Nyabihu,beans,irish_potato,3
+main,new_fields_known_districts,XGB[all_sat],Nyabihu,irish_potato,irish_potato,98
+main,new_fields_known_districts,XGB[all_sat],Nyabihu,maize,irish_potato,15
+main,new_fields_known_districts,XGB[all_sat],Nyabihu,beans,maize,8
+main,new_fields_known_districts,XGB[all_sat],Nyabihu,irish_potato,maize,5
+main,new_fields_known_districts,XGB[all_sat],Nyabihu,maize,maize,7
+main,new_fields_known_districts,XGB[all_sat],Nyagatare,beans,beans,84
+main,new_fields_known_districts,XGB[all_sat],Nyagatare,maize,beans,77
+main,new_fields_known_districts,XGB[all_sat],Nyagatare,maize,irish_potato,4
+main,new_fields_known_districts,XGB[all_sat],Nyagatare,beans,maize,152
+main,new_fields_known_districts,XGB[all_sat],Nyagatare,irish_potato,maize,16
+main,new_fields_known_districts,XGB[all_sat],Nyagatare,maize,maize,699
+main,new_fields_known_districts,XGB[all_sat],Nyagatare,rice,maize,15
+main,new_fields_known_districts,XGB[all_sat],Nyagatare,beans,rice,1
+main,new_fields_known_districts,XGB[all_sat],Nyagatare,irish_potato,rice,3
+main,new_fields_known_districts,XGB[all_sat],Nyagatare,maize,rice,12
+main,new_fields_known_districts,XGB[all_sat],Nyagatare,rice,rice,21
+main,new_fields_known_districts,XGB[all_sat],Ruhango,beans,beans,242
+main,new_fields_known_districts,XGB[all_sat],Ruhango,irish_potato,beans,26
+main,new_fields_known_districts,XGB[all_sat],Ruhango,maize,beans,111
+main,new_fields_known_districts,XGB[all_sat],Ruhango,rice,beans,5
+main,new_fields_known_districts,XGB[all_sat],Ruhango,beans,irish_potato,13
+main,new_fields_known_districts,XGB[all_sat],Ruhango,irish_potato,irish_potato,1
+main,new_fields_known_districts,XGB[all_sat],Ruhango,maize,irish_potato,7
+main,new_fields_known_districts,XGB[all_sat],Ruhango,beans,maize,31
+main,new_fields_known_districts,XGB[all_sat],Ruhango,irish_potato,maize,5
+main,new_fields_known_districts,XGB[all_sat],Ruhango,maize,maize,35
+main,new_fields_known_districts,XGB[all_sat],Ruhango,rice,maize,3
+main,new_fields_known_districts,XGB[all_sat],Ruhango,beans,rice,3
+main,new_fields_known_districts,XGB[all_sat],Ruhango,maize,rice,4
+main,new_fields_known_districts,XGB[all_sat],Ruhango,rice,rice,2
+main,new_fields_known_districts,XGB[all_sat] tuned,Musanze,beans,beans,27
+main,new_fields_known_districts,XGB[all_sat] tuned,Musanze,irish_potato,beans,9
+main,new_fields_known_districts,XGB[all_sat] tuned,Musanze,maize,beans,8
+main,new_fields_known_districts,XGB[all_sat] tuned,Musanze,rice,beans,1
+main,new_fields_known_districts,XGB[all_sat] tuned,Musanze,beans,irish_potato,14
+main,new_fields_known_districts,XGB[all_sat] tuned,Musanze,irish_potato,irish_potato,79
+main,new_fields_known_districts,XGB[all_sat] tuned,Musanze,maize,irish_potato,12
+main,new_fields_known_districts,XGB[all_sat] tuned,Musanze,beans,maize,6
+main,new_fields_known_districts,XGB[all_sat] tuned,Musanze,irish_potato,maize,4
+main,new_fields_known_districts,XGB[all_sat] tuned,Musanze,maize,maize,4
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyabihu,beans,beans,13
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyabihu,maize,beans,9
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyabihu,beans,irish_potato,4
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyabihu,irish_potato,irish_potato,95
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyabihu,maize,irish_potato,15
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyabihu,beans,maize,11
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyabihu,irish_potato,maize,8
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyabihu,maize,maize,13
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyagatare,beans,beans,83
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyagatare,maize,beans,73
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyagatare,maize,irish_potato,6
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyagatare,beans,maize,154
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyagatare,irish_potato,maize,15
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyagatare,maize,maize,703
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyagatare,rice,maize,15
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyagatare,irish_potato,rice,4
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyagatare,maize,rice,10
+main,new_fields_known_districts,XGB[all_sat] tuned,Nyagatare,rice,rice,21
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,beans,beans,234
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,irish_potato,beans,21
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,maize,beans,94
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,rice,beans,3
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,beans,irish_potato,8
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,irish_potato,irish_potato,1
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,maize,irish_potato,3
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,beans,maize,45
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,irish_potato,maize,10
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,maize,maize,56
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,rice,maize,5
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,beans,rice,2
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,maize,rice,4
+main,new_fields_known_districts,XGB[all_sat] tuned,Ruhango,rice,rice,2
+main,leave_one_district_out,LR[all],Musanze,beans,beans,2
+main,leave_one_district_out,LR[all],Musanze,irish_potato,beans,1
+main,leave_one_district_out,LR[all],Musanze,rice,beans,1
+main,leave_one_district_out,LR[all],Musanze,beans,irish_potato,44
+main,leave_one_district_out,LR[all],Musanze,irish_potato,irish_potato,91
+main,leave_one_district_out,LR[all],Musanze,maize,irish_potato,24
+main,leave_one_district_out,LR[all],Musanze,beans,maize,1
+main,leave_one_district_out,LR[all] tuned,Musanze,beans,beans,13
+main,leave_one_district_out,LR[all] tuned,Musanze,irish_potato,beans,7
+main,leave_one_district_out,LR[all] tuned,Musanze,maize,beans,4
+main,leave_one_district_out,LR[all] tuned,Musanze,beans,irish_potato,29
+main,leave_one_district_out,LR[all] tuned,Musanze,irish_potato,irish_potato,85
+main,leave_one_district_out,LR[all] tuned,Musanze,maize,irish_potato,20
+main,leave_one_district_out,LR[all] tuned,Musanze,beans,maize,5
+main,leave_one_district_out,LR[all] tuned,Musanze,rice,maize,1
+main,leave_one_district_out,LR[all],Nyabihu,beans,beans,13
+main,leave_one_district_out,LR[all],Nyabihu,maize,beans,3
+main,leave_one_district_out,LR[all],Nyabihu,beans,irish_potato,9
+main,leave_one_district_out,LR[all],Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,LR[all],Nyabihu,maize,irish_potato,33
+main,leave_one_district_out,LR[all],Nyabihu,beans,rice,6
+main,leave_one_district_out,LR[all],Nyabihu,maize,rice,1
+main,leave_one_district_out,LR[all] tuned,Nyabihu,beans,beans,19
+main,leave_one_district_out,LR[all] tuned,Nyabihu,maize,beans,8
+main,leave_one_district_out,LR[all] tuned,Nyabihu,beans,irish_potato,9
+main,leave_one_district_out,LR[all] tuned,Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,LR[all] tuned,Nyabihu,maize,irish_potato,29
+main,leave_one_district_out,LR[all],Nyagatare,beans,beans,5
+main,leave_one_district_out,LR[all],Nyagatare,maize,beans,3
+main,leave_one_district_out,LR[all],Nyagatare,rice,beans,1
+main,leave_one_district_out,LR[all],Nyagatare,maize,irish_potato,5
+main,leave_one_district_out,LR[all],Nyagatare,beans,maize,232
+main,leave_one_district_out,LR[all],Nyagatare,irish_potato,maize,19
+main,leave_one_district_out,LR[all],Nyagatare,maize,maize,784
+main,leave_one_district_out,LR[all],Nyagatare,rice,maize,35
+main,leave_one_district_out,LR[all] tuned,Nyagatare,beans,beans,190
+main,leave_one_district_out,LR[all] tuned,Nyagatare,irish_potato,beans,11
+main,leave_one_district_out,LR[all] tuned,Nyagatare,maize,beans,516
+main,leave_one_district_out,LR[all] tuned,Nyagatare,rice,beans,23
+main,leave_one_district_out,LR[all] tuned,Nyagatare,beans,irish_potato,37
+main,leave_one_district_out,LR[all] tuned,Nyagatare,irish_potato,irish_potato,7
+main,leave_one_district_out,LR[all] tuned,Nyagatare,maize,irish_potato,251
+main,leave_one_district_out,LR[all] tuned,Nyagatare,rice,irish_potato,10
+main,leave_one_district_out,LR[all] tuned,Nyagatare,beans,maize,4
+main,leave_one_district_out,LR[all] tuned,Nyagatare,irish_potato,maize,1
+main,leave_one_district_out,LR[all] tuned,Nyagatare,maize,maize,8
+main,leave_one_district_out,LR[all] tuned,Nyagatare,rice,maize,3
+main,leave_one_district_out,LR[all] tuned,Nyagatare,beans,rice,6
+main,leave_one_district_out,LR[all] tuned,Nyagatare,maize,rice,17
+main,leave_one_district_out,LR[all],Ruhango,beans,beans,13
+main,leave_one_district_out,LR[all],Ruhango,irish_potato,beans,2
+main,leave_one_district_out,LR[all],Ruhango,maize,beans,2
+main,leave_one_district_out,LR[all],Ruhango,beans,irish_potato,6
+main,leave_one_district_out,LR[all],Ruhango,irish_potato,irish_potato,2
+main,leave_one_district_out,LR[all],Ruhango,maize,irish_potato,4
+main,leave_one_district_out,LR[all],Ruhango,beans,maize,4
+main,leave_one_district_out,LR[all],Ruhango,beans,rice,266
+main,leave_one_district_out,LR[all],Ruhango,irish_potato,rice,28
+main,leave_one_district_out,LR[all],Ruhango,maize,rice,151
+main,leave_one_district_out,LR[all],Ruhango,rice,rice,10
+main,leave_one_district_out,LR[all] tuned,Ruhango,beans,beans,20
+main,leave_one_district_out,LR[all] tuned,Ruhango,irish_potato,beans,3
+main,leave_one_district_out,LR[all] tuned,Ruhango,maize,beans,15
+main,leave_one_district_out,LR[all] tuned,Ruhango,beans,irish_potato,177
+main,leave_one_district_out,LR[all] tuned,Ruhango,irish_potato,irish_potato,23
+main,leave_one_district_out,LR[all] tuned,Ruhango,maize,irish_potato,100
+main,leave_one_district_out,LR[all] tuned,Ruhango,rice,irish_potato,7
+main,leave_one_district_out,LR[all] tuned,Ruhango,beans,maize,88
+main,leave_one_district_out,LR[all] tuned,Ruhango,irish_potato,maize,6
+main,leave_one_district_out,LR[all] tuned,Ruhango,maize,maize,37
+main,leave_one_district_out,LR[all] tuned,Ruhango,rice,maize,2
+main,leave_one_district_out,LR[all] tuned,Ruhango,beans,rice,4
+main,leave_one_district_out,LR[all] tuned,Ruhango,maize,rice,5
+main,leave_one_district_out,LR[all] tuned,Ruhango,rice,rice,1
+main,new_fields_known_districts,LR[all],Musanze,beans,beans,14
+main,new_fields_known_districts,LR[all],Musanze,irish_potato,beans,4
+main,new_fields_known_districts,LR[all],Musanze,maize,beans,2
+main,new_fields_known_districts,LR[all],Musanze,rice,beans,1
+main,new_fields_known_districts,LR[all],Musanze,beans,irish_potato,27
+main,new_fields_known_districts,LR[all],Musanze,irish_potato,irish_potato,86
+main,new_fields_known_districts,LR[all],Musanze,maize,irish_potato,19
+main,new_fields_known_districts,LR[all],Musanze,beans,rice,6
+main,new_fields_known_districts,LR[all],Musanze,irish_potato,rice,2
+main,new_fields_known_districts,LR[all],Musanze,maize,rice,3
+main,new_fields_known_districts,LR[all],Nyabihu,beans,beans,17
+main,new_fields_known_districts,LR[all],Nyabihu,irish_potato,beans,1
+main,new_fields_known_districts,LR[all],Nyabihu,maize,beans,10
+main,new_fields_known_districts,LR[all],Nyabihu,beans,irish_potato,9
+main,new_fields_known_districts,LR[all],Nyabihu,irish_potato,irish_potato,102
+main,new_fields_known_districts,LR[all],Nyabihu,maize,irish_potato,27
+main,new_fields_known_districts,LR[all],Nyabihu,beans,maize,1
+main,new_fields_known_districts,LR[all],Nyabihu,beans,rice,1
+main,new_fields_known_districts,LR[all],Nyagatare,beans,beans,20
+main,new_fields_known_districts,LR[all],Nyagatare,maize,beans,29
+main,new_fields_known_districts,LR[all],Nyagatare,maize,irish_potato,1
+main,new_fields_known_districts,LR[all],Nyagatare,beans,maize,203
+main,new_fields_known_districts,LR[all],Nyagatare,irish_potato,maize,13
+main,new_fields_known_districts,LR[all],Nyagatare,maize,maize,668
+main,new_fields_known_districts,LR[all],Nyagatare,rice,maize,5
+main,new_fields_known_districts,LR[all],Nyagatare,beans,rice,14
+main,new_fields_known_districts,LR[all],Nyagatare,irish_potato,rice,6
+main,new_fields_known_districts,LR[all],Nyagatare,maize,rice,94
+main,new_fields_known_districts,LR[all],Nyagatare,rice,rice,31
+main,new_fields_known_districts,LR[all],Ruhango,beans,beans,247
+main,new_fields_known_districts,LR[all],Ruhango,irish_potato,beans,29
+main,new_fields_known_districts,LR[all],Ruhango,maize,beans,128
+main,new_fields_known_districts,LR[all],Ruhango,rice,beans,2
+main,new_fields_known_districts,LR[all],Ruhango,beans,irish_potato,15
+main,new_fields_known_districts,LR[all],Ruhango,irish_potato,irish_potato,3
+main,new_fields_known_districts,LR[all],Ruhango,maize,irish_potato,5
+main,new_fields_known_districts,LR[all],Ruhango,beans,maize,2
+main,new_fields_known_districts,LR[all],Ruhango,beans,rice,25
+main,new_fields_known_districts,LR[all],Ruhango,maize,rice,24
+main,new_fields_known_districts,LR[all],Ruhango,rice,rice,8
+main,new_fields_known_districts,LR[all] tuned,Musanze,beans,beans,21
+main,new_fields_known_districts,LR[all] tuned,Musanze,irish_potato,beans,11
+main,new_fields_known_districts,LR[all] tuned,Musanze,maize,beans,5
+main,new_fields_known_districts,LR[all] tuned,Musanze,rice,beans,1
+main,new_fields_known_districts,LR[all] tuned,Musanze,beans,irish_potato,18
+main,new_fields_known_districts,LR[all] tuned,Musanze,irish_potato,irish_potato,78
+main,new_fields_known_districts,LR[all] tuned,Musanze,maize,irish_potato,16
+main,new_fields_known_districts,LR[all] tuned,Musanze,beans,maize,8
+main,new_fields_known_districts,LR[all] tuned,Musanze,irish_potato,maize,3
+main,new_fields_known_districts,LR[all] tuned,Musanze,maize,maize,3
+main,new_fields_known_districts,LR[all] tuned,Nyabihu,beans,beans,21
+main,new_fields_known_districts,LR[all] tuned,Nyabihu,irish_potato,beans,2
+main,new_fields_known_districts,LR[all] tuned,Nyabihu,maize,beans,12
+main,new_fields_known_districts,LR[all] tuned,Nyabihu,beans,irish_potato,3
+main,new_fields_known_districts,LR[all] tuned,Nyabihu,irish_potato,irish_potato,95
+main,new_fields_known_districts,LR[all] tuned,Nyabihu,maize,irish_potato,14
+main,new_fields_known_districts,LR[all] tuned,Nyabihu,beans,maize,4
+main,new_fields_known_districts,LR[all] tuned,Nyabihu,irish_potato,maize,6
+main,new_fields_known_districts,LR[all] tuned,Nyabihu,maize,maize,11
+main,new_fields_known_districts,LR[all] tuned,Nyagatare,beans,beans,12
+main,new_fields_known_districts,LR[all] tuned,Nyagatare,maize,beans,30
+main,new_fields_known_districts,LR[all] tuned,Nyagatare,rice,beans,1
+main,new_fields_known_districts,LR[all] tuned,Nyagatare,beans,maize,224
+main,new_fields_known_districts,LR[all] tuned,Nyagatare,irish_potato,maize,15
+main,new_fields_known_districts,LR[all] tuned,Nyagatare,maize,maize,743
+main,new_fields_known_districts,LR[all] tuned,Nyagatare,rice,maize,22
+main,new_fields_known_districts,LR[all] tuned,Nyagatare,beans,rice,1
+main,new_fields_known_districts,LR[all] tuned,Nyagatare,irish_potato,rice,4
+main,new_fields_known_districts,LR[all] tuned,Nyagatare,maize,rice,19
+main,new_fields_known_districts,LR[all] tuned,Nyagatare,rice,rice,13
+main,new_fields_known_districts,LR[all] tuned,Ruhango,beans,beans,237
+main,new_fields_known_districts,LR[all] tuned,Ruhango,irish_potato,beans,28
+main,new_fields_known_districts,LR[all] tuned,Ruhango,maize,beans,111
+main,new_fields_known_districts,LR[all] tuned,Ruhango,rice,beans,5
+main,new_fields_known_districts,LR[all] tuned,Ruhango,beans,irish_potato,6
+main,new_fields_known_districts,LR[all] tuned,Ruhango,irish_potato,irish_potato,1
+main,new_fields_known_districts,LR[all] tuned,Ruhango,maize,irish_potato,2
+main,new_fields_known_districts,LR[all] tuned,Ruhango,beans,maize,40
+main,new_fields_known_districts,LR[all] tuned,Ruhango,irish_potato,maize,2
+main,new_fields_known_districts,LR[all] tuned,Ruhango,maize,maize,40
+main,new_fields_known_districts,LR[all] tuned,Ruhango,rice,maize,4
+main,new_fields_known_districts,LR[all] tuned,Ruhango,beans,rice,6
+main,new_fields_known_districts,LR[all] tuned,Ruhango,irish_potato,rice,1
+main,new_fields_known_districts,LR[all] tuned,Ruhango,maize,rice,4
+main,new_fields_known_districts,LR[all] tuned,Ruhango,rice,rice,1
+main,leave_one_district_out,LR[field_sat],Musanze,beans,beans,1
+main,leave_one_district_out,LR[field_sat],Musanze,beans,irish_potato,21
+main,leave_one_district_out,LR[field_sat],Musanze,irish_potato,irish_potato,84
+main,leave_one_district_out,LR[field_sat],Musanze,maize,irish_potato,15
+main,leave_one_district_out,LR[field_sat],Musanze,beans,rice,25
+main,leave_one_district_out,LR[field_sat],Musanze,irish_potato,rice,8
+main,leave_one_district_out,LR[field_sat],Musanze,maize,rice,9
+main,leave_one_district_out,LR[field_sat],Musanze,rice,rice,1
+main,leave_one_district_out,LR[field_sat] tuned,Musanze,beans,beans,1
+main,leave_one_district_out,LR[field_sat] tuned,Musanze,beans,irish_potato,21
+main,leave_one_district_out,LR[field_sat] tuned,Musanze,irish_potato,irish_potato,84
+main,leave_one_district_out,LR[field_sat] tuned,Musanze,maize,irish_potato,15
+main,leave_one_district_out,LR[field_sat] tuned,Musanze,beans,rice,25
+main,leave_one_district_out,LR[field_sat] tuned,Musanze,irish_potato,rice,8
+main,leave_one_district_out,LR[field_sat] tuned,Musanze,maize,rice,9
+main,leave_one_district_out,LR[field_sat] tuned,Musanze,rice,rice,1
+main,leave_one_district_out,LR[field_sat],Nyabihu,beans,beans,5
+main,leave_one_district_out,LR[field_sat],Nyabihu,maize,beans,1
+main,leave_one_district_out,LR[field_sat],Nyabihu,beans,irish_potato,13
+main,leave_one_district_out,LR[field_sat],Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,LR[field_sat],Nyabihu,maize,irish_potato,34
+main,leave_one_district_out,LR[field_sat],Nyabihu,beans,rice,10
+main,leave_one_district_out,LR[field_sat],Nyabihu,maize,rice,2
+main,leave_one_district_out,LR[field_sat] tuned,Nyabihu,beans,beans,10
+main,leave_one_district_out,LR[field_sat] tuned,Nyabihu,irish_potato,beans,2
+main,leave_one_district_out,LR[field_sat] tuned,Nyabihu,maize,beans,6
+main,leave_one_district_out,LR[field_sat] tuned,Nyabihu,beans,irish_potato,11
+main,leave_one_district_out,LR[field_sat] tuned,Nyabihu,irish_potato,irish_potato,101
+main,leave_one_district_out,LR[field_sat] tuned,Nyabihu,maize,irish_potato,30
+main,leave_one_district_out,LR[field_sat] tuned,Nyabihu,beans,maize,1
+main,leave_one_district_out,LR[field_sat] tuned,Nyabihu,beans,rice,6
+main,leave_one_district_out,LR[field_sat] tuned,Nyabihu,maize,rice,1
+main,leave_one_district_out,LR[field_sat],Nyagatare,beans,beans,162
+main,leave_one_district_out,LR[field_sat],Nyagatare,irish_potato,beans,13
+main,leave_one_district_out,LR[field_sat],Nyagatare,maize,beans,536
+main,leave_one_district_out,LR[field_sat],Nyagatare,rice,beans,18
+main,leave_one_district_out,LR[field_sat],Nyagatare,beans,maize,1
+main,leave_one_district_out,LR[field_sat],Nyagatare,irish_potato,maize,1
+main,leave_one_district_out,LR[field_sat],Nyagatare,maize,maize,1
+main,leave_one_district_out,LR[field_sat],Nyagatare,beans,rice,74
+main,leave_one_district_out,LR[field_sat],Nyagatare,irish_potato,rice,5
+main,leave_one_district_out,LR[field_sat],Nyagatare,maize,rice,255
+main,leave_one_district_out,LR[field_sat],Nyagatare,rice,rice,18
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,beans,beans,122
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,irish_potato,beans,9
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,maize,beans,347
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,rice,beans,4
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,beans,irish_potato,1
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,beans,maize,57
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,irish_potato,maize,5
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,maize,maize,227
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,rice,maize,4
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,beans,rice,57
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,irish_potato,rice,5
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,maize,rice,218
+main,leave_one_district_out,LR[field_sat] tuned,Nyagatare,rice,rice,28
+main,leave_one_district_out,LR[field_sat],Ruhango,beans,beans,109
+main,leave_one_district_out,LR[field_sat],Ruhango,irish_potato,beans,12
+main,leave_one_district_out,LR[field_sat],Ruhango,maize,beans,44
+main,leave_one_district_out,LR[field_sat],Ruhango,rice,beans,5
+main,leave_one_district_out,LR[field_sat],Ruhango,beans,irish_potato,2
+main,leave_one_district_out,LR[field_sat],Ruhango,maize,irish_potato,1
+main,leave_one_district_out,LR[field_sat],Ruhango,beans,maize,178
+main,leave_one_district_out,LR[field_sat],Ruhango,irish_potato,maize,20
+main,leave_one_district_out,LR[field_sat],Ruhango,maize,maize,112
+main,leave_one_district_out,LR[field_sat],Ruhango,rice,maize,5
+main,leave_one_district_out,LR[field_sat] tuned,Ruhango,beans,beans,13
+main,leave_one_district_out,LR[field_sat] tuned,Ruhango,irish_potato,beans,3
+main,leave_one_district_out,LR[field_sat] tuned,Ruhango,maize,beans,8
+main,leave_one_district_out,LR[field_sat] tuned,Ruhango,beans,maize,276
+main,leave_one_district_out,LR[field_sat] tuned,Ruhango,irish_potato,maize,29
+main,leave_one_district_out,LR[field_sat] tuned,Ruhango,maize,maize,149
+main,leave_one_district_out,LR[field_sat] tuned,Ruhango,rice,maize,10
+main,new_fields_known_districts,LR[field_sat],Musanze,beans,beans,9
+main,new_fields_known_districts,LR[field_sat],Musanze,irish_potato,beans,1
+main,new_fields_known_districts,LR[field_sat],Musanze,maize,beans,1
+main,new_fields_known_districts,LR[field_sat],Musanze,beans,irish_potato,28
+main,new_fields_known_districts,LR[field_sat],Musanze,irish_potato,irish_potato,88
+main,new_fields_known_districts,LR[field_sat],Musanze,maize,irish_potato,22
+main,new_fields_known_districts,LR[field_sat],Musanze,beans,maize,1
+main,new_fields_known_districts,LR[field_sat],Musanze,beans,rice,9
+main,new_fields_known_districts,LR[field_sat],Musanze,irish_potato,rice,3
+main,new_fields_known_districts,LR[field_sat],Musanze,maize,rice,1
+main,new_fields_known_districts,LR[field_sat],Musanze,rice,rice,1
+main,new_fields_known_districts,LR[field_sat],Nyabihu,beans,beans,10
+main,new_fields_known_districts,LR[field_sat],Nyabihu,maize,beans,8
+main,new_fields_known_districts,LR[field_sat],Nyabihu,beans,irish_potato,9
+main,new_fields_known_districts,LR[field_sat],Nyabihu,irish_potato,irish_potato,103
+main,new_fields_known_districts,LR[field_sat],Nyabihu,maize,irish_potato,27
+main,new_fields_known_districts,LR[field_sat],Nyabihu,beans,rice,9
+main,new_fields_known_districts,LR[field_sat],Nyabihu,maize,rice,2
+main,new_fields_known_districts,LR[field_sat],Nyagatare,beans,beans,27
+main,new_fields_known_districts,LR[field_sat],Nyagatare,maize,beans,120
+main,new_fields_known_districts,LR[field_sat],Nyagatare,rice,beans,1
+main,new_fields_known_districts,LR[field_sat],Nyagatare,maize,irish_potato,1
+main,new_fields_known_districts,LR[field_sat],Nyagatare,beans,maize,190
+main,new_fields_known_districts,LR[field_sat],Nyagatare,irish_potato,maize,14
+main,new_fields_known_districts,LR[field_sat],Nyagatare,maize,maize,567
+main,new_fields_known_districts,LR[field_sat],Nyagatare,rice,maize,3
+main,new_fields_known_districts,LR[field_sat],Nyagatare,beans,rice,20
+main,new_fields_known_districts,LR[field_sat],Nyagatare,irish_potato,rice,5
+main,new_fields_known_districts,LR[field_sat],Nyagatare,maize,rice,104
+main,new_fields_known_districts,LR[field_sat],Nyagatare,rice,rice,32
+main,new_fields_known_districts,LR[field_sat],Ruhango,beans,beans,249
+main,new_fields_known_districts,LR[field_sat],Ruhango,irish_potato,beans,26
+main,new_fields_known_districts,LR[field_sat],Ruhango,maize,beans,122
+main,new_fields_known_districts,LR[field_sat],Ruhango,rice,beans,4
+main,new_fields_known_districts,LR[field_sat],Ruhango,beans,irish_potato,9
+main,new_fields_known_districts,LR[field_sat],Ruhango,irish_potato,irish_potato,1
+main,new_fields_known_districts,LR[field_sat],Ruhango,maize,irish_potato,7
+main,new_fields_known_districts,LR[field_sat],Ruhango,beans,maize,19
+main,new_fields_known_districts,LR[field_sat],Ruhango,irish_potato,maize,4
+main,new_fields_known_districts,LR[field_sat],Ruhango,maize,maize,18
+main,new_fields_known_districts,LR[field_sat],Ruhango,rice,maize,2
+main,new_fields_known_districts,LR[field_sat],Ruhango,beans,rice,12
+main,new_fields_known_districts,LR[field_sat],Ruhango,irish_potato,rice,1
+main,new_fields_known_districts,LR[field_sat],Ruhango,maize,rice,10
+main,new_fields_known_districts,LR[field_sat],Ruhango,rice,rice,4
+main,new_fields_known_districts,LR[field_sat] tuned,Musanze,beans,beans,25
+main,new_fields_known_districts,LR[field_sat] tuned,Musanze,irish_potato,beans,11
+main,new_fields_known_districts,LR[field_sat] tuned,Musanze,maize,beans,6
+main,new_fields_known_districts,LR[field_sat] tuned,Musanze,rice,beans,1
+main,new_fields_known_districts,LR[field_sat] tuned,Musanze,beans,irish_potato,16
+main,new_fields_known_districts,LR[field_sat] tuned,Musanze,irish_potato,irish_potato,79
+main,new_fields_known_districts,LR[field_sat] tuned,Musanze,maize,irish_potato,16
+main,new_fields_known_districts,LR[field_sat] tuned,Musanze,beans,maize,6
+main,new_fields_known_districts,LR[field_sat] tuned,Musanze,irish_potato,maize,2
+main,new_fields_known_districts,LR[field_sat] tuned,Musanze,maize,maize,2
+main,new_fields_known_districts,LR[field_sat] tuned,Nyabihu,beans,beans,20
+main,new_fields_known_districts,LR[field_sat] tuned,Nyabihu,irish_potato,beans,1
+main,new_fields_known_districts,LR[field_sat] tuned,Nyabihu,maize,beans,12
+main,new_fields_known_districts,LR[field_sat] tuned,Nyabihu,beans,irish_potato,4
+main,new_fields_known_districts,LR[field_sat] tuned,Nyabihu,irish_potato,irish_potato,93
+main,new_fields_known_districts,LR[field_sat] tuned,Nyabihu,maize,irish_potato,14
+main,new_fields_known_districts,LR[field_sat] tuned,Nyabihu,beans,maize,4
+main,new_fields_known_districts,LR[field_sat] tuned,Nyabihu,irish_potato,maize,8
+main,new_fields_known_districts,LR[field_sat] tuned,Nyabihu,maize,maize,11
+main,new_fields_known_districts,LR[field_sat] tuned,Nyabihu,irish_potato,rice,1
+main,new_fields_known_districts,LR[field_sat] tuned,Nyagatare,beans,beans,71
+main,new_fields_known_districts,LR[field_sat] tuned,Nyagatare,maize,beans,42
+main,new_fields_known_districts,LR[field_sat] tuned,Nyagatare,beans,maize,165
+main,new_fields_known_districts,LR[field_sat] tuned,Nyagatare,irish_potato,maize,16
+main,new_fields_known_districts,LR[field_sat] tuned,Nyagatare,maize,maize,735
+main,new_fields_known_districts,LR[field_sat] tuned,Nyagatare,rice,maize,18
+main,new_fields_known_districts,LR[field_sat] tuned,Nyagatare,beans,rice,1
+main,new_fields_known_districts,LR[field_sat] tuned,Nyagatare,irish_potato,rice,3
+main,new_fields_known_districts,LR[field_sat] tuned,Nyagatare,maize,rice,15
+main,new_fields_known_districts,LR[field_sat] tuned,Nyagatare,rice,rice,18
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,beans,beans,241
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,irish_potato,beans,27
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,maize,beans,109
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,rice,beans,4
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,beans,irish_potato,5
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,irish_potato,irish_potato,1
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,maize,irish_potato,3
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,beans,maize,34
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,irish_potato,maize,3
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,maize,maize,44
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,rice,maize,4
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,beans,rice,9
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,irish_potato,rice,1
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,maize,rice,1
+main,new_fields_known_districts,LR[field_sat] tuned,Ruhango,rice,rice,2
+main,leave_one_district_out,LR[all_sat],Musanze,beans,beans,9
+main,leave_one_district_out,LR[all_sat],Musanze,irish_potato,beans,2
+main,leave_one_district_out,LR[all_sat],Musanze,rice,beans,1
+main,leave_one_district_out,LR[all_sat],Musanze,beans,irish_potato,38
+main,leave_one_district_out,LR[all_sat],Musanze,irish_potato,irish_potato,90
+main,leave_one_district_out,LR[all_sat],Musanze,maize,irish_potato,24
+main,leave_one_district_out,LR[all_sat] tuned,Musanze,beans,beans,6
+main,leave_one_district_out,LR[all_sat] tuned,Musanze,irish_potato,beans,2
+main,leave_one_district_out,LR[all_sat] tuned,Musanze,beans,irish_potato,41
+main,leave_one_district_out,LR[all_sat] tuned,Musanze,irish_potato,irish_potato,90
+main,leave_one_district_out,LR[all_sat] tuned,Musanze,maize,irish_potato,24
+main,leave_one_district_out,LR[all_sat] tuned,Musanze,rice,irish_potato,1
+main,leave_one_district_out,LR[all_sat],Nyabihu,maize,beans,1
+main,leave_one_district_out,LR[all_sat],Nyabihu,beans,irish_potato,19
+main,leave_one_district_out,LR[all_sat],Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,LR[all_sat],Nyabihu,maize,irish_potato,35
+main,leave_one_district_out,LR[all_sat],Nyabihu,beans,maize,2
+main,leave_one_district_out,LR[all_sat],Nyabihu,beans,rice,7
+main,leave_one_district_out,LR[all_sat],Nyabihu,maize,rice,1
+main,leave_one_district_out,LR[all_sat] tuned,Nyabihu,beans,beans,18
+main,leave_one_district_out,LR[all_sat] tuned,Nyabihu,maize,beans,7
+main,leave_one_district_out,LR[all_sat] tuned,Nyabihu,beans,irish_potato,9
+main,leave_one_district_out,LR[all_sat] tuned,Nyabihu,irish_potato,irish_potato,103
+main,leave_one_district_out,LR[all_sat] tuned,Nyabihu,maize,irish_potato,30
+main,leave_one_district_out,LR[all_sat] tuned,Nyabihu,beans,rice,1
+main,leave_one_district_out,LR[all_sat],Nyagatare,beans,beans,13
+main,leave_one_district_out,LR[all_sat],Nyagatare,maize,beans,28
+main,leave_one_district_out,LR[all_sat],Nyagatare,rice,beans,6
+main,leave_one_district_out,LR[all_sat],Nyagatare,maize,irish_potato,1
+main,leave_one_district_out,LR[all_sat],Nyagatare,beans,maize,224
+main,leave_one_district_out,LR[all_sat],Nyagatare,irish_potato,maize,19
+main,leave_one_district_out,LR[all_sat],Nyagatare,maize,maize,763
+main,leave_one_district_out,LR[all_sat],Nyagatare,rice,maize,30
+main,leave_one_district_out,LR[all_sat] tuned,Nyagatare,beans,beans,65
+main,leave_one_district_out,LR[all_sat] tuned,Nyagatare,irish_potato,beans,10
+main,leave_one_district_out,LR[all_sat] tuned,Nyagatare,maize,beans,303
+main,leave_one_district_out,LR[all_sat] tuned,Nyagatare,rice,beans,15
+main,leave_one_district_out,LR[all_sat] tuned,Nyagatare,beans,maize,172
+main,leave_one_district_out,LR[all_sat] tuned,Nyagatare,irish_potato,maize,9
+main,leave_one_district_out,LR[all_sat] tuned,Nyagatare,maize,maize,489
+main,leave_one_district_out,LR[all_sat] tuned,Nyagatare,rice,maize,21
+main,leave_one_district_out,LR[all_sat],Ruhango,beans,irish_potato,5
+main,leave_one_district_out,LR[all_sat],Ruhango,irish_potato,irish_potato,1
+main,leave_one_district_out,LR[all_sat],Ruhango,beans,maize,64
+main,leave_one_district_out,LR[all_sat],Ruhango,irish_potato,maize,11
+main,leave_one_district_out,LR[all_sat],Ruhango,maize,maize,21
+main,leave_one_district_out,LR[all_sat],Ruhango,beans,rice,220
+main,leave_one_district_out,LR[all_sat],Ruhango,irish_potato,rice,20
+main,leave_one_district_out,LR[all_sat],Ruhango,maize,rice,136
+main,leave_one_district_out,LR[all_sat],Ruhango,rice,rice,10
+main,leave_one_district_out,LR[all_sat] tuned,Ruhango,beans,beans,9
+main,leave_one_district_out,LR[all_sat] tuned,Ruhango,irish_potato,beans,5
+main,leave_one_district_out,LR[all_sat] tuned,Ruhango,maize,beans,9
+main,leave_one_district_out,LR[all_sat] tuned,Ruhango,beans,maize,279
+main,leave_one_district_out,LR[all_sat] tuned,Ruhango,irish_potato,maize,27
+main,leave_one_district_out,LR[all_sat] tuned,Ruhango,maize,maize,148
+main,leave_one_district_out,LR[all_sat] tuned,Ruhango,rice,maize,10
+main,leave_one_district_out,LR[all_sat] tuned,Ruhango,beans,rice,1
+main,new_fields_known_districts,LR[all_sat],Musanze,beans,beans,19
+main,new_fields_known_districts,LR[all_sat],Musanze,irish_potato,beans,5
+main,new_fields_known_districts,LR[all_sat],Musanze,maize,beans,1
+main,new_fields_known_districts,LR[all_sat],Musanze,rice,beans,1
+main,new_fields_known_districts,LR[all_sat],Musanze,beans,irish_potato,23
+main,new_fields_known_districts,LR[all_sat],Musanze,irish_potato,irish_potato,85
+main,new_fields_known_districts,LR[all_sat],Musanze,maize,irish_potato,21
+main,new_fields_known_districts,LR[all_sat],Musanze,beans,rice,5
+main,new_fields_known_districts,LR[all_sat],Musanze,irish_potato,rice,2
+main,new_fields_known_districts,LR[all_sat],Musanze,maize,rice,2
+main,new_fields_known_districts,LR[all_sat],Nyabihu,beans,beans,10
+main,new_fields_known_districts,LR[all_sat],Nyabihu,maize,beans,9
+main,new_fields_known_districts,LR[all_sat],Nyabihu,beans,irish_potato,9
+main,new_fields_known_districts,LR[all_sat],Nyabihu,irish_potato,irish_potato,103
+main,new_fields_known_districts,LR[all_sat],Nyabihu,maize,irish_potato,25
+main,new_fields_known_districts,LR[all_sat],Nyabihu,beans,maize,8
+main,new_fields_known_districts,LR[all_sat],Nyabihu,maize,maize,3
+main,new_fields_known_districts,LR[all_sat],Nyabihu,beans,rice,1
+main,new_fields_known_districts,LR[all_sat],Nyagatare,beans,beans,66
+main,new_fields_known_districts,LR[all_sat],Nyagatare,maize,beans,40
+main,new_fields_known_districts,LR[all_sat],Nyagatare,maize,irish_potato,1
+main,new_fields_known_districts,LR[all_sat],Nyagatare,beans,maize,157
+main,new_fields_known_districts,LR[all_sat],Nyagatare,irish_potato,maize,13
+main,new_fields_known_districts,LR[all_sat],Nyagatare,maize,maize,674
+main,new_fields_known_districts,LR[all_sat],Nyagatare,rice,maize,4
+main,new_fields_known_districts,LR[all_sat],Nyagatare,beans,rice,14
+main,new_fields_known_districts,LR[all_sat],Nyagatare,irish_potato,rice,6
+main,new_fields_known_districts,LR[all_sat],Nyagatare,maize,rice,77
+main,new_fields_known_districts,LR[all_sat],Nyagatare,rice,rice,32
+main,new_fields_known_districts,LR[all_sat],Ruhango,beans,beans,252
+main,new_fields_known_districts,LR[all_sat],Ruhango,irish_potato,beans,27
+main,new_fields_known_districts,LR[all_sat],Ruhango,maize,beans,121
+main,new_fields_known_districts,LR[all_sat],Ruhango,rice,beans,3
+main,new_fields_known_districts,LR[all_sat],Ruhango,beans,irish_potato,9
+main,new_fields_known_districts,LR[all_sat],Ruhango,irish_potato,irish_potato,1
+main,new_fields_known_districts,LR[all_sat],Ruhango,maize,irish_potato,7
+main,new_fields_known_districts,LR[all_sat],Ruhango,beans,maize,5
+main,new_fields_known_districts,LR[all_sat],Ruhango,irish_potato,maize,2
+main,new_fields_known_districts,LR[all_sat],Ruhango,maize,maize,4
+main,new_fields_known_districts,LR[all_sat],Ruhango,beans,rice,23
+main,new_fields_known_districts,LR[all_sat],Ruhango,irish_potato,rice,2
+main,new_fields_known_districts,LR[all_sat],Ruhango,maize,rice,25
+main,new_fields_known_districts,LR[all_sat],Ruhango,rice,rice,7
+main,new_fields_known_districts,LR[all_sat] tuned,Musanze,beans,beans,29
+main,new_fields_known_districts,LR[all_sat] tuned,Musanze,irish_potato,beans,10
+main,new_fields_known_districts,LR[all_sat] tuned,Musanze,maize,beans,4
+main,new_fields_known_districts,LR[all_sat] tuned,Musanze,rice,beans,1
+main,new_fields_known_districts,LR[all_sat] tuned,Musanze,beans,irish_potato,15
+main,new_fields_known_districts,LR[all_sat] tuned,Musanze,irish_potato,irish_potato,82
+main,new_fields_known_districts,LR[all_sat] tuned,Musanze,maize,irish_potato,18
+main,new_fields_known_districts,LR[all_sat] tuned,Musanze,beans,maize,3
+main,new_fields_known_districts,LR[all_sat] tuned,Musanze,maize,maize,2
+main,new_fields_known_districts,LR[all_sat] tuned,Nyabihu,beans,beans,20
+main,new_fields_known_districts,LR[all_sat] tuned,Nyabihu,irish_potato,beans,1
+main,new_fields_known_districts,LR[all_sat] tuned,Nyabihu,maize,beans,12
+main,new_fields_known_districts,LR[all_sat] tuned,Nyabihu,beans,irish_potato,4
+main,new_fields_known_districts,LR[all_sat] tuned,Nyabihu,irish_potato,irish_potato,98
+main,new_fields_known_districts,LR[all_sat] tuned,Nyabihu,maize,irish_potato,16
+main,new_fields_known_districts,LR[all_sat] tuned,Nyabihu,beans,maize,4
+main,new_fields_known_districts,LR[all_sat] tuned,Nyabihu,irish_potato,maize,4
+main,new_fields_known_districts,LR[all_sat] tuned,Nyabihu,maize,maize,9
+main,new_fields_known_districts,LR[all_sat] tuned,Nyagatare,beans,beans,68
+main,new_fields_known_districts,LR[all_sat] tuned,Nyagatare,maize,beans,36
+main,new_fields_known_districts,LR[all_sat] tuned,Nyagatare,maize,irish_potato,2
+main,new_fields_known_districts,LR[all_sat] tuned,Nyagatare,beans,maize,168
+main,new_fields_known_districts,LR[all_sat] tuned,Nyagatare,irish_potato,maize,15
+main,new_fields_known_districts,LR[all_sat] tuned,Nyagatare,maize,maize,736
+main,new_fields_known_districts,LR[all_sat] tuned,Nyagatare,rice,maize,14
+main,new_fields_known_districts,LR[all_sat] tuned,Nyagatare,beans,rice,1
+main,new_fields_known_districts,LR[all_sat] tuned,Nyagatare,irish_potato,rice,4
+main,new_fields_known_districts,LR[all_sat] tuned,Nyagatare,maize,rice,18
+main,new_fields_known_districts,LR[all_sat] tuned,Nyagatare,rice,rice,22
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,beans,beans,251
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,irish_potato,beans,27
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,maize,beans,127
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,rice,beans,6
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,beans,irish_potato,4
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,maize,irish_potato,2
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,beans,maize,26
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,irish_potato,maize,4
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,maize,maize,24
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,rice,maize,2
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,beans,rice,8
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,irish_potato,rice,1
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,maize,rice,4
+main,new_fields_known_districts,LR[all_sat] tuned,Ruhango,rice,rice,2
