@@ -15,10 +15,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 import recommend_examples as ex
-from recommend_schemas import (CANDIDATE_CROPS, ErrorEnvelope, HealthResponse, MetadataResponse,
-                               RecommendRequest, RecommendResponse)
+from recommend_schemas import (CANDIDATE_CROPS, CONTRACT_VERSION, ErrorEnvelope, HealthResponse, MetadataResponse,
+                               PointRequest, PointResponse, RecommendRequest, RecommendResponse)
 
-app = FastAPI(title="Recommendation API (STUB)", version="0.2.2")
+app = FastAPI(title="Recommendation API (STUB)", version=CONTRACT_VERSION)
 
 
 def _rid() -> str:
@@ -66,4 +66,16 @@ def recommend(req: RecommendRequest):
     if "fertiliser" not in req.include:
         out["fertiliser"] = None
     out["crop_recommendations"] = out["crop_recommendations"][: req.top_k]
+    return out
+
+
+@app.post("/v1/recommend/point", response_model=PointResponse)
+def recommend_point(req: PointRequest):
+    out = deepcopy(ex.RESPONSE_POINT_OK)
+    out["request_id"] = _rid()
+    out["generated_at"] = datetime.now(timezone.utc)
+    out["season"] = {"asked": req.season, "used": "B"}
+    out["location"] = {**out["location"], "lat": req.lat, "lon": req.lon}
+    out["warnings"].append({"code": "STUB_RESPONSE", "message": "Canned example answer for one Nyagatare point. "
+                                                                 "Not a real recommendation for this point."})
     return out
