@@ -52,6 +52,9 @@ class SoilInput(Strict):
 
 
 class RecommendRequest(Strict):
+    # The example the /docs page fills in, so "Try it out" works with one click on Execute.
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [{"district": "Musanze", "season": "B"}]})
+
     district: Optional[str] = Field(None, min_length=2, max_length=40)
     lat: Optional[float] = Field(None, ge=LAT_MIN, le=LAT_MAX)
     lon: Optional[float] = Field(None, ge=LON_MIN, le=LON_MAX)
@@ -204,6 +207,10 @@ class RecommendResponse(Strict):
 
 # ------------------------------------------------- one answer for a point (POST /v1/recommend/point)
 class PointRequest(Strict):
+    # The example the /docs page fills in: a point in Nyagatare, season B.
+    model_config = ConfigDict(extra="forbid",
+                              json_schema_extra={"examples": [{"lat": -1.35, "lon": 30.30, "season": "B"}]})
+
     lat: float = Field(..., ge=LAT_MIN, le=LAT_MAX)
     lon: float = Field(..., ge=LON_MIN, le=LON_MAX)
     season: Literal["A", "B", "C"]
