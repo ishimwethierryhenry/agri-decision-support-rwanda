@@ -128,7 +128,11 @@ def test_scores_page_shows_every_model():
     assert "No trained model passes the adoption rule" in info
     assert "Random Forest, field + satellite inputs: 0.368 against 0.378" in info
     main = at.dataframe[0].value
-    assert len(main) == 18 and "Main score" in main.columns
+    assert len(main) == 18 and "Main score (macro-F1, 0 to 1)" in main.columns
+    assert "Worst district (main score)" in main.columns and "Top-3 (mean)" not in main.columns
+    assert "Passes the adoption rule" in main.columns and "Better than the rules in" in main.columns
+    assert any("the rules in Musanze, the rules in Nyabihu, XGBoost in Nyagatare, XGBoost in Ruhango" in m.value
+               for m in at.markdown)                                    # same choice as the map
     effect = at.dataframe[1].value
     assert list(effect.index) == ["Logistic Regression", "Random Forest", "XGBoost"]
     at.radio(key="scores_test").set_value("new_fields").run()
