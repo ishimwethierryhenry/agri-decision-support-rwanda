@@ -4,7 +4,8 @@
 | --- | --- |
 | `expert_baseline.py` | B0 (majority crop) and B1 (published crop ranges) baselines. B1 is not trained; it scores each crop against `rules/crop_suitability.yaml`. |
 | `rules/crop_suitability.yaml` | B1 rules as data. Every range cites `docs/baseline_research_notes.md`. Draft until each page is checked. |
-| `evaluate.py` | Evaluation harness v1. Follows `docs/training_protocol.md`: leave one district out (main test), new fields inside the known districts (second test), and both again on CIAT "Used" fields (second check). |
+| `evaluate.py` | Evaluation harness v1. Follows `docs/training_protocol.md`: leave one district out (main test), new fields inside the known districts (second test), and both again on CIAT "Used" fields (second check). `--protocol 1.1` adds the satellite inputs (section 10) and writes `eval_v2`. |
+| `tune.py` | Tuning with nested tests (protocol 1.2, section 11). 61 candidate settings per method for Logistic Regression, Random Forest and XGBoost on the views `all`, `field_sat` and `all_sat`. The settings are chosen inside the training part of every fold of both tests, so the test fields never choose them. Also gives input importance, how often the model is right at each level of its own probability, simple alternatives and how mixed the 2 km blocks are. |
 | `train_xgboost.py` | XGBoost training and scores (agreed at the stand-up of 28 Oct). Same folds and settings as `evaluate.py`, plus overall scores, scores per crop, confusion matrices, a check against `eval_v1`, and the final XGBoost on all inputs and all 1,904 fields (the model behind the dashboard map). |
 | `model_scores.py` | Reads the official evaluation (`reports/eval_v1`) and gives every score the dashboard and the notebooks show: main score per model and district, overall scores over all test fields, and precision, recall and F1 of each crop in each district. Needs only pandas and numpy. |
 | `compare_results.py` | Compares a rerun with the committed result files, file by file and model by model (used by the Colab notebooks). |
@@ -24,6 +25,14 @@ python 01-crop-recommendation/src/models/train_xgboost.py
 ```
 
 It writes `01-crop-recommendation/reports/xgboost_v1/`: `report.md`, the score tables as CSV, `check.csv` (every score per district must be the same as in `eval_v1`), `feature_importance.csv`, `run_info.json`, and the final model in `model/` (not committed, it takes seconds to retrain). On Colab, use `../../notebooks/03_xgboost_training_and_map_colab.ipynb`.
+
+Tuning (protocol 1.2, about an hour on two cores, same pinned versions):
+
+```
+python 01-crop-recommendation/src/models/tune.py
+```
+
+It writes `01-crop-recommendation/reports/tuning_v1/`: `report.md`, the results per test and district with the protocol settings and the tuned settings side by side, `chosen_settings.csv`, `inner_scores.csv` (every candidate in every fold), `candidates.json`, `importance.csv`, `confidence_bands.csv`, `answer_when_sure.csv`, `mixed_land.csv`, `confusion_counts.csv` and `run_info.json`. Finished jobs are saved in `tuning_v1/_work/` (not committed), so a stopped run starts again where it stopped. `--quick` runs a tiny version into a temporary folder to check the code; its numbers are never reported.
 
 Rules for using results:
 
