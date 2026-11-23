@@ -88,6 +88,7 @@ Any change after seeing results (rules, inputs, filters, settings, models) is re
 - 18 Nov: version 1.1 written down (section 10) before any run on the satellite inputs.
 - 18 Nov, evening: official run of version 1.1, committed as `eval_v2`. Built-in check passed: the 12 combinations of version 1.0 give exactly the `eval_v1` numbers. No model passes the adoption rule, so B1 stays the default of the API. Main test: the best trained model is now Random Forest on field + satellite inputs, 0.368 against 0.378 for B1, ahead in 2 of 4 districts (at the midterm the best was 0.365). New fields: XGBoost on all + satellite inputs is best, 0.456 against 0.451 for XGBoost on all inputs. Expectation (a) held for all three methods; expectation (b) held for Random Forest only. The map keeps XGBoost on all inputs, because the gain is too small to change it.
 - 22 Nov: the dashboard map shows one answer per point instead of both methods side by side, as the client asked on 19 Nov. This changes how results are presented, not the evaluation: in each district the answer comes from the method with the higher main score on new fields in `eval_v1` (ahead by more than 0.01, otherwise the rules), which today means the rules in Musanze and Nyabihu and XGBoost in Nyagatare and Ruhango. The confidence level shown with it comes from that method's tested top-1 accuracy on new fields in the district, with fixed thresholds (high from 0.75, medium from 0.50; one step lower for a close call within 0.10 or data more than 5 km away; low for an untested season). The adoption rule and the API default (B1) do not change. Logic: `01-crop-recommendation/src/recommendation/map_model.py`.
+- 23 Nov: version 1.2 written down (section 11) before any tuning run.
 
 ## 10. Version 1.1 (18 Nov 2026): inputs measured at each field from satellites
 
@@ -120,3 +121,51 @@ Logistic Regression, Random Forest and XGBoost run on both, with the settings of
 **Expected before the run:** (a) on new fields in known districts, all_sat should beat all; (b) field_sat has no input that is the same for a whole district, so it is the best chance to transfer to a district never seen. If any model passes the adoption rule on the main test, it replaces B1 as the default answer of the API.
 
 **Built-in check:** the 12 combinations of version 1.0 use exactly the same inputs and rows in v6b as in v2, so their results in `eval_v2` must equal `eval_v1`.
+
+## 11. Version 1.2 (23 Nov 2026): tuning the model settings
+
+Written on 23 Nov 2026 by Thierry, before any tuning run. Everything in sections 1 to 10 stays the same unless this section says otherwise. Results go to `01-crop-recommendation/reports/tuning_v1/`; `eval_v1` and `eval_v2` are not touched.
+
+Why: at the meeting of 19 Nov, the client asked why anyone should use the model. Every model so far used the fixed settings of section 6, which planned tuning for after the midterm, on training data only (tracker T051). This version does that tuning for Logistic Regression, Random Forest and XGBoost, in a way that never lets the test fields choose the settings. It also adds the analyses that show when the model can be trusted.
+
+**Table and rows.** Same as version 1.1: `feature_table_v6b.csv` and the 1,904 single-crop fields. The CIAT "Used" second check is not tuned: it would double the run time and it does not decide anything.
+
+**Models and views.** Logistic Regression, Random Forest and XGBoost on three views of version 1.1: `all`, `field_sat` and `all_sat`, so 9 tuned models. `district` is left out because it has no input measured at the field, and `field` is part of `field_sat`.
+
+**How the settings are chosen (nested tests).** The settings are chosen again inside the training part of every fold of the two tests, with the training fields of that fold only:
+
+- Main test (leave one district out): for each held-out district, the candidates are compared by leaving out each of the three training districts in turn (train on two, score on the third). The best candidate is then trained on the three training districts and scored once on the held-out district.
+- Second test (new fields): for each of the 5 block folds of section 4, the candidates are compared on 3 folds over 2 km blocks inside the training part (`StratifiedGroupKFold`, seed 0). The best candidate is then trained on the whole training part and scored once on the test fold.
+
+Candidates are compared on the main score of section 5, computed the same way as in the outer test (per district, then the mean). A tie goes to the candidate drawn first. Median filling and class weights are fitted on the training fields of each step only.
+
+**Candidates.** For each method, 61 candidates. The settings of section 6 always come first, so tuning can only keep them or pick something that did better in the comparison. Then come 60 random draws from the ranges below (scikit-learn `ParameterSampler`, seed 0). The same candidates are used in every fold and every view. With 60 random draws, there is a 95 percent chance that at least one lands in the best 5 percent of the ranges (0.95 to the power 60 is about 0.05) [1].
+
+| Method | Settings searched |
+| --- | --- |
+| Logistic Regression | C from 0.001 to 100 (log scale). Input shape: straight, as in section 6, or curved: cubic splines with 5 equally spaced knots for each input measured at the field (inputs that are the same for a whole district stay straight), flat outside the training range. Class weight strength 0, 0.5 or 1. |
+| Random Forest | 300 trees, as in section 6. Maximum depth none, 6, 10 or 16. At least 1, 2, 3, 5, 8, 12 or 20 fields per leaf. Inputs tried at each split: square root of the number of inputs, 20, 33 or 50 percent. Fields drawn for each tree: 100, 70 or 50 percent. Split rule Gini or entropy. Class weight strength 0, 0.5 or 1. |
+| XGBoost | 100, 200, 300, 500 or 800 trees. Learning rate from 0.01 to 0.3 (log scale). Depth 2, 3, 4, 5, 6 or 8. Minimum child weight 1, 2, 5 or 10. Share of fields for each tree from 0.6 to 1.0, share of inputs for each tree from 0.5 to 1.0. L2 penalty from 0.1 to 10 (log scale). Minimum gain to split 0, 0.1, 0.5 or 1. Class weight strength 0, 0.5 or 1. |
+
+Class weight strength p gives each crop the weight (n / (k x n_crop)) to the power p, where n is the number of training fields, k the number of crops among them and n_crop the fields of that crop. Strength 1 is the class balance of section 6 and 0 is no weighting.
+
+**Decisions fixed now.**
+
+1. The adoption rule of section 7 does not change. It is checked for the 9 tuned models on the main test. If one passes, it replaces B1 as the default answer of the API, as section 10 already says.
+2. The map serves a tuned model only if its main score on new fields (nested) beats the model on the map today, XGBoost on `all` with the section 6 settings (0.451), by more than 0.01. If several do, the one with the highest score. The map can get every input of the three views for any point from the CIAT fields of the block, as it does today for soil and elevation. The choice between the model and the rules in each district and the confidence levels then come from that model's nested results. If no tuned model beats it by more than 0.01, the map does not change.
+3. Untuned (`eval_v2`) and tuned results are always reported side by side, per district, with the settings chosen in every fold.
+
+**Built-in check.** The section 6 settings, scored on the same outer folds, must give the same scores as `eval_v2` in every district for the 9 models.
+
+**Also reported (none of these decide anything).**
+
+- How often the first crop is right at each level of the model's own probability for it, in bands of 0.1, on the new-fields test, for the model the map serves after this version: the share of fields in each band and how often the first crop was right there.
+- Simple alternatives on the same folds of the new-fields test: the most common crop among all training fields (B0), the most common crop of the field's own district among the training fields, and B1.
+- Input importance for the tuned Logistic Regression, Random Forest and XGBoost, on both tests: how much the main score drops when the values of one input are shuffled among the test fields (5 shuffles, seed 0), and the same for groups of inputs that carry the same information (elevation with the field temperatures, district climate, NISR shares, soil, satellite rainfall and vegetation). In the main test, an input that is the same for the whole district cannot change inside the held-out district, so its importance there is zero by construction.
+- How mixed the land is: the share of fields whose crop is the most common crop of their own 2 km block. No model can know this in advance. It shows how often neighbouring fields grow different crops.
+
+**Expected before the run:** (a) tuning gives small gains on a table of this size, a few hundredths of main score at most; (b) Logistic Regression gains more than the tree models, because the curved shape lets it follow the elevation bands of the crops, which a straight line cannot.
+
+**Run.** `python 01-crop-recommendation/src/models/tune.py` with the pinned versions of `requirements-eval.txt`. It takes a few hours on two processor cores, so the official run is made once and saved with its `run_info.json`. `--quick` runs a tiny version for checks only, and its numbers are never reported.
+
+[1] J. Bergstra and Y. Bengio, "Random search for hyper-parameter optimization," *J. Mach. Learn. Res.*, vol. 13, pp. 281-305, 2012.
