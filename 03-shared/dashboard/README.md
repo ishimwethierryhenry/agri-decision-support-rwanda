@@ -4,17 +4,17 @@ Streamlit app (D6, task T037) with four pages:
 
 | Page | What it does |
 | --- | --- |
-| Map: crop for a field (default) | Click a point in Musanze, Nyabihu, Nyagatare or Ruhango. The page shows one recommended crop with its confidence level (high, medium or low) and the reasons, then the fertiliser for that crop, then the soil, elevation, weather and NISR crop shares used for that point. In each district the answer comes from the method that tested better there on new fields (XGBoost or the expert rules, B1). The **Evaluation view** switch in the sidebar shows both methods side by side, with their tested scores, crop by crop. The season follows today's date. |
-| Model scores | How well every model did in the official evaluation (reports/eval_v1): main score of the 12 combinations on both tests, the score in each district, overall scores (accuracy, balanced accuracy, macro-F1, weighted F1, Cohen's kappa), and precision, recall and F1 of each crop in each district. |
-| Crop and fertiliser | Calls `POST /v1/recommend` (Part B service, contract 1.0). The map's one answer is also served as `POST /v1/recommend/point` (see `docs/api_contracts.md`, section 3). |
+| Map: crop for a field (default) | Click a point in Musanze, Nyabihu, Nyagatare or Ruhango. The page shows one recommended crop with its confidence level (high, medium or low) and the reasons, then the fertiliser for that crop, then the soil, elevation, satellite values, weather and NISR crop shares used for that point. In each district the answer comes from the method that tested better there on new fields (the tuned Random Forest or the expert rules, B1). The **Evaluation view** switch in the sidebar shows both methods side by side, with their tested scores, crop by crop. The season follows today's date. |
+| Model scores | How well every model did in the official evaluation (reports/eval_v2): main score of the 18 combinations on both tests, the score in each district, overall scores (accuracy, balanced accuracy, macro-F1, weighted F1, Cohen's kappa), and precision, recall and F1 of each crop in each district. Then the tuning run (reports/tuning_v1): every method with the protocol settings and tuned, and why the tuned Random Forest is the model on the map, with how often it is right when it is sure. |
+| Crop and fertiliser | Calls `POST /v1/recommend` (Part B service, contract 1.1). The map's one answer is also served as `POST /v1/recommend/point` (see `docs/api_contracts.md`, section 3). |
 | Crop health diagnosis | Placeholder, built by the CV sub-team against `/detect`. |
 
-Run from this folder (Python 3.12 or newer, because of the pinned XGBoost):
+Run from this folder (Python 3.12 or newer, because of the pinned library versions):
 
     python -m pip install -r requirements.txt
     streamlit run app.py
 
-`requirements.txt` includes `01-crop-recommendation/requirements-eval.txt`, so the map page trains XGBoost with the same library versions as the official evaluation. Training takes a few seconds, once, when the map page first opens.
+`requirements.txt` includes `01-crop-recommendation/requirements-eval.txt`, so the map page trains its model (the tuned Random Forest, scikit-learn) with the same library versions as the official evaluation. Training takes a few seconds, once, when the map page first opens.
 
 ## Map page
 
@@ -26,7 +26,7 @@ Run from this folder (Python 3.12 or newer, because of the pinned XGBoost):
 ## Model scores page
 
 - Logic: `01-crop-recommendation/src/models/model_scores.py`. It recomputes every number from the committed result files (summaries, results per district and confusion counts), and a test checks that the main score it recomputes equals the official one for every model, district and test.
-- Nothing on this page is trained or tuned: it only reads `01-crop-recommendation/reports/eval_v1`.
+- Nothing on this page is trained or tuned: it only reads `01-crop-recommendation/reports/eval_v2` and `01-crop-recommendation/reports/tuning_v1`.
 
 ## Crop and fertiliser page
 
@@ -46,4 +46,4 @@ This page only shows what the API returns. Nothing is computed or invented in th
 
 ## Tests
 
-From the repository root: `python -m pytest 03-shared/tests -q` (the map page tests need XGBoost).
+From the repository root: `python -m pytest 03-shared/tests -q`.

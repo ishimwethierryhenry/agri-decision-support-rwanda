@@ -1,6 +1,6 @@
 # API contracts
 
-**Status:** FINAL 1.0, 23 November 2026, by Thierry (Part B, ML and Geospatial). First proposed on 20 October 2026, updated on 28 October and 18 November 2026. Both recommendation interfaces are implemented in `01-crop-recommendation/src/recommendation/service.py` and checked by the tests in section 2.6. The crop health diagnosis interface belongs to the CV sub-team and joins this document when the two dashboards are merged.
+**Status:** 1.1, 23 November 2026, by Thierry (Part B, ML and Geospatial). First proposed on 20 October 2026, updated on 28 October and 18 November 2026, final as 1.0 on 23 November 2026. Version 1.1 only adds optional fields, for the tuned model now on the map (section 9). Both recommendation interfaces are implemented in `01-crop-recommendation/src/recommendation/service.py` and checked by the tests in section 2.6. The crop health diagnosis interface belongs to the CV sub-team and joins this document when the two dashboards are merged.
 
 **Reviewers:** Arsene (Part A) for the inputs and the season decision. Anny and Gabin (CV sub-team) for section 1 when their service joins.
 
@@ -13,7 +13,7 @@ The examples of `POST /v1/recommend` are placeholders that show the shape. The e
 | # | Interface | Method and route | Status |
 | --- | --- | --- | --- |
 | 1 | Crop and fertiliser recommendation (expert rules, district or point) | `POST /v1/recommend` | Implemented |
-| 2 | One recommendation for a point, with a confidence level | `POST /v1/recommend/point` | Implemented, new in 1.0 |
+| 2 | One recommendation for a point, with a confidence level | `POST /v1/recommend/point` | Implemented, new in 1.0, model updated in 1.1 |
 | 3 | Service metadata | `GET /v1/metadata` | Implemented |
 | 4 | Service health | `GET /v1/health` | Implemented |
 | 5 | Crop health diagnosis | `POST /v1/diagnose` | Owned by the CV sub-team, added when the two dashboards are merged |
@@ -46,7 +46,7 @@ These are proposals. The goal is that the dashboard can call both services the s
 | Responsible workstream | Crop recommendation (ML and Geospatial, Part B), with the shared dashboard |
 | Purpose | An extension officer gives a location, a season and optional soil test values. The service returns ranked crops with reasons and a reliability level, and fertiliser guidance for one crop with the source of each rule. |
 | Method and route | `POST /v1/recommend` |
-| Contract version | 1.0, final for the practicum. |
+| Contract version | 1.1. This route has not changed since 1.0, final for the practicum. |
 
 ### 2.1 Input fields
 
@@ -359,9 +359,9 @@ FastAPI answers validation errors in its own format by default. The service repl
 ### 2.6 Test coverage
 
 - Contract tests: `03-shared/tests/test_recommend_contract.py` (38 checks: examples validate, range and location rules, abstain rules, rank order, every fertiliser item needs a source, error envelope, stub server behaviour, and the point interface of section 3).
-- Service tests: `01-crop-recommendation/tests/test_recommend_service.py` (35 checks on the real service, including that `POST /v1/recommend/point` gives the same answer as the dashboard map).
-- Run from the repository root: `python -m pytest 01-crop-recommendation/tests 03-shared/tests -q` (233 tests pass on 23 Nov 2026 with the pinned library versions).
-- Needs: `pip install -r 03-shared/dashboard/requirements.txt pytest`. Without XGBoost, the point tests are skipped.
+- Service tests: `01-crop-recommendation/tests/test_recommend_service.py` (36 checks on the real service, including that `POST /v1/recommend/point` gives the same answer as the dashboard map).
+- Run from the repository root: `python -m pytest 01-crop-recommendation/tests 03-shared/tests -q` (249 tests pass on 23 Nov 2026 with the pinned library versions).
+- Needs: `pip install -r 03-shared/dashboard/requirements.txt pytest`. The point route needs scikit-learn only; XGBoost is needed by the tests of the training code.
 - Integration tests with the diagnosis service: written when the two dashboards are merged.
 
 ## 3. Interface 2: One recommendation for a point
@@ -369,18 +369,18 @@ FastAPI answers validation errors in its own format by default. The service repl
 | Field | Value |
 | --- | --- |
 | Interface name | One recommendation for a point |
-| Status | Implemented, new in 1.0 |
+| Status | Implemented, new in 1.0. In 1.1 the trained model is the tuned Random Forest. |
 | Responsible workstream | Crop recommendation (ML and Geospatial, Part B), with the shared dashboard |
 | Purpose | A user clicks or types a point in one of the four pilot districts. The service returns one crop, a confidence level with plain reasons, the fertiliser for that crop, and the inputs it used. It is the same answer as the dashboard map, as the client asked on 19 Nov 2026: one recommendation and how sure we are, not a comparison of methods. |
 | Method and route | `POST /v1/recommend/point` |
-| Contract version | 1.0 |
+| Contract version | 1.1 |
 
 ### 3.1 How the answer is made
 
 1. **District.** From the district outline the point falls in. A point within 1.5 km of a CIAT block just across a simplified outline counts as that block's district. Outside the four pilot districts the service abstains.
-2. **Inputs.** Soil (iSDAsoil, 0 to 20 and 20 to 50 cm) and elevation come from the CIAT fields of the same 2 km block, or of the nearest block in the district. Season B 2025 weather (NASA POWER) and NISR crop shares come from the district, the values the model learned from.
-3. **Two methods rank the crops.** XGBoost on all inputs, trained once on the 1,904 CIAT fields with the protocol settings, and the expert rules (B1).
-4. **One method answers.** In each district, the method with the higher main score on new fields in testing (`eval_v1`), if it is ahead by more than 0.01; otherwise the rules, the default. Today that means the rules in Musanze and Nyabihu, and XGBoost in Nyagatare and Ruhango.
+2. **Inputs.** Soil (iSDAsoil, 0 to 20 and 20 to 50 cm), elevation and four satellite values (SRTM elevation, CHIRPS rainfall from 1 February to 30 June 2025, and the Sentinel-2 vegetation index and shortwave ratio of 2024) come from the CIAT fields of the same 2 km block, or of the nearest block in the district. An `elevation_m` given in the request replaces both elevations. Season B 2025 weather (NASA POWER) and NISR crop shares come from the district, the values the model learned from.
+3. **Two methods rank the crops.** The trained model on the map and the expert rules (B1). Since 1.1 the trained model is the tuned Random Forest on all inputs plus satellite (`RF[all_sat] tuned`), which the rule written before the tuning run chose for the map (`docs/training_protocol.md`, section 11, decision 2). It is trained once on the 1,904 CIAT fields with the settings in `01-crop-recommendation/reports/tuning_v1/final_model.json`. In 1.0 it was XGBoost on all inputs with the protocol settings.
+4. **One method answers.** In each district, the method with the higher main score on new fields in testing (`tuning_v1`), if it is ahead by more than 0.01; otherwise the rules, the default. Today that means Random Forest in Musanze, Nyagatare and Ruhango, and the rules in Nyabihu.
 5. **Confidence level.** It starts from the method's tested hit rate in the district: the share of new fields where its first crop was the right one.
 
 | Level | When |
@@ -389,7 +389,7 @@ FastAPI answers validation errors in its own format by default. The service repl
 | `medium` | Tested hit rate from 0.50 to 0.75, or at least 0.75 with one reason to lower it. |
 | `low` | Tested hit rate below 0.50; or two reasons to lower it; or a season other than B, which was never tested. |
 
-Each reason lowers the level by one step: a close call (the first two crops are less than 0.10 apart in the method's own score, a tie included), and data far from the point (the nearest CIAT data is more than 5 km away). The thresholds are fixed, not tuned on results. Today's tested hit rates are 0.62 in Musanze and 0.66 in Nyabihu (rules), 0.68 in Nyagatare and 0.58 in Ruhango (XGBoost), so a season B answer is `medium`, or `low` after a close call or with far data. No answer is `high` yet. `lowered_by` says in plain words why a level is lower than the hit rate alone would give.
+Each reason lowers the level by one step: a close call (the first two crops are less than 0.10 apart in the method's own score, a tie included), and data far from the point (the nearest CIAT data is more than 5 km away). The thresholds are fixed, not tuned on results. Today's tested hit rates are 0.75 in Musanze, 0.76 in Nyagatare and 0.63 in Ruhango (Random Forest), and 0.66 in Nyabihu (rules). So a season B answer is `high` in Musanze and Nyagatare and `medium` in Nyabihu and Ruhango, one step lower after a close call or with far data. `lowered_by` says in plain words why a level is lower than the hit rate alone would give.
 
 6. **Fertiliser** for the recommended crop, from the same rule engine as section 2 (interim national rates until the RAB guideline is in).
 
@@ -420,12 +420,12 @@ Example request:
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `request_id`, `api_version`, `rules_version`, `generated_at`, `disclaimer` | | As in section 2.2. |
-| `model_version` | string | The trained model behind the XGBoost answers. |
+| `model_version` | string | The trained model on the map, `RF[all_sat] tuned` since 1.1. |
 | `location` | object | District, province, the requested point, and `resolution: point`. |
 | `season.asked`, `season.used` | strings | The season asked, and the season the answer is for (always `B`). |
 | `abstain` | boolean | `true` outside the four pilot districts. Then `recommendation`, `fertiliser` and `inputs_used` are `null` and `abstain_message` says why. |
 | `recommendation.crop` | string | The one recommended crop. |
-| `recommendation.method` | string | `xgboost` or `expert_rules`: the method that answers in this district (section 3.1). |
+| `recommendation.method` | string | `random_forest` or `expert_rules`: the method that answers in this district (section 3.1). `xgboost` stays a valid value; it was the model on the map in 1.0. |
 | `recommendation.confidence.level` | string | `high`, `medium` or `low` (section 3.1). Not a probability. |
 | `recommendation.confidence.tested_hit_rate` | number 0 to 1 | Share of new fields in the district where the method's first crop was right in testing. |
 | `recommendation.confidence.lowered_by` | list of strings | Why the level is lower than the hit rate alone would give. Empty when nothing lowers it. |
@@ -433,8 +433,8 @@ Example request:
 | `recommendation.alternatives` | list | The method's next crops, in order. |
 | `recommendation.why` | list, at least one | Plain sentences: why this method answers here, its hit rate, and for the rules, the checks behind the crop with their sources. |
 | `fertiliser` | object or null | Same object as section 2.2, always for `recommendation.crop`. |
-| `inputs_used` | object | `elevation_m` and `elevation_source`, `soil_texture`, `soil_0_20cm`, `field_data_from` (`n_ciat_fields` in the block and `distance_km` to it), `climate_season_b_2025`, `nisr_crop_shares`. It never contains farm or block coordinates. |
-| `evaluation` | object or null | Only with `include_evaluation: true`: `xgboost_ranking` and `rules_ranking` (crop and score) and `tested_main_score_new_fields` for both methods in the district. |
+| `inputs_used` | object | `elevation_m` and `elevation_source`, `soil_texture`, `soil_0_20cm`, `field_data_from` (`n_ciat_fields` in the block and `distance_km` to it), `climate_season_b_2025`, `nisr_crop_shares`, and since 1.1 `satellite_at_field` (`srtm_elevation_m` in metres, `chirps_precip_mm` in mm from 1 February to 30 June 2025, `ndvi_annual` and `swir_ratio`, unitless indices of 2024). Units of `soil_0_20cm`: `ph` in water; `nitrogen` and `carbon_organic` in g/kg; `phosphorous_extractable` and `potassium_extractable` in mg/kg (ppm, as iSDAsoil gives them); `cation_exchange_capacity` in cmol(+)/kg; `sand`, `silt` and `clay` in percent. iSDAsoil predicts the three fractions separately, so they need not add up to 100 (the texture class scales them first). It never contains farm or block coordinates. |
+| `evaluation` | object or null | Only with `include_evaluation: true`: `model` (the trained model, `random_forest`), `model_ranking` and `rules_ranking` (crop and score), and `tested_main_score_new_fields` for both methods in the district, keyed by method. `xgboost_ranking` is kept for 1.0 clients and is `null` unless the model on the map is XGBoost. |
 | `warnings` | list | `code` and `message` pairs (section 6). |
 
 Rules checked by the schema: `abstain: true` needs `abstain_message` and no recommendation; `abstain: false` needs a recommendation; the fertiliser advice is for the recommended crop.
@@ -444,10 +444,10 @@ Example response (a real answer of the service for a point in Nyagatare, with `r
 ```json
 {
   "request_id": "example-0004",
-  "api_version": "1.0",
-  "model_version": "XGB[all], trained on the 1,904 CIAT fields",
+  "api_version": "1.1",
+  "model_version": "RF[all_sat] tuned, trained on the 1,904 CIAT fields",
   "rules_version": "crops-0.1-draft+fertiliser-0.1-interim-2026-11-18",
-  "generated_at": "2026-11-23T08:00:00Z",
+  "generated_at": "2026-11-23T12:30:00Z",
   "location": {
     "district": "Nyagatare",
     "province": "East",
@@ -463,21 +463,21 @@ Example response (a real answer of the service for a point in Nyagatare, with `r
   "abstain_message": null,
   "recommendation": {
     "crop": "maize",
-    "method": "xgboost",
+    "method": "random_forest",
     "confidence": {
-      "level": "medium",
-      "tested_hit_rate": 0.68,
+      "level": "high",
+      "tested_hit_rate": 0.759,
       "lowered_by": []
     },
     "close_second": null,
     "alternatives": [
-      "beans",
       "rice",
-      "irish_potato"
+      "irish_potato",
+      "beans"
     ],
     "why": [
-      "In Nyagatare, XGBoost did better than the expert rules in testing on new fields (0.37 against 0.09, main score), so the answer comes from XGBoost.",
-      "In that test, its first crop was the right one for 68% of the fields in Nyagatare."
+      "In Nyagatare, Random Forest did better than the expert rules in testing on new fields (0.43 against 0.09, main score), so the answer comes from Random Forest.",
+      "In that test, its first crop was the right one for 76% of the fields in Nyagatare."
     ]
   },
   "fertiliser": {
@@ -550,6 +550,12 @@ Example response (a real answer of the service for a point in Nyagatare, with `r
       "Irish potato": 0.01,
       "Maize": 0.421,
       "Rice": 0.038
+    },
+    "satellite_at_field": {
+      "srtm_elevation_m": 1362.0,
+      "chirps_precip_mm": 399.8,
+      "ndvi_annual": 0.465,
+      "swir_ratio": 1.116
     }
   },
   "evaluation": null,
@@ -607,7 +613,7 @@ Example response outside the pilot districts (a point in Kigali):
 | `lat` or `lon` outside the Rwanda bounding box | `422`, `OUT_OF_BOUNDS`. |
 | A point in Rwanda but outside the four pilot districts | `200`, `abstain: true`, warning `OUTSIDE_PILOT_DISTRICTS`. |
 | A point inside the bounding box but outside Rwanda | `200`, `abstain: true`, warning `OUTSIDE_RWANDA`. |
-| XGBoost is not installed on the server | `503`, `MODEL_UNAVAILABLE`. `POST /v1/recommend` still answers with the expert rules. |
+| The settings or data files of the model on the map are missing | `503`, `MODEL_UNAVAILABLE`. `POST /v1/recommend` still answers with the expert rules. |
 
 Errors use the envelope of section 2.4.
 
@@ -632,7 +638,7 @@ Crops: beans, irish_potato, maize and rice, the four crops of the CIAT data. Thi
 | Status | Implemented |
 | Purpose | Quick check that the service is up and which parts are loaded. |
 | Output | `status` (`ok`, `degraded`, `down`), `rules_loaded`, `model_loaded`, `api_version`. |
-| Rule | `ok`: the rules answer, and XGBoost is installed so point requests can answer (the model trains on the first point request, and `model_loaded` becomes `true` then). `degraded`: only the rules answer, so `POST /v1/recommend` works and `POST /v1/recommend/point` returns `503`. `down`: nothing can answer. |
+| Rule | `ok`: the rules answer, and the settings and data files of the model on the map are in place, so point requests can answer (the model trains on the first point request, and `model_loaded` becomes `true` then). `degraded`: only the rules answer, so `POST /v1/recommend` works and `POST /v1/recommend/point` returns `503`. `down`: nothing can answer. |
 
 ## 6. Reliability levels of POST /v1/recommend, and warning codes
 
@@ -657,7 +663,7 @@ Added in 1.0 for `POST /v1/recommend/point`: `FIELD_DATA_FAR` (no CIAT field wit
 
 ## 7. The service and the stub server
 
-**The service (real answers).** `01-crop-recommendation/src/recommendation/service.py` implements the four interfaces of this file. `POST /v1/recommend`, metadata and health run on the B1 expert rules and the fertiliser engine. `POST /v1/recommend/point` runs `01-crop-recommendation/src/recommendation/map_model.py`, the same code as the dashboard map; it needs XGBoost and the files listed in that folder's README, and it trains the model on its first request. It reads `district_profiles.json` (district elevation, NASA POWER season normals with season B from 1 February to 30 June, and B1's tested score per district, no farm-level data), so it needs no raw data at run time. Run it from the repository root with:
+**The service (real answers).** `01-crop-recommendation/src/recommendation/service.py` implements the four interfaces of this file. `POST /v1/recommend`, metadata and health run on the B1 expert rules and the fertiliser engine. `POST /v1/recommend/point` runs `01-crop-recommendation/src/recommendation/map_model.py`, the same code as the dashboard map; it needs the files listed in that folder's README, and it trains the model on its first request (scikit-learn, a few seconds). It reads `district_profiles.json` (district elevation, NASA POWER season normals with season B from 1 February to 30 June, and B1's tested score per district, no farm-level data), so it needs no raw data at run time. Run it from the repository root with:
 
 ```
 python -m uvicorn service:app --app-dir 01-crop-recommendation/src/recommendation --port 8001
@@ -694,6 +700,7 @@ Then open http://127.0.0.1:8001/docs for the interactive page.
 | 0.2.1 draft | 2026-10-28 | Reliability now uses B1's tested score per district from `eval_v1` (new reason and warning code `RULES_WEAK_IN_DISTRICT`); new warning `CROPS_TIED` when crops fit the rules equally; season B climate normals now run from 1 February to 30 June, as in the training data. No field changes, so 0.2.0 clients still work. |
 | 0.2.2 draft | 2026-11-18 | Interim fertiliser rates: until the RAB guideline is in, each crop has the national blanket rate copied from a published source (page and link in `source`), served with the new warning `FERTILISER_INTERIM` and an explanation that starts with "Interim:". No field changes, so 0.2.1 clients still work. |
 | 1.0 final | 2026-11-23 | New `POST /v1/recommend/point`: one crop with a confidence level, the same answer as the dashboard map (client feedback of 19 Nov). New warning codes `FIELD_DATA_FAR`, `SHARED_WEATHER_CELL`, `OUTSIDE_PILOT_DISTRICTS` and `OUTSIDE_RWANDA`. Health is `ok` when the trained model can answer. Final crop list, season decision and closed questions (section 8). The text now says what `POST /v1/recommend` really does with soil (user values only). `POST /v1/recommend` itself is unchanged, so 0.2.x clients still work. |
+| 1.1 | 2026-11-23 | The point route serves the tuned Random Forest on all inputs plus satellite, as decision 2 of the tuning protocol requires (`docs/training_protocol.md`, section 11). Only optional fields and values are added, so 1.0 clients still work: `random_forest` as a `recommendation.method`, `inputs_used.satellite_at_field`, and `evaluation.model` and `evaluation.model_ranking`; `evaluation.xgboost_ranking` is now `null`. Health no longer depends on XGBoost. Units of `inputs_used.soil_0_20cm` written down. `POST /v1/recommend` is unchanged. |
 
 ## Review checklist
 

@@ -2,8 +2,9 @@
 
 Asked by the client and the team on 29 Oct 2026: show the performance of every model, per district and per crop,
 next to the recommendations. Updated on 18 Nov 2026 for protocol 1.1, which adds four satellite inputs measured at
-each field (the 12 combinations of the midterm give the same numbers as in eval_v1). Everything here is read from the
-committed result files. Logic: 01-crop-recommendation/src/models/model_scores.py
+each field (the 12 combinations of the midterm give the same numbers as in eval_v1), and on 23 Nov 2026 for protocol
+1.2: the tuning run (reports/tuning_v1) and why its tuned Random Forest is now the trained model on the map.
+Everything here is read from the committed result files. Logic: 01-crop-recommendation/src/models/model_scores.py
 """
 import sys
 from pathlib import Path
@@ -16,7 +17,6 @@ if str(MODELS_DIR) not in sys.path:
     sys.path.insert(0, str(MODELS_DIR))
 import model_scores as ms  # noqa: E402
 
-MAP_MODEL = "XGB[all]"                     # the model on the map page (map_model.MODEL_NAME)
 BASELINES = ("B0_majority", ms.BASELINE)
 
 @st.cache_resource(show_spinner=False)
@@ -157,35 +157,84 @@ st.caption("Precision: when the model says this crop, how often it is right. Rec
            "how many the model found. F1 combines the two. Crops with fewer than 5 fields in the district are not "
            "scored.")
 
-def gain(table: pd.DataFrame, new: str, old: str) -> str:
-    """Difference of two main scores as shown on the page (rounded to 3 decimals first), with its sign."""
-    return f"{round(table.loc[new, 'Main score'], 3) - round(table.loc[old, 'Main score'], 3):+.3f}"
+@st.cache_resource(show_spinner=False)
+def load_tuning() -> ms.Tuning:
+    return ms.Tuning()
 
 
-# Same choice as map_model.method_for: the model answers in a district only if it beats the rules on new fields there
-# by more than 0.01 (the margin of the adoption rule).
-nf = scores.results["new_fields"].pivot(index="model", columns="district", values="macro_f1")
-answered_by = {d: "XGBoost" if nf.loc[MAP_MODEL, d] > nf.loc[ms.BASELINE, d] + 0.01 else "the rules"
-               for d in ms.DISTRICTS}
+def pct(x: float) -> str:
+    return f"{x:.0%}"
 
-st.subheader("Why XGBoost on all inputs is the trained model on the map")
+
+tuning = load_tuning()
+gains = tuning.gains(test)
+algo_gain = gains.groupby("Model", sort=False)["Change"].mean()
+st.subheader("Tuning: the same models with better settings")
+st.dataframe(gains.drop(columns="model"), hide_index=True, height=rows_height(len(gains)),
+             column_config={"Protocol settings": st.column_config.NumberColumn(format="%.3f"),
+                            "Tuned": st.column_config.NumberColumn(format="%.3f"),
+                            "Change": st.column_config.NumberColumn(format="%+.3f"),
+                            "First crop right, all fields (tuned)": st.column_config.NumberColumn(format="%.3f")})
+how = ("Main score (macro-F1, 0 to 1) of each method with the settings of the protocol and with tuned settings "
+       "(tuning run of 23 November 2026, protocol 1.2). Each method tried 61 settings. In every fold the settings "
+       "were chosen with the training fields only, then scored once on the test fields, so the test fields never "
+       "helped choose them. ")
+if test == "new_fields":
+    st.caption(how + f"On new fields every model gains, {algo_gain.idxmax()} the most on average "
+                     f"({algo_gain.max():+.3f}).")
+else:
+    lowered = int((gains["Change"] < 0).sum())
+    st.caption(how + f"In a district the model never saw, settings chosen on three districts did not carry over to "
+                     f"the fourth: tuning lowered {lowered} of the {len(gains)} models, and none passes the adoption "
+                     "rule, so the rules stay the default answer of the API.")
+
+# The model on the map since 23 Nov: decision 2 of the protocol, section 11 (written before the tuning run).
+mp = tuning.decisions["map"]
+on_map = tuning.map_model
+algo = ms.model_label(on_map.replace(ms.TUNED, ""))[0]
+tf, tm = tuning.summary["new_fields"], tuning.summary["new_district"]
+who = tuning.answered_by()
+sure = tuning.when_sure()
+at_07 = sure[sure["Answers only from"] == 0.7].iloc[0]
+alt = tuning.alternatives().set_index("Choice")
+district_rule = "Most common crop of the field's district"
+mixed = tuning.mixed.loc["all"]
+st.subheader(f"Why the tuned {algo} is the trained model on the map")
 st.markdown(
-    "- The map shows users one answer per point. In each district it comes from the method that did better on new "
-    "fields there in testing: " + ", ".join(f"{who} in {d}" for d, who in answered_by.items()) + ".\n"
-    f"- At the midterm it had the best main score on new fields in the four districts: "
-    f"{fields.loc[MAP_MODEL, 'Main score']:.3f}, ahead of Random Forest on all inputs "
-    f"({fields.loc['RF[all]', 'Main score']:.3f}) and the rules ({rules_fields:.3f}).\n"
-    f"- With the satellite inputs it reaches {fields.loc['XGB[all_sat]', 'Main score']:.3f} on new fields "
-    f"({gain(fields, 'XGB[all_sat]', MAP_MODEL)}) and {main_test.loc['XGB[all_sat]', 'Main score']:.3f} in a "
-    f"district never seen ({gain(main_test, 'XGB[all_sat]', MAP_MODEL)}). That is too small to change the model on "
-    "the map, which would also have to take the satellite values from the nearest CIAT block, like the soil.\n"
-    "- Shallow boosted trees capture how crops respond to combinations of rainfall, temperature, elevation and "
-    "soil; balanced class weights keep rice and potato from being ignored; it retrains in seconds.\n"
-    f"- Limit: in a district it has never seen, it scores {main_test.loc[MAP_MODEL, 'Main score']:.3f}, below the "
-    f"rules ({rules_main:.3f}). The closest trained model there, {ms.short_label(best_main)} "
-    f"({main_test.loc[best_main, 'Main score']:.3f}), is below the rules too.\n"
-    "- Close competitor: over all fields pooled, Random Forest on all inputs is slightly ahead, because it does a "
-    "little better in Nyagatare.")
+    f"- **The rule was written before the run.** The map changes only if a tuned model beats the model on the map on "
+    f"new fields by more than {mp['margin']}. The tuned {ms.short_label(on_map.replace(ms.TUNED, ''))} scores "
+    f"{tf.loc[on_map, 'macro_f1_mean']:.3f} against {mp['today_score']:.3f} for {ms.short_label(mp['today'])} with "
+    "the protocol settings, so the map moved to it.\n"
+    "- **One answer per point.** In each district it comes from the method that did better on new fields there: "
+    + ", ".join(f"{algo if w == 'model' else 'the rules'} in {d}" for d, w in who.items()) + ".\n"
+    f"- **It knows when to be trusted.** When it gives its first crop a probability of 0.7 or more "
+    f"({pct(at_07['Fields answered'])} of the fields), that crop is right {pct(at_07['First crop right'])} of the "
+    "time. When it is less sure, it is right less often, as the table below shows.\n"
+    f"- **It beats the simple choices.** Its first crop is right for {pct(tf.loc[on_map, 'top1_all_fields'])} of "
+    f"the fields, against {pct(alt.loc['Expert rules (B1)', 'First crop right, all fields'])} for the rules and "
+    f"{pct(alt.loc[district_rule, 'First crop right, all fields'])} for the most common crop of the district, which "
+    f"never names another crop (main score {alt.loc[district_rule, 'Main score']:.3f}).\n"
+    f"- **The data has a limit.** {pct(mixed['blocks_with_more_than_one_crop'])} of the 2 km blocks grow more than "
+    "one crop. Even the most common crop of each field's own block, which no model can know in advance, would be "
+    f"right for only {pct(mixed['block_most_common_crop_right'])} of the fields.\n"
+    f"- **Limit.** In a district it has never seen, it scores {tm.loc[on_map, 'macro_f1_mean']:.3f}, below the "
+    f"rules ({tm.loc[ms.BASELINE, 'macro_f1_mean']:.3f}), so the rules stay the default answer of the API.")
+c1, c2 = st.columns(2)
+with c1:
+    st.markdown("**If it answered only when sure (new fields)**")
+    st.dataframe(pd.DataFrame({"Answers only from": [f"{v:.1f}" for v in sure["Answers only from"]],
+                               "Fields answered": [pct(v) for v in sure["Fields answered"]],
+                               "First crop right": [pct(v) for v in sure["First crop right"]]}),
+                 hide_index=True, height=rows_height(len(sure)))
+with c2:
+    st.markdown("**Simple choices on the same fields**")
+    st.dataframe(pd.DataFrame({"Choice": alt.index,
+                               "Main score": [f"{v:.3f}" for v in alt["Main score"]],
+                               "First crop right": [pct(v) for v in alt["First crop right, all fields"]]}),
+                 hide_index=True, height=rows_height(len(alt)))
+st.caption("Out-of-fold predictions of the new-fields test: no field was predicted by a model that saw its 2 km "
+           "block. 'Answers only from' is the model's probability for its first crop. Full report: "
+           "01-crop-recommendation/reports/tuning_v1/report.md.")
 
 with st.expander("Second check: the 650 fields CIAT marked \"Used\""):
     used_scores = load("used_only")

@@ -11,6 +11,7 @@ Only pandas and numpy are needed, so it also runs in the Colab kernel.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -21,6 +22,8 @@ MODULE = Path(__file__).resolve().parents[2]          # 01-crop-recommendation
 EVAL_V1 = MODULE / "reports" / "eval_v1"            # midterm, protocol 1.0 (12 combinations)
 EVAL_V2 = MODULE / "reports" / "eval_v2"            # protocol 1.1 (18 combinations, satellite inputs added)
 EVAL_DIR = EVAL_V2
+TUNING_V1 = MODULE / "reports" / "tuning_v1"        # protocol 1.2: the same models with tuned settings
+TUNED = " tuned"
 CROPS = ["beans", "irish_potato", "maize", "rice"]
 CROP_NAMES = {"beans": "Beans", "irish_potato": "Irish potato", "maize": "Maize", "rice": "Rice"}
 DISTRICTS = ["Musanze", "Nyabihu", "Nyagatare", "Ruhango"]
@@ -188,3 +191,67 @@ class Scores:
         base.index = [CROP_NAMES[c] for c in base.index]
         base.index.name = "Crop"
         return base.rename(columns={"fields": "Fields"})
+
+
+class Tuning:
+    """The tuning run (protocol 1.2, reports/tuning_v1): every method with the protocol settings and with tuned
+    settings on both tests, the model the map serves (decision 2), how often it is right at each level of its own
+    probability, simple alternatives on the same folds, and how mixed the 2 km blocks are."""
+
+    def __init__(self, folder: Path = TUNING_V1):
+        folder = Path(folder)
+        self.summary = {t: pd.read_csv(folder / f"main_{p}_summary.csv").set_index("model")
+                        for t, (_, p) in TESTS.items()}
+        self.results = {t: pd.read_csv(folder / f"main_{p}_results.csv") for t, (_, p) in TESTS.items()}
+        self.sure = pd.read_csv(folder / "answer_when_sure.csv")
+        self.bands = pd.read_csv(folder / "confidence_bands.csv")
+        self.mixed = pd.read_csv(folder / "mixed_land.csv").set_index("district")
+        self.info = json.loads((folder / "run_info.json").read_text(encoding="utf-8"))
+        self.decisions = self.info["decisions"]
+        self.map_model = self.decisions["map"]["serve"]
+
+    def gains(self, test: str) -> pd.DataFrame:
+        """One row per tuned model: main score with the protocol settings and tuned, the change, and the tuned
+        model's districts ahead of the rules and share of fields with the right first crop."""
+        s = self.summary[test]
+        rows = []
+        for m in MODEL_ORDER:
+            if m + TUNED not in s.index:
+                continue
+            name, inputs = model_label(m)
+            u, t = s.loc[m], s.loc[m + TUNED]
+            wins = t["districts_beating_B1"]
+            rows.append({"model": m + TUNED, "Model": name, "Inputs": inputs,
+                         "Protocol settings": u["macro_f1_mean"], "Tuned": t["macro_f1_mean"],
+                         "Change": round(t["macro_f1_mean"], 3) - round(u["macro_f1_mean"], 3),
+                         "Better than the rules in (tuned)": "" if pd.isna(wins) else f"{int(wins)} of 4 districts",
+                         "First crop right, all fields (tuned)": t["top1_all_fields"]})
+        return pd.DataFrame(rows)
+
+    def answered_by(self, margin: float = 0.01) -> dict:
+        """In each district, 'model' if the model on the map beats the rules on new fields by more than the margin
+        (the choice of map_model.method_for), otherwise 'rules'."""
+        r = self.results["new_fields"].pivot(index="model", columns="district", values="macro_f1")
+        return {d: "model" if r.loc[self.map_model, d] > r.loc[BASELINE, d] + margin else "rules" for d in DISTRICTS}
+
+    def when_sure(self, model: Optional[str] = None, district: str = "all") -> pd.DataFrame:
+        """If the model answered only from a probability for its first crop: share of fields answered, how often
+        right (new fields)."""
+        t = self.sure[(self.sure["model"] == (model or self.map_model)) & (self.sure["district"] == district)]
+        return t.rename(columns={"probability_at_least": "Answers only from", "share_answered": "Fields answered",
+                                 "first_crop_right": "First crop right"})[
+            ["Answers only from", "Fields answered", "First crop right"]].reset_index(drop=True)
+
+    def alternatives(self) -> pd.DataFrame:
+        """Simple choices on the same folds of the new-fields test, next to the model on the map before and after."""
+        s = self.summary["new_fields"]
+        before = self.decisions["map"]["today"]
+        names = {"B0_majority": "Most common crop of all training fields (B0)",
+                 "B0d_district_majority": "Most common crop of the field's district",
+                 BASELINE: "Expert rules (B1)",
+                 before: f"{short_label(before)} (map before 23 Nov)"}
+        if self.map_model != before:
+            names[self.map_model] = f"{short_label(self.map_model.replace(TUNED, ''))}, tuned (map now)"
+        return pd.DataFrame([{"Choice": label, "Main score": s.loc[m, "macro_f1_mean"],
+                              "First crop right, all fields": s.loc[m, "top1_all_fields"]}
+                             for m, label in names.items() if m in s.index])
