@@ -48,12 +48,32 @@ def passing_models(table: pd.DataFrame) -> list:
     return [ms.short_label(m) for m in table.index[table["Passes rule"] == "yes"]]
 
 
+# Column names as shown (client feedback of 19 Nov: every column says what it measures; top-3 removed, because with
+# four crops it is close to 1 for every method and only confuses).
+DISPLAY = {"Main score": "Main score (macro-F1, 0 to 1)", "Worst district": "Worst district (main score)",
+           "Accuracy (mean)": "Accuracy (average of the 4 districts)", "Beats B1 in": "Better than the rules in",
+           "Passes rule": "Passes the adoption rule"}
 SCORE_COLUMNS = {
-    "Main score": st.column_config.ProgressColumn("Main score", min_value=0.0, max_value=1.0, format="%.3f"),
-    "Worst district": st.column_config.NumberColumn(format="%.3f"),
-    "Accuracy (mean)": st.column_config.NumberColumn(format="%.3f"),
-    "Top-3 (mean)": st.column_config.NumberColumn(format="%.3f"),
+    DISPLAY["Main score"]: st.column_config.ProgressColumn(
+        DISPLAY["Main score"], min_value=0.0, max_value=1.0, format="%.3f",
+        help="In each district: how well the method names the right crop first, checked crop by crop so that every "
+             "crop counts the same (macro-F1). Then the average of the four districts. 1 is perfect, 0 always wrong."),
+    DISPLAY["Worst district"]: st.column_config.NumberColumn(
+        format="%.3f", help="The main score in the district where this method does worst."),
+    DISPLAY["Accuracy (mean)"]: st.column_config.NumberColumn(
+        format="%.3f", help="Share of fields where the first crop is the right one, in each district, then the "
+                            "average of the four districts."),
+    DISPLAY["Beats B1 in"]: st.column_config.TextColumn(
+        help="Number of districts where this method's main score beats the expert rules by more than 0.01."),
+    DISPLAY["Passes rule"]: st.column_config.TextColumn(
+        help="Yes only if, on the main test, its average is higher than the rules' and it is better than the rules "
+             "in at least 3 of the 4 districts."),
 }
+
+
+def score_table(df: pd.DataFrame) -> pd.DataFrame:
+    """A main_scores table as shown on the page: plain column names, no top-3."""
+    return df.drop(columns=["model", "Top-3 (mean)"]).rename(columns=DISPLAY)
 
 
 st.header("How well each model did")
@@ -83,13 +103,16 @@ else:
 test = st.radio("Test", list(ms.TESTS), format_func=ms.TEST_NAMES.get, horizontal=True, key="scores_test")
 
 st.subheader("Main score of every model")
-table = scores.main_scores(test).drop(columns="model")
+table = score_table(scores.main_scores(test))
 st.dataframe(table, hide_index=True, column_config=SCORE_COLUMNS, height=rows_height(len(table)))
-st.caption("Main score: macro-F1 in each test district over the crops with at least 5 fields there, then the mean "
-           "over the four districts (0 to 1). Accuracy and top-3 are also means over the four districts. Adoption "
-           "rule: a trained model replaces the rules only if, on the main test, its mean is higher and it beats the "
-           "rules by more than 0.01 in at least 3 of the 4 districts. Top-3 is close to 1 for every method because "
-           "there are only four crops, so it is never used to compare.")
+st.caption("How to read it. The main score checks, in each district, how well the method names the right crop "
+           "first, crop by crop, so that rice counts as much as maize (macro-F1, from 0 to 1; crops with fewer than 5 "
+           "fields in a district are left out). The table shows the average of the four districts, and the worst "
+           "district shows the same score where the method does worst. Accuracy is the share of fields where the "
+           "first crop is right, averaged over the four districts. A trained model replaces the rules only if, on the "
+           "main test, its average is higher and it is better than the rules by more than 0.01 in at least 3 of the "
+           "4 districts. Top-3 is not shown: with only four crops it is close to 1 for every method, so it tells "
+           "nothing apart.")
 
 st.subheader("What the satellite inputs changed")
 effect = scores.satellite_effect(test)
@@ -107,7 +130,7 @@ else:
                "it still loses to them in the highlands (Musanze, Nyabihu). XGBoost barely moves, and Logistic "
                "Regression drops with all inputs.")
 
-st.subheader("Main score in each district")
+st.subheader("Main score in each district (macro-F1, 0 to 1)")
 per_district = scores.per_district(test)
 st.dataframe(per_district.style.format("{:.3f}"), height=rows_height(len(per_district)))
 st.caption("The trained models win in the lowlands (Nyagatare, Ruhango), where the rules are weak, and lose in the "
@@ -139,8 +162,16 @@ def gain(table: pd.DataFrame, new: str, old: str) -> str:
     return f"{round(table.loc[new, 'Main score'], 3) - round(table.loc[old, 'Main score'], 3):+.3f}"
 
 
-st.subheader("Why XGBoost on all inputs is still on the map")
+# Same choice as map_model.method_for: the model answers in a district only if it beats the rules on new fields there
+# by more than 0.01 (the margin of the adoption rule).
+nf = scores.results["new_fields"].pivot(index="model", columns="district", values="macro_f1")
+answered_by = {d: "XGBoost" if nf.loc[MAP_MODEL, d] > nf.loc[ms.BASELINE, d] + 0.01 else "the rules"
+               for d in ms.DISTRICTS}
+
+st.subheader("Why XGBoost on all inputs is the trained model on the map")
 st.markdown(
+    "- The map shows users one answer per point. In each district it comes from the method that did better on new "
+    "fields there in testing: " + ", ".join(f"{who} in {d}" for d, who in answered_by.items()) + ".\n"
     f"- At the midterm it had the best main score on new fields in the four districts: "
     f"{fields.loc[MAP_MODEL, 'Main score']:.3f}, ahead of Random Forest on all inputs "
     f"({fields.loc['RF[all]', 'Main score']:.3f}) and the rules ({rules_fields:.3f}).\n"
@@ -158,7 +189,7 @@ st.markdown(
 
 with st.expander("Second check: the 650 fields CIAT marked \"Used\""):
     used_scores = load("used_only")
-    used = used_scores.main_scores(test).drop(columns="model")
+    used = score_table(used_scores.main_scores(test))
     st.dataframe(used, hide_index=True, column_config=SCORE_COLUMNS, height=rows_height(len(used)))
     used_main = used_scores.main_scores("new_district").set_index("model")
     used_fields = used_scores.main_scores("new_fields").set_index("model")
