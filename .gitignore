@@ -66,3 +66,5 @@ lightning_logs/
 !01-crop-recommendation/reports/**/*.csv
 # Trained models are rebuilt in seconds from the code, so they are not committed
 01-crop-recommendation/reports/**/model/
+# Saved jobs of a tuning run (tune.py), only needed to restart or rebuild the report
+01-crop-recommendation/reports/**/_work/
