@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / "03-shared" / "apis"))
 from fastapi.testclient import TestClient  # noqa: E402
 
 import service  # noqa: E402
-from recommend_schemas import ErrorEnvelope, MetadataResponse, RecommendResponse  # noqa: E402
+from recommend_schemas import ErrorEnvelope, MetadataResponse, PointResponse, RecommendResponse  # noqa: E402
 
 client = TestClient(service.app)
 
@@ -34,9 +34,10 @@ def codes(resp):
     return [w.code for w in resp.warnings]
 
 
-def test_health_says_rules_only():
+def test_health_says_what_can_answer():
     j = client.get("/v1/health").json()
-    assert j["status"] == "degraded" and j["rules_loaded"] and not j["model_loaded"]
+    assert j["rules_loaded"] and j["api_version"] == "1.0"
+    assert j["status"] == ("ok" if service.xgboost_available() else "degraded")
 
 
 def test_metadata_lists_the_pilot_districts_and_supported_crops():
@@ -251,3 +252,57 @@ def test_profile_builder_keeps_centres_when_the_table_has_no_coordinates(tmp_pat
     res.write_text("model,district,n_test,top1,macro_f1,crops_scored\n"
                    "B1_expert_rules,X,10,0.5,0.41234,beans+maize\nRF[all],X,10,0.9,0.9,beans+maize\n")
     assert bdp.b1_tested(res) == {"X": {"macro_f1": 0.412, "top1": 0.5, "n_fields": 10, "crops_scored": "beans+maize"}}
+
+
+# ------------------------------------------------------------ added in 1.0: one answer for a point
+def point(body):
+    pytest.importorskip("xgboost")
+    r = client.post("/v1/recommend/point", json=body)
+    assert r.status_code == 200, r.text
+    return PointResponse(**r.json()), r
+
+
+def test_point_gives_one_answer_with_confidence_and_fertiliser():
+    resp, r = point({"lat": -1.35, "lon": 30.30, "season": "B"})             # Nyagatare: XGBoost answers
+    assert r.headers["X-Request-ID"] == resp.request_id
+    a = resp.recommendation
+    assert resp.location.district == "Nyagatare" and a.crop == "maize" and a.method == "xgboost"
+    assert a.confidence.level.value == "medium" and a.confidence.lowered_by == []
+    assert resp.fertiliser.crop == "maize" and [i.rate for i in resp.fertiliser.items] == [100, 100]
+    assert "FERTILISER_INTERIM" in codes(resp) and "CROPS_TIED" not in codes(resp)   # a rules tie does not matter here
+    assert resp.inputs_used.field_data_from.n_ciat_fields >= 1 and resp.evaluation is None
+    assert "lat" not in resp.inputs_used.model_dump_json()                          # no farm or block coordinates
+
+
+def test_point_is_the_same_answer_as_the_map():
+    import map_model
+    _, rec = service.map_recommender()
+    for lat, lon in [(-1.458, 29.556), (-1.62, 29.50), (-2.23, 29.78)]:
+        resp, _ = point({"lat": lat, "lon": lon, "season": "B", "include_evaluation": True})
+        m = rec.recommend(lat, lon, "B")
+        assert resp.recommendation.crop == m["answer"]["crop"]
+        assert resp.recommendation.confidence.level.value == m["answer"]["confidence"]
+        assert resp.recommendation.method == {"model": "xgboost", "rules": "expert_rules"}[m["answer"]["method"]]
+        assert [x.crop for x in resp.evaluation.rules_ranking] == [x["crop"] for x in m["rules"]["ranking"]]
+    assert map_model.MODEL_NAME in resp.model_version
+
+
+def test_point_in_an_untested_season_is_low_with_a_warning():
+    resp, _ = point({"lat": -1.458, "lon": 29.556, "season": "A"})
+    assert resp.season.asked == "A" and resp.season.used == "B"
+    assert resp.recommendation.confidence.level.value == "low"
+    assert resp.recommendation.confidence.lowered_by == ["this season was never tested"]
+    assert codes(resp)[0] == "SEASON_NOT_EVALUATED"
+
+
+def test_point_outside_the_pilot_districts_abstains():
+    resp, _ = point({"lat": -1.95, "lon": 30.06, "season": "B"})             # Kigali
+    assert resp.abstain and resp.recommendation is None and resp.fertiliser is None
+    assert "OUTSIDE_PILOT_DISTRICTS" in codes(resp) and "consult an extension officer" in resp.abstain_message
+
+
+def test_point_request_errors_use_the_envelope():
+    r = client.post("/v1/recommend/point", json={"lat": -1.5, "lon": 29.6})
+    assert r.status_code == 422 and ErrorEnvelope(**r.json()).error.code == "VALIDATION_ERROR"
+    r = client.post("/v1/recommend/point", json={"lat": -5.0, "lon": 29.6, "season": "B"})
+    assert r.status_code == 422 and ErrorEnvelope(**r.json()).error.code == "OUT_OF_BOUNDS"

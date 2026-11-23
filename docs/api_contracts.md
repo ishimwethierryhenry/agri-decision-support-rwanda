@@ -1,19 +1,22 @@
 # API contracts
 
-**Status:** DRAFT 0.2.2, proposed by Thierry (Part B, ML and Geospatial) on 20 October 2026 and updated on 28 October and 18 November 2026. `POST /v1/recommend` now runs on the B1 expert-rules baseline (section 6). The examples below are still placeholders, not model output and not agronomic advice.
+**Status:** FINAL 1.0, 23 November 2026, by Thierry (Part B, ML and Geospatial). First proposed on 20 October 2026, updated on 28 October and 18 November 2026. Both recommendation interfaces are implemented in `01-crop-recommendation/src/recommendation/service.py` and checked by the tests in section 2.6. The crop health diagnosis interface belongs to the CV sub-team and joins this document when the two dashboards are merged.
 
-**Reviewers needed:** Anny and Gabin (CV sub-team) for section 1 and the dashboard side. Arsene for the feature schema link and reliability levels. Calvin or Prof. Okeyo only if they want to see the format.
+**Reviewers:** Arsene (Part A) for the inputs and the season decision. Anny and Gabin (CV sub-team) for section 1 when their service joins.
 
-This file replaces the empty template. Each interface follows the template fields. The same contract exists as code in `03-shared/apis/recommend_schemas.py`, and `03-shared/tests/test_recommend_contract.py` checks that the examples and rules in this file hold. If you change one, change the other and raise the contract version.
+Each interface follows the template fields. The same contract exists as code in `03-shared/apis/recommend_schemas.py`, and the tests check that the examples and rules in this file hold. If you change one, change the other and raise the contract version.
+
+The examples of `POST /v1/recommend` are placeholders that show the shape. The examples of `POST /v1/recommend/point` are real answers of the service. Neither is agronomic advice.
 
 ## Contents
 
 | # | Interface | Method and route | Status |
 | --- | --- | --- | --- |
-| 1 | Crop and fertiliser recommendation | `POST /v1/recommend` | Proposed |
-| 2 | Service metadata | `GET /v1/metadata` | Proposed |
-| 3 | Service health | `GET /v1/health` | Proposed |
-| 4 | Crop health diagnosis | `POST /v1/diagnose` | Owned by the CV sub-team, not defined here |
+| 1 | Crop and fertiliser recommendation (expert rules, district or point) | `POST /v1/recommend` | Implemented |
+| 2 | One recommendation for a point, with a confidence level | `POST /v1/recommend/point` | Implemented, new in 1.0 |
+| 3 | Service metadata | `GET /v1/metadata` | Implemented |
+| 4 | Service health | `GET /v1/health` | Implemented |
+| 5 | Crop health diagnosis | `POST /v1/diagnose` | Owned by the CV sub-team, added when the two dashboards are merged |
 
 ## 1. Conventions shared by both services (to agree with the CV sub-team)
 
@@ -28,22 +31,22 @@ These are proposals. The goal is that the dashboard can call both services the s
 | Time | ISO 8601, UTC, for example `2026-10-21T08:00:00Z`. |
 | Units | The unit is written in the field name or documented beside it. SI units. |
 | Request id | Every response carries `request_id` in the body and in an `X-Request-ID` header. |
-| Errors | One envelope for both services (section 6). |
+| Errors | One envelope for both services (section 2.4). |
 | Uncertainty | Being unsure is not an error. The service answers `200` with an uncertain result, and the dashboard shows "uncertain, consult an extension officer". For recommendation this is `abstain: true`. For diagnosis the CV team defines the equivalent. |
-| Two different words | Recommendation uses a **reliability level** (high, medium, low). Diagnosis uses a **confidence score**. They are not the same thing and must not be shown as if they were. |
+| Levels, not probabilities | Recommendation answers carry a level (high, medium, low): `reliability` for each crop of `POST /v1/recommend`, and `confidence` for the one answer of `POST /v1/recommend/point` (section 3). Neither is a probability. Diagnosis uses a **confidence score** from the CV model. They are not the same thing and must not be shown as if they were. |
 | Authentication | None in the prototype. |
-| Speed target | 95 percent of requests under 3 seconds on a laptop. Proposed, to be measured. |
+| Speed target | 95 percent of requests under 3 seconds on a laptop. Measured on 23 Nov 2026 (test client, Linux laptop class machine): `POST /v1/recommend` about 6 ms; `POST /v1/recommend/point` about 1 s for the first call, which trains the model, then about 15 ms. |
 
 ## 2. Interface 1: Crop and fertiliser recommendation
 
 | Field | Value |
 | --- | --- |
 | Interface name | Crop and fertiliser recommendation |
-| Status | Proposed |
+| Status | Implemented on the B1 expert rules, because no trained model passed the adoption rule for a district never seen (`eval_v1` and `eval_v2`, `docs/training_protocol.md`). |
 | Responsible workstream | Crop recommendation (ML and Geospatial, Part B), with the shared dashboard |
 | Purpose | An extension officer gives a location, a season and optional soil test values. The service returns ranked crops with reasons and a reliability level, and fertiliser guidance for one crop with the source of each rule. |
-| Method and route | `POST /v1/recommend` (proposed, not agreed) |
-| Contract version | 0.2.2 draft. Reviewer and review date: to fill in. |
+| Method and route | `POST /v1/recommend` |
+| Contract version | 1.0, final for the practicum. |
 
 ### 2.1 Input fields
 
@@ -53,7 +56,7 @@ These are proposals. The goal is that the dashboard can call both services the s
 | `lat` | number | with `lon` | decimal degrees, -2.9 to -1.0 | Approximate bounding box of Rwanda. |
 | `lon` | number | with `lat` | decimal degrees, 28.8 to 31.0 | If `lat` and `lon` are given they win over `district`. |
 | `elevation_m` | number | no | metres, 900 to 4,600 | Added in 0.2.0. Field elevation, for example from a phone GPS. If left out, the median elevation of the CIAT points in the district is used, with a warning. |
-| `season` | string | yes | `A`, `B` or `C` | Rwandan agricultural seasons. |
+| `season` | string | yes | `A`, `B` or `C` | Rwandan agricultural seasons. Only season B was tested, because the only labelled data (CIAT, 2025) is season B. Seasons A and C get the warning `SEASON_NOT_EVALUATED` and reliability `low`. No other season is planned in this project (decided with Part A on 23 Nov 2026). |
 | `year` | integer | no | 2000 to 2100 | Reserved. Not used by the first version. |
 | `crop` | string | no | lower case code from `GET /v1/metadata` | The crop to give fertiliser advice for. If left out, advice is for the rank 1 crop. |
 | `soil.ph_water` | number | no | pH, 3.0 to 10.0 | Range follows the Prof's soil variable dictionary. |
@@ -67,7 +70,7 @@ These are proposals. The goal is that the dashboard can call both services the s
 
 Unknown fields are rejected, so a misspelt field is an error and is never ignored silently.
 
-If soil values are not given and the request has `lat` and `lon`, the service looks them up from iSDAsoil. If only a district is given, it uses a district default when one exists. Either way the response says where each soil value came from in `inputs_used`.
+This route uses only the soil values given in the request: it does not look soil up. The crop rules (B1) do not use soil yet, so soil values only reach the fertiliser rules, and the response says so (`SOIL_NOT_USED_BY_METHOD`). `inputs_used.soil` lists the values used (source `user`) and the key values that are missing. For soil looked up at the point, use `POST /v1/recommend/point` (section 3).
 
 Example request (district, with partial soil values):
 
@@ -115,7 +118,7 @@ Example request (point, fertiliser advice only):
 | `crop_recommendations[].crop` | string | Crop code. |
 | `crop_recommendations[].score` | number 0 to 1 | Suitability score used for ranking. It is **not** a probability unless the models are calibrated and we say so. |
 | `crop_recommendations[].method` | string | `expert_rules`, `random_forest` or `xgboost`. |
-| `crop_recommendations[].reliability` | object | `level` (`high`, `medium`, `low`) and `reason_codes` (section 4). |
+| `crop_recommendations[].reliability` | object | `level` (`high`, `medium`, `low`) and `reason_codes` (section 6). |
 | `crop_recommendations[].reasons` | list, at least one | Each has `factor`, `direction` (`supports`, `against`, `neutral`), `value`, `expected_range` and a `text` sentence. |
 | `fertiliser` | object or null | Fertiliser guidance for one crop. |
 | `fertiliser.crop` | string | The crop the advice is for. |
@@ -125,20 +128,20 @@ Example request (point, fertiliser advice only):
 | `fertiliser.items[].source` | object | `document`, and where possible `section`, `page` and `url`. **Every item must have one.** An item without a source is a contract violation. |
 | `fertiliser.items[].explanation` | string or null | Plain language explanation. |
 | `fertiliser.items[].explanation_method` | string | `rule_text` (written with the rule) or `rag` (retrieved guideline passages, see below). |
-| `inputs_used.soil.values` | object | For each soil variable used: `value` and `source` (`user`, `isdasoil`, `district_default`). |
+| `inputs_used.soil.values` | object | For each soil variable used: `value` and `source`. In 1.0 the source is always `user`. |
 | `inputs_used.soil.missing` | list | Key soil inputs that were not available (pH, organic carbon, total nitrogen). |
 | `inputs_used.site` | object | Added in 0.2.0. The elevation and climate values the method used, each with `value` and `source` (for example `user`, `district_median_ciat`, `nasa_power_normal_2017_2024`). |
-| `warnings` | list | `code` and `message` pairs (section 5). |
+| `warnings` | list | `code` and `message` pairs (section 6). |
 | `disclaimer` | string | Fixed sentence: decision support, not a replacement for local advice. |
 
-**How RAG fits.** The fertiliser rule engine decides the recommendation: input type, rate and timing. The RAG component only writes or improves the `explanation` text, using passages retrieved from the guideline documents. It cannot change an item, and it cannot add one. The `source` of each item always comes from the rule, even when the explanation is RAG text. If RAG finds nothing to cite, `explanation` is `null` and the item still ships with its rule source.
+**How RAG fits.** The fertiliser rule engine decides the recommendation: input type, rate and timing. The RAG component only writes or improves the `explanation` text, using passages retrieved from the guideline documents. It cannot change an item, and it cannot add one. The `source` of each item always comes from the rule, even when the explanation is RAG text. If RAG finds nothing to cite, `explanation` is `null` and the item still ships with its rule source. **Status in 1.0:** RAG is not built, because its source, the RAB guideline, is not in yet. `explanation_method` is always `rule_text`, and the field stays so that RAG can be added without changing the contract.
 
 Example response (placeholders only):
 
 ```json
 {
   "request_id": "example-0001",
-  "api_version": "0.2.2",
+  "api_version": "1.0",
   "model_version": null,
   "rules_version": "rules-0.1-example",
   "generated_at": "2026-10-21T08:00:00Z",
@@ -260,7 +263,7 @@ Example response when the service abstains:
 ```json
 {
   "request_id": "example-0002",
-  "api_version": "0.2.2",
+  "api_version": "1.0",
   "model_version": null,
   "rules_version": "rules-0.1-example",
   "generated_at": "2026-10-21T08:05:00Z",
@@ -355,52 +358,294 @@ FastAPI answers validation errors in its own format by default. The service repl
 
 ### 2.6 Test coverage
 
-- Contract tests: `03-shared/tests/test_recommend_contract.py` (22 checks: examples validate, range and location rules, abstain rules, rank order, every fertiliser item needs a source, error envelope, stub server behaviour).
-- Run from the repository root: `python -m pytest 03-shared/tests -q`
-- Needs: `pip install pydantic fastapi httpx pytest`
-- Integration tests with the diagnosis service and dashboard: not written yet.
+- Contract tests: `03-shared/tests/test_recommend_contract.py` (38 checks: examples validate, range and location rules, abstain rules, rank order, every fertiliser item needs a source, error envelope, stub server behaviour, and the point interface of section 3).
+- Service tests: `01-crop-recommendation/tests/test_recommend_service.py` (35 checks on the real service, including that `POST /v1/recommend/point` gives the same answer as the dashboard map).
+- Run from the repository root: `python -m pytest 01-crop-recommendation/tests 03-shared/tests -q` (233 tests pass on 23 Nov 2026 with the pinned library versions).
+- Needs: `pip install -r 03-shared/dashboard/requirements.txt pytest`. Without XGBoost, the point tests are skipped.
+- Integration tests with the diagnosis service: written when the two dashboards are merged.
 
-## 3. Interface 2: Service metadata
+## 3. Interface 2: One recommendation for a point
+
+| Field | Value |
+| --- | --- |
+| Interface name | One recommendation for a point |
+| Status | Implemented, new in 1.0 |
+| Responsible workstream | Crop recommendation (ML and Geospatial, Part B), with the shared dashboard |
+| Purpose | A user clicks or types a point in one of the four pilot districts. The service returns one crop, a confidence level with plain reasons, the fertiliser for that crop, and the inputs it used. It is the same answer as the dashboard map, as the client asked on 19 Nov 2026: one recommendation and how sure we are, not a comparison of methods. |
+| Method and route | `POST /v1/recommend/point` |
+| Contract version | 1.0 |
+
+### 3.1 How the answer is made
+
+1. **District.** From the district outline the point falls in. A point within 1.5 km of a CIAT block just across a simplified outline counts as that block's district. Outside the four pilot districts the service abstains.
+2. **Inputs.** Soil (iSDAsoil, 0 to 20 and 20 to 50 cm) and elevation come from the CIAT fields of the same 2 km block, or of the nearest block in the district. Season B 2025 weather (NASA POWER) and NISR crop shares come from the district, the values the model learned from.
+3. **Two methods rank the crops.** XGBoost on all inputs, trained once on the 1,904 CIAT fields with the protocol settings, and the expert rules (B1).
+4. **One method answers.** In each district, the method with the higher main score on new fields in testing (`eval_v1`), if it is ahead by more than 0.01; otherwise the rules, the default. Today that means the rules in Musanze and Nyabihu, and XGBoost in Nyagatare and Ruhango.
+5. **Confidence level.** It starts from the method's tested hit rate in the district: the share of new fields where its first crop was the right one.
+
+| Level | When |
+| --- | --- |
+| `high` | Tested hit rate of at least 0.75, season B, and no reason to lower it. |
+| `medium` | Tested hit rate from 0.50 to 0.75, or at least 0.75 with one reason to lower it. |
+| `low` | Tested hit rate below 0.50; or two reasons to lower it; or a season other than B, which was never tested. |
+
+Each reason lowers the level by one step: a close call (the first two crops are less than 0.10 apart in the method's own score, a tie included), and data far from the point (the nearest CIAT data is more than 5 km away). The thresholds are fixed, not tuned on results. Today's tested hit rates are 0.62 in Musanze and 0.66 in Nyabihu (rules), 0.68 in Nyagatare and 0.58 in Ruhango (XGBoost), so a season B answer is `medium`, or `low` after a close call or with far data. No answer is `high` yet. `lowered_by` says in plain words why a level is lower than the hit rate alone would give.
+
+6. **Fertiliser** for the recommended crop, from the same rule engine as section 2 (interim national rates until the RAB guideline is in).
+
+### 3.2 Input fields
+
+| Field | Type | Required | Unit and valid range | Notes |
+| --- | --- | --- | --- | --- |
+| `lat` | number | yes | decimal degrees, -2.9 to -1.0 | Approximate bounding box of Rwanda. |
+| `lon` | number | yes | decimal degrees, 28.8 to 31.0 | |
+| `season` | string | yes | `A`, `B` or `C` | The answer is always for season B, the only season tested. A and C get `low` confidence and the warning `SEASON_NOT_EVALUATED`. |
+| `elevation_m` | number | no | metres, 900 to 4,600 | Field elevation, for example from a phone GPS. If left out, the median GPS elevation of the CIAT fields in the block. |
+| `include_evaluation` | boolean | no, default false | | Also return both methods' rankings and tested scores, for evaluators. Users only need the recommendation. |
+
+Unknown fields are rejected (a `district` field, for example).
+
+Example request:
+
+```json
+{
+  "lat": -1.35,
+  "lon": 30.3,
+  "season": "B"
+}
+```
+
+### 3.3 Output fields
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `request_id`, `api_version`, `rules_version`, `generated_at`, `disclaimer` | | As in section 2.2. |
+| `model_version` | string | The trained model behind the XGBoost answers. |
+| `location` | object | District, province, the requested point, and `resolution: point`. |
+| `season.asked`, `season.used` | strings | The season asked, and the season the answer is for (always `B`). |
+| `abstain` | boolean | `true` outside the four pilot districts. Then `recommendation`, `fertiliser` and `inputs_used` are `null` and `abstain_message` says why. |
+| `recommendation.crop` | string | The one recommended crop. |
+| `recommendation.method` | string | `xgboost` or `expert_rules`: the method that answers in this district (section 3.1). |
+| `recommendation.confidence.level` | string | `high`, `medium` or `low` (section 3.1). Not a probability. |
+| `recommendation.confidence.tested_hit_rate` | number 0 to 1 | Share of new fields in the district where the method's first crop was right in testing. |
+| `recommendation.confidence.lowered_by` | list of strings | Why the level is lower than the hit rate alone would give. Empty when nothing lowers it. |
+| `recommendation.close_second` | string or null | A crop that fits almost as well, if any. |
+| `recommendation.alternatives` | list | The method's next crops, in order. |
+| `recommendation.why` | list, at least one | Plain sentences: why this method answers here, its hit rate, and for the rules, the checks behind the crop with their sources. |
+| `fertiliser` | object or null | Same object as section 2.2, always for `recommendation.crop`. |
+| `inputs_used` | object | `elevation_m` and `elevation_source`, `soil_texture`, `soil_0_20cm`, `field_data_from` (`n_ciat_fields` in the block and `distance_km` to it), `climate_season_b_2025`, `nisr_crop_shares`. It never contains farm or block coordinates. |
+| `evaluation` | object or null | Only with `include_evaluation: true`: `xgboost_ranking` and `rules_ranking` (crop and score) and `tested_main_score_new_fields` for both methods in the district. |
+| `warnings` | list | `code` and `message` pairs (section 6). |
+
+Rules checked by the schema: `abstain: true` needs `abstain_message` and no recommendation; `abstain: false` needs a recommendation; the fertiliser advice is for the recommended crop.
+
+Example response (a real answer of the service for a point in Nyagatare, with `request_id` and `generated_at` fixed):
+
+```json
+{
+  "request_id": "example-0004",
+  "api_version": "1.0",
+  "model_version": "XGB[all], trained on the 1,904 CIAT fields",
+  "rules_version": "crops-0.1-draft+fertiliser-0.1-interim-2026-11-18",
+  "generated_at": "2026-11-23T08:00:00Z",
+  "location": {
+    "district": "Nyagatare",
+    "province": "East",
+    "lat": -1.35,
+    "lon": 30.3,
+    "resolution": "point"
+  },
+  "season": {
+    "asked": "B",
+    "used": "B"
+  },
+  "abstain": false,
+  "abstain_message": null,
+  "recommendation": {
+    "crop": "maize",
+    "method": "xgboost",
+    "confidence": {
+      "level": "medium",
+      "tested_hit_rate": 0.68,
+      "lowered_by": []
+    },
+    "close_second": null,
+    "alternatives": [
+      "beans",
+      "rice",
+      "irish_potato"
+    ],
+    "why": [
+      "In Nyagatare, XGBoost did better than the expert rules in testing on new fields (0.37 against 0.09, main score), so the answer comes from XGBoost.",
+      "In that test, its first crop was the right one for 68% of the fields in Nyagatare."
+    ]
+  },
+  "fertiliser": {
+    "crop": "maize",
+    "status": "ok",
+    "engine_version": "0.2.0+rules-0.1-interim-2026-11-18",
+    "items": [
+      {
+        "input_type": "compound_fertiliser",
+        "product": "DAP (18-46-0)",
+        "rate": 100.0,
+        "rate_unit": "kg/ha",
+        "timing": "At planting",
+        "condition_matched": "maize-national-interim-01: applies to this crop in general",
+        "source": {
+          "document": "B. T. Mudereri et al., Smart Fertiliser Recommendations for Maize in Rwanda, CGIAR Sustainable Farming Science Program Report, Nov. 2025",
+          "section": "Table 2, treatment BR (blanket recommendation)",
+          "page": "7",
+          "url": "https://hdl.handle.net/10568/178714"
+        },
+        "explanation": "Interim: published national rate, not yet confirmed by RAB. National blanket recommendation as used in the RAB and CGIAR maize trials: 100 kg/ha of DAP at planting.",
+        "explanation_method": "rule_text"
+      },
+      {
+        "input_type": "nitrogen",
+        "product": "Urea (46% N)",
+        "rate": 100.0,
+        "rate_unit": "kg/ha",
+        "timing": "Top dressing at 6 to 8 leaves, about 4 to 6 weeks after emergence",
+        "condition_matched": "maize-national-interim-01: applies to this crop in general",
+        "source": {
+          "document": "B. T. Mudereri et al., Smart Fertiliser Recommendations for Maize in Rwanda, CGIAR Sustainable Farming Science Program Report, Nov. 2025",
+          "section": "Table 2, treatment BR (blanket recommendation)",
+          "page": "7",
+          "url": "https://hdl.handle.net/10568/178714"
+        },
+        "explanation": "Interim: published national rate, not yet confirmed by RAB. National blanket recommendation as used in the RAB and CGIAR maize trials: 100 kg/ha of urea as top dressing. An older report lists 50 kg/ha of urea for the government recommendation (IFDC, 2018, Table 2), so this rate needs RAB's confirmation.",
+        "explanation_method": "rule_text"
+      }
+    ]
+  },
+  "inputs_used": {
+    "elevation_m": 1350.2,
+    "elevation_source": "median GPS elevation of the CIAT fields in the block",
+    "soil_texture": "sandy clay loam",
+    "soil_0_20cm": {
+      "nitrogen": 1.37,
+      "phosphorous_extractable": 18.09,
+      "potassium_extractable": 171.07,
+      "ph": 5.84,
+      "sand": 49.78,
+      "clay": 32.78,
+      "silt": 20.44,
+      "carbon_organic": 14.57,
+      "cation_exchange_capacity": 10.94
+    },
+    "field_data_from": {
+      "n_ciat_fields": 9,
+      "distance_km": 0.0
+    },
+    "climate_season_b_2025": {
+      "rainfall_mm": 441.6,
+      "tmax_c": 27.67,
+      "tmin_c": 16.42,
+      "mean_temp_at_field_c": 22.42,
+      "solar_mj_m2_day": 17.65
+    },
+    "nisr_crop_shares": {
+      "Beans": 0.531,
+      "Irish potato": 0.01,
+      "Maize": 0.421,
+      "Rice": 0.038
+    }
+  },
+  "evaluation": null,
+  "warnings": [
+    {
+      "code": "FERTILISER_INTERIM",
+      "message": "Fertiliser rates are interim: national blanket rates from published sources, not yet confirmed by RAB, and the same for every field."
+    }
+  ],
+  "disclaimer": "Decision support for extension officers and agronomists. It does not replace local field advice."
+}
+```
+
+Example response outside the pilot districts (a point in Kigali):
+
+```json
+{
+  "request_id": "example-0005",
+  "api_version": "1.0",
+  "model_version": "XGB[all], trained on the 1,904 CIAT fields",
+  "rules_version": "crops-0.1-draft+fertiliser-0.1-interim-2026-11-18",
+  "generated_at": "2026-11-23T08:01:00Z",
+  "location": {
+    "district": "Nyarugenge",
+    "province": null,
+    "lat": -1.95,
+    "lon": 30.06,
+    "resolution": "point"
+  },
+  "season": {
+    "asked": "B",
+    "used": "B"
+  },
+  "abstain": true,
+  "abstain_message": "Nyarugenge is not one of the four pilot districts (Musanze, Nyabihu, Nyagatare, Ruhango). There is no CIAT data here, so no recommendation is given. Please consult an extension officer.",
+  "recommendation": null,
+  "fertiliser": null,
+  "inputs_used": null,
+  "evaluation": null,
+  "warnings": [
+    {
+      "code": "OUTSIDE_PILOT_DISTRICTS",
+      "message": "Nyarugenge is not one of the four pilot districts (Musanze, Nyabihu, Nyagatare, Ruhango). There is no CIAT data here, so no recommendation is given."
+    }
+  ],
+  "disclaimer": "Decision support for extension officers and agronomists. It does not replace local field advice."
+}
+```
+
+### 3.4 Validation and errors
+
+| Case | Behaviour |
+| --- | --- |
+| Missing `lat`, `lon` or `season`, wrong type, unknown field | `422`, `VALIDATION_ERROR`. |
+| `lat` or `lon` outside the Rwanda bounding box | `422`, `OUT_OF_BOUNDS`. |
+| A point in Rwanda but outside the four pilot districts | `200`, `abstain: true`, warning `OUTSIDE_PILOT_DISTRICTS`. |
+| A point inside the bounding box but outside Rwanda | `200`, `abstain: true`, warning `OUTSIDE_RWANDA`. |
+| XGBoost is not installed on the server | `503`, `MODEL_UNAVAILABLE`. `POST /v1/recommend` still answers with the expert rules. |
+
+Errors use the envelope of section 2.4.
+
+## 4. Interface 3: Service metadata
 
 | Field | Value |
 | --- | --- |
 | Method and route | `GET /v1/metadata` |
-| Status | Proposed |
+| Status | Implemented |
 | Purpose | Lets the dashboard fill its drop-down lists and lets people check which version is running. |
 | Input | None. |
 | Output | `api_version`, `model_version`, `rules_version`, `feature_schema_version`, `districts` (each with `name`, `province`, `in_training_data`), `crops` (codes), `seasons`. |
 | Errors | `500 INTERNAL_ERROR` only. |
 
-The crop list is not final. The candidates are beans, irish_potato, maize, rice and cassava. The team has to agree one list (see section 7).
+Crops: beans, irish_potato, maize and rice, the four crops of the CIAT data. This list is final for 1.0 (section 8).
 
-## 4. Interface 3: Service health
+## 5. Interface 4: Service health
 
 | Field | Value |
 | --- | --- |
 | Method and route | `GET /v1/health` |
-| Status | Proposed |
+| Status | Implemented |
 | Purpose | Quick check that the service is up and which parts are loaded. |
 | Output | `status` (`ok`, `degraded`, `down`), `rules_loaded`, `model_loaded`, `api_version`. |
-| Rule | `ok` needs rules and models loaded. `degraded` means the rules answer but models are not loaded. `down` means nothing can answer. |
+| Rule | `ok`: the rules answer, and XGBoost is installed so point requests can answer (the model trains on the first point request, and `model_loaded` becomes `true` then). `degraded`: only the rules answer, so `POST /v1/recommend` works and `POST /v1/recommend/point` returns `503`. `down`: nothing can answer. |
 
-## 5. Reliability levels (draft meaning)
+## 6. Reliability levels of POST /v1/recommend, and warning codes
 
-The level is about how much the answer should be trusted, and it is shown to the extension officer. The rules below are drafts. They are reviewed after the ML models are evaluated and then recorded in `04-data-reporting`.
+The level is about how much the answer should be trusted, and it is shown to the extension officer. The confidence level of `POST /v1/recommend/point` has its own rules (section 3.1).
 
-**Rules used now, with the B1 expert-rules baseline (0.2.1).** B1 is never `high`, because no trained model has been adopted: in the official evaluation of 28 October (`01-crop-recommendation/reports/eval_v1`, protocol in `docs/training_protocol.md`), no ML model passed the adoption rule. The same evaluation shows where the rules themselves work. B1 scored 0.59 (Musanze) and 0.65 (Nyabihu) macro-F1, but 0.09 (Nyagatare) and 0.19 (Ruhango), where several crops fit the rules equally and the rules cannot tell which one farmers prefer. These scores are stored per district in `district_profiles.json` (`b1_tested`) and set the level below.
+**Rules of `POST /v1/recommend`, on the B1 expert rules (since 0.2.1, unchanged in 1.0).** B1 is never `high`, because no trained model has been adopted for this route: in the official evaluations of 28 October (`eval_v1`) and 18 November (`eval_v2`, with the satellite inputs), no ML model passed the adoption rule for a district never seen (protocol in `docs/training_protocol.md`). The same evaluation shows where the rules themselves work. B1 scored 0.59 (Musanze) and 0.65 (Nyabihu) macro-F1, but 0.09 (Nyagatare) and 0.19 (Ruhango), where several crops fit the rules equally and the rules cannot tell which one farmers prefer. These scores are stored per district in `district_profiles.json` (`b1_tested`) and set the level below.
 
 | Level | When |
 | --- | --- |
 | `medium` | The location is in a pilot district where B1 scored at least 0.5 macro-F1 when tested (now Musanze and Nyabihu), the season is B (the only season B1 was tested on), every rule input is available, and the crop's rules are not marked weak. |
 | `low` | Any of: outside the pilot districts, a pilot district where B1 scored below 0.5 when tested (now Nyagatare and Ruhango), season A or C, a rule input is missing, or the crop's rules are marked weak (rice, because there is no water-access layer). |
 
-**Rules planned for the ML models.**
-
-| Level | Draft meaning |
-| --- | --- |
-| `high` | The district is in the training data, the ML model beat the expert-rules baseline in evaluation and was adopted, and all key soil inputs are available. |
-| `medium` | The district is in the training data and at most one key soil input is missing. |
-| `low` | The district is outside the training data, or two or more key soil inputs are missing. |
+The draft rules for an adopted ML model (0.2.0) are dropped in 1.0, because no model was adopted for this route. Where a trained model did better in testing, inside the four pilot districts, it answers through `POST /v1/recommend/point` (section 3).
 
 Key soil inputs are pH, organic carbon and total nitrogen, the same three as in the feature schema.
 
@@ -408,36 +653,39 @@ Reason codes in `reliability.reason_codes`: `ML_NOT_ADOPTED`, `MODEL_BEAT_BASELI
 
 Warning codes in `warnings[].code`: `DISTRICT_NOT_IN_TRAINING_DATA`, `LOCATION_MATCHED_TO_NEAREST_DISTRICT`, `DISTRICT_MISMATCH`, `ELEVATION_FROM_DISTRICT_MEDIAN`, `SEASON_NOT_EVALUATED`, `RULES_WEAK_IN_DISTRICT`, `CROPS_TIED`, `SOIL_VALUE_MISSING`, `SOIL_NOT_USED_BY_METHOD`, `SOIL_FROM_ISDASOIL`, `NO_CROP_ABOVE_MIN_SCORE`, `NO_GUIDELINE_RULE_FOUND`, `FERTILISER_INTERIM`, `FERTILISER_SKIPPED`, `INPUT_OUT_OF_TYPICAL_RANGE`, `STUB_RESPONSE` (only the stub server).
 
-## 6. The B1 service and the stub server
+Added in 1.0 for `POST /v1/recommend/point`: `FIELD_DATA_FAR` (no CIAT field within 5 km; the inputs come from the nearest block), `SHARED_WEATHER_CELL` (Musanze and Nyabihu share one NASA POWER weather cell), `OUTSIDE_PILOT_DISTRICTS`, `OUTSIDE_RWANDA`. On that route, `CROPS_TIED` is only sent when the rules give the answer.
 
-**B1 service (real answers).** `01-crop-recommendation/src/recommendation/service.py` implements all three interfaces on the B1 expert-rules baseline and the fertiliser engine. It reads `district_profiles.json` (district elevation, NASA POWER season normals with season B from 1 February to 30 June, and B1's tested score per district, no farm-level data), so it needs no raw data at run time. Run it from the repository root with:
+## 7. The service and the stub server
+
+**The service (real answers).** `01-crop-recommendation/src/recommendation/service.py` implements the four interfaces of this file. `POST /v1/recommend`, metadata and health run on the B1 expert rules and the fertiliser engine. `POST /v1/recommend/point` runs `01-crop-recommendation/src/recommendation/map_model.py`, the same code as the dashboard map; it needs XGBoost and the files listed in that folder's README, and it trains the model on its first request. It reads `district_profiles.json` (district elevation, NASA POWER season normals with season B from 1 February to 30 June, and B1's tested score per district, no farm-level data), so it needs no raw data at run time. Run it from the repository root with:
 
 ```
 python -m uvicorn service:app --app-dir 01-crop-recommendation/src/recommendation --port 8001
 ```
 
-**Stub (placeholder answers).** `03-shared/apis/stub_app.py` is a small FastAPI app that validates requests with the real models and returns placeholder data marked `STUB_RESPONSE`. It exists so the dashboard and the CV team can test without the rules. Run it with:
+**Stub (placeholder answers).** `03-shared/apis/stub_app.py` is a small FastAPI app that validates requests with the real models and returns placeholder data marked `STUB_RESPONSE`, for both recommendation routes. It exists so the dashboard and the CV team can test without the models. Run it with:
 
 ```
 cd 03-shared/apis
 uvicorn stub_app:app --port 8001 --reload
 ```
 
-Then open http://127.0.0.1:8001/docs for the interactive page. The B1 service will be replaced by the trained models once they beat the baseline, without changing the contract.
+Then open http://127.0.0.1:8001/docs for the interactive page.
 
-## 7. Open questions
+## 8. Decisions and open questions
 
-| # | Question | Who decides |
+| # | Question | Status in 1.0 |
 | --- | --- | --- |
-| 1 | One crop list for the whole project (beans, irish_potato, maize, rice, cassava?). | Team, with Calvin and Prof. Okeyo |
-| 2 | Same error envelope, request id, ports and uncertainty rules for the diagnosis service? | Anny and Gabin with Thierry |
-| 3 | Should the dashboard send a district name only, or also let the user click a point on a map? | Whoever owns the dashboard (not yet named) |
-| 4 | Units the extension officers actually have on soil test reports (percent, mg per kg, cmol per kg). | Prof. Okeyo, through the primary contact |
-| 5 | Minimum score for abstaining (draft 0.5) and the final reliability thresholds. Since 0.2.1, `medium` needs B1's tested macro-F1 of at least 0.5 in the district (draft). | Thierry and Arsene, after the ML evaluation |
-| 6 | Does `district_default` soil exist? It needs a district level soil table from the data pipeline. | Arsene |
-| 7 | Is rounding coordinates in logs enough for privacy? | Team |
+| 1 | One crop list for the whole project. | **Decided:** beans, irish_potato, maize and rice, the four crops of the CIAT data. |
+| 2 | Same error envelope, request id, ports and uncertainty rules for the diagnosis service? | **Open:** agreed with Anny and Gabin when the two dashboards are merged, after Part B is complete (team decision of 23 Nov 2026). |
+| 3 | Should the dashboard send a district name only, or also let the user click a point on a map? | **Decided:** both. `POST /v1/recommend` takes a district or a point (expert rules); `POST /v1/recommend/point` gives the map's one answer. |
+| 4 | Units the extension officers actually have on soil test reports (percent, mg per kg, cmol per kg). | **Open:** Prof. Okeyo, through the primary contact. The units of section 2.1 stay until then. |
+| 5 | Minimum score for abstaining and the reliability thresholds. | **Decided:** abstain below 0.5; `medium` on `POST /v1/recommend` needs B1's tested macro-F1 of at least 0.5 in the district; the confidence thresholds of the point route are in section 3.1. |
+| 6 | Does `district_default` soil exist? | **Decided:** no. `POST /v1/recommend` only uses soil values given by the user; the point route takes soil from the nearest CIAT block. |
+| 7 | Is rounding coordinates in logs enough for privacy? | **Decided:** the prototype keeps no request logs (section 2.5), and the point route never returns farm or block coordinates. |
+| 8 | Other seasons than B? | **Decided with Part A, 23 Nov 2026:** no. The only labelled data, CIAT 2025, is season B; collecting labels for A or C is out of scope. Seasons A and C are answered for season B with a warning and a low level. |
 
-## 8. Change log
+## 9. Change log
 
 | Version | Date | Change |
 | --- | --- | --- |
@@ -445,12 +693,13 @@ Then open http://127.0.0.1:8001/docs for the interactive page. The B1 service wi
 | 0.2.0 draft | 2026-10-27 | Optional `elevation_m` in the request; `inputs_used.site` in the response; B1 reliability rules; new warning and reason codes; draft abstain threshold. All changes are additive, so 0.1.0 requests still work. |
 | 0.2.1 draft | 2026-10-28 | Reliability now uses B1's tested score per district from `eval_v1` (new reason and warning code `RULES_WEAK_IN_DISTRICT`); new warning `CROPS_TIED` when crops fit the rules equally; season B climate normals now run from 1 February to 30 June, as in the training data. No field changes, so 0.2.0 clients still work. |
 | 0.2.2 draft | 2026-11-18 | Interim fertiliser rates: until the RAB guideline is in, each crop has the national blanket rate copied from a published source (page and link in `source`), served with the new warning `FERTILISER_INTERIM` and an explanation that starts with "Interim:". No field changes, so 0.2.1 clients still work. |
+| 1.0 final | 2026-11-23 | New `POST /v1/recommend/point`: one crop with a confidence level, the same answer as the dashboard map (client feedback of 19 Nov). New warning codes `FIELD_DATA_FAR`, `SHARED_WEATHER_CELL`, `OUTSIDE_PILOT_DISTRICTS` and `OUTSIDE_RWANDA`. Health is `ok` when the trained model can answer. Final crop list, season decision and closed questions (section 8). The text now says what `POST /v1/recommend` really does with soil (user values only). `POST /v1/recommend` itself is unchanged, so 0.2.x clients still work. |
 
 ## Review checklist
 
 Confirm that field naming, units, error behavior, and confidence semantics match the workstream implementation before marking a contract as implemented. Do not invent endpoints or sample responses that appear production-ready.
 
-- [ ] Anny and Gabin reviewed section 1 and the diagnosis side
-- [ ] Arsene reviewed reliability levels and soil units
-- [ ] Contract tests pass (`python -m pytest 03-shared/tests -q`)
-- [ ] Status changed from Proposed to Agreed
+- [ ] Anny and Gabin reviewed section 1 and the diagnosis side (when the two dashboards are merged)
+- [ ] Arsene reviewed the inputs, soil units and the season decision
+- [x] Contract and service tests pass (`python -m pytest 01-crop-recommendation/tests 03-shared/tests -q`, 233 tests on 23 Nov 2026)
+- [x] Status changed to Final 1.0 for the implemented interfaces

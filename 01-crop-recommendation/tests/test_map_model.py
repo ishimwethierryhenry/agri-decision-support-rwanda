@@ -81,6 +81,7 @@ def test_answer_has_both_methods_with_tested_scores(rec):
     assert r["better_in_testing"] in {"model", "rules", "same"}
     assert r["fertiliser"]["status"] == "ok" and r["fertiliser"]["crop"] == r["answer"]["crop"]
     assert any(w.startswith("Fertiliser rates are interim") for w in r["warnings"])
+    assert len(r["warning_codes"]) == len(r["warnings"]) and "FERTILISER_INTERIM" in r["warning_codes"]
     assert not any("season" in w.lower() and "not in the training" in w for w in r["warnings"])
 
 

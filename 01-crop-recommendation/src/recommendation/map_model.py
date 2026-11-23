@@ -82,6 +82,13 @@ def current_season(day: Optional[date] = None) -> str:
     return "C"
 
 
+def _warn(out: dict, code: str, message: str, first: bool = False) -> None:
+    """Add a warning: the plain message for the page, and its code (contract warning codes) for the API."""
+    at = 0 if first else len(out["warnings"])
+    out["warnings"].insert(at, message)
+    out["warning_codes"].insert(at, code)
+
+
 def confidence_level(hit_rate: Optional[float], season_tested: bool = True, close_call: bool = False,
                      far: bool = False) -> str:
     """Confidence of one answer. The base is the tested hit rate of the method in the district (share of new fields
@@ -304,7 +311,7 @@ class MapRecommender:
         asked = season or now
         out: dict[str, Any] = {"point": {"lat": round(lat, 5), "lon": round(lon, 5)},
                                "season": {"today": now, "asked": asked, "used": MODEL_SEASON},
-                               "warnings": []}
+                               "warnings": [], "warning_codes": []}
         district = self.districts.at(lat, lon)
         if district not in self.district_values:
             # Block centres near a border can fall just outside the simplified district outline. A point right
@@ -312,8 +319,9 @@ class MapRecommender:
             dist = self.blocks.apply(lambda b: haversine_km(lat, lon, b["lat"], b["lon"]), axis=1)
             if len(dist) and dist.min() <= BORDER_KM:
                 near = str(self.blocks.loc[dist.idxmin(), "District"])
-                out["warnings"].append(f"This point is just outside the {near} outline on the map, next to CIAT "
-                                       f"fields recorded in {near}, so it is treated as {near}.")
+                _warn(out, "LOCATION_MATCHED_TO_NEAREST_DISTRICT",
+                      f"This point is just outside the {near} outline on the map, next to CIAT fields recorded in "
+                      f"{near}, so it is treated as {near}.")
                 district = near
         out["district"] = district
         if district is None:
@@ -327,17 +335,20 @@ class MapRecommender:
             return out
         out["status"] = "ok"
         if asked != MODEL_SEASON:
-            out["warnings"].insert(0, (
-                f"{SEASON_NAMES[asked]} is not in the training data yet: the model and the rules were only tested on "
-                f"season B (CIAT, 2025). The answer below is for season B, which starts on 1 February."))
+            _warn(out, "SEASON_NOT_EVALUATED",
+                  f"{SEASON_NAMES[asked]} is not in the training data yet: the model and the rules were only tested "
+                  f"on season B (CIAT, 2025). The answer below is for season B, which starts on 1 February.",
+                  first=True)
         row, info = self.feature_row(lat, lon, district, elevation_m)
         d = self.district_values[district]
         if info["distance_km"] > NEAR_KM:
-            out["warnings"].append(f"No CIAT field within {NEAR_KM:.0f} km of this point. Soil and elevation come "
-                                   f"from the nearest sampled block, {info['distance_km']:.1f} km away.")
+            _warn(out, "FIELD_DATA_FAR",
+                  f"No CIAT field within {NEAR_KM:.0f} km of this point. Soil and elevation come from the nearest "
+                  f"sampled block, {info['distance_km']:.1f} km away.")
         if district in ("Musanze", "Nyabihu"):
-            out["warnings"].append("Musanze and Nyabihu share one NASA POWER weather cell, so their rainfall and "
-                                   "temperature are the same. Per-field rainfall (CHIRPS) comes later.")
+            _warn(out, "SHARED_WEATHER_CELL",
+                  "Musanze and Nyabihu share one NASA POWER weather cell, so their rainfall and temperature are the "
+                  "same. Per-field rainfall (CHIRPS) comes later.")
         out["inputs"] = {
             "block": info,
             "elevation_m": round(row["elevation_m"], 1),
@@ -366,24 +377,24 @@ class MapRecommender:
                                      "tested_here": crop_tested.get("rules", {}).get(r["crop"], {})}
                                     for r in ranked],
                         "tested": self.tested.get(district, {}).get("rules", {})}
-        if len(ranked) > 1:
-            tied = [CROP_NAMES[r["crop"]] for r in ranked if abs(r["score"] - ranked[0]["score"]) < 1e-9]
-            if len(tied) > 1:
-                out["warnings"].append(f"The rules rate {', '.join(tied)} equally ({ranked[0]['score']:.2f}); their "
-                                       "order is only a tie-break.")
         m_t = out["model"]["tested"].get("new_fields")
         r_t = out["rules"]["tested"].get("new_fields")
         out["better_in_testing"] = (None if m_t is None or r_t is None
                                     else "model" if m_t > r_t + 0.01 else "rules" if r_t > m_t + 0.01 else "same")
         out["answer"] = self._answer(out, district, season_tested=asked == MODEL_SEASON,
                                      far=info["distance_km"] > NEAR_KM)
+        if out["answer"]["method"] == "rules" and len(ranked) > 1:   # a tie matters only when the rules answer
+            tied = [CROP_NAMES[r["crop"]] for r in ranked if abs(r["score"] - ranked[0]["score"]) < 1e-9]
+            if len(tied) > 1:
+                _warn(out, "CROPS_TIED", f"The rules rate {', '.join(tied)} equally ({ranked[0]['score']:.2f}); "
+                                         "their order is only a tie-break.")
         top = out["answer"]["crop"]
         out["fertiliser"] = fert.recommend(self.fert_rules, top, {})
         if out["fertiliser"]["status"] == "no_matching_rule":
-            out["warnings"].append("No fertiliser rule fits this crop, so no rate is given.")
+            _warn(out, "NO_GUIDELINE_RULE_FOUND", "No fertiliser rule fits this crop, so no rate is given.")
         elif fert.interim_rules_used(self.fert_rules, out["fertiliser"]):
-            out["warnings"].append("Fertiliser rates are interim: national blanket rates from published sources, "
-                                   "not yet confirmed by RAB, and the same for every field.")
+            _warn(out, "FERTILISER_INTERIM", "Fertiliser rates are interim: national blanket rates from published "
+                                             "sources, not yet confirmed by RAB, and the same for every field.")
         return out
 
     def _answer(self, out: dict, district: str, season_tested: bool, far: bool) -> dict[str, Any]:

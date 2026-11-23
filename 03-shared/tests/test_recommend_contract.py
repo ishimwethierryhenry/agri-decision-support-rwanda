@@ -1,4 +1,4 @@
-"""Contract tests for the Recommendation API (draft 0.2.2).
+"""Contract tests for the Recommendation API (version 1.0).
 
 Run from the repository root:  python -m pytest 03-shared/tests -q
 """
@@ -11,8 +11,8 @@ from pydantic import ValidationError
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apis"))
 
 import recommend_examples as ex  # noqa: E402
-from recommend_schemas import (ErrorEnvelope, FertiliserAdvice, RecommendRequest,  # noqa: E402
-                               RecommendResponse)
+from recommend_schemas import (ErrorEnvelope, FertiliserAdvice, PointRequest, PointResponse,  # noqa: E402
+                               RecommendRequest, RecommendResponse)
 
 
 # ------------------------------------------------------------ examples parse
@@ -160,3 +160,52 @@ def test_site_inputs_are_optional_and_carry_a_source():
     bad["inputs_used"] = {**ex.RESPONSE_OK["inputs_used"], "site": {"elevation_m": {"value": 2107.2}}}
     with pytest.raises(ValidationError):
         RecommendResponse(**bad)
+
+
+# ------------------------------------------------------------ added in 1.0: one answer for a point
+def test_point_examples_are_valid():
+    PointRequest(**ex.REQUEST_POINT)
+    ok = PointResponse(**ex.RESPONSE_POINT_OK)
+    assert not ok.abstain and ok.recommendation.crop == ok.fertiliser.crop
+    assert ok.recommendation.confidence.level.value in {"high", "medium", "low"}
+    out = PointResponse(**ex.RESPONSE_POINT_OUTSIDE)
+    assert out.abstain and out.recommendation is None and out.abstain_message
+
+
+@pytest.mark.parametrize("body", [{"lat": -1.5, "season": "B"}, {"lon": 29.6, "season": "B"},
+                                  {"lat": -1.5, "lon": 29.6}, {"lat": 10.0, "lon": 29.6, "season": "B"},
+                                  {"lat": -1.5, "lon": 29.6, "season": "D"},
+                                  {"lat": -1.5, "lon": 29.6, "season": "B", "district": "Musanze"},
+                                  {"lat": -1.5, "lon": 29.6, "season": "B", "elevation_m": 500}])
+def test_point_request_rules(body):
+    with pytest.raises(ValidationError):
+        PointRequest(**body)
+
+
+def test_point_response_is_one_answer_or_an_abstain():
+    ok = dict(ex.RESPONSE_POINT_OK)
+    with pytest.raises(ValidationError):                       # no answer without abstaining
+        PointResponse(**{**ok, "recommendation": None})
+    with pytest.raises(ValidationError):                       # an abstain has no answer
+        PointResponse(**{**ok, "abstain": True, "abstain_message": "Uncertain."})
+    with pytest.raises(ValidationError):                       # an abstain needs a message
+        PointResponse(**{**ex.RESPONSE_POINT_OUTSIDE, "abstain_message": None})
+    other = {**ok["fertiliser"], "crop": "beans"}
+    with pytest.raises(ValidationError):                       # fertiliser is for the recommended crop
+        PointResponse(**{**ok, "fertiliser": other})
+    bad = {**ok["recommendation"], "confidence": {**ok["recommendation"]["confidence"], "tested_hit_rate": 1.2}}
+    with pytest.raises(ValidationError):
+        PointResponse(**{**ok, "recommendation": bad})
+
+
+def test_stub_point_route_follows_contract():
+    from fastapi.testclient import TestClient
+    from stub_app import app
+    c = TestClient(app)
+    r = c.post("/v1/recommend/point", json={"lat": -1.5, "lon": 29.6, "season": "A"})
+    assert r.status_code == 200
+    body = PointResponse(**r.json())
+    assert body.season.asked == "A" and body.season.used == "B"
+    assert any(w.code == "STUB_RESPONSE" for w in body.warnings)
+    assert ErrorEnvelope(**c.post("/v1/recommend/point", json={"lat": 10, "lon": 29.6, "season": "B"}).json()
+                         ).error.code == "OUT_OF_BOUNDS"

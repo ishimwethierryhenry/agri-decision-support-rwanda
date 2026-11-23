@@ -1,8 +1,9 @@
-"""ILLUSTRATIVE payloads for docs/api_contracts.md and the contract tests.
+"""Payloads for docs/api_contracts.md and the contract tests.
 
-All values are placeholders to show the shape of the contract. They are not
-agronomic advice and not real model output. Document and section names are
-deliberately left as placeholders until the real guideline source is chosen.
+The POST /v1/recommend examples are ILLUSTRATIVE placeholders that show the shape of the contract: they are not
+agronomic advice and not real output. The POST /v1/recommend/point examples (added in 1.0) are real answers of the
+service on 23 Nov 2026, with only request_id and generated_at fixed. Their fertiliser rates are the interim national
+rates, labelled as such.
 """
 
 REQUEST_DISTRICT = {
@@ -22,7 +23,7 @@ REQUEST_POINT_FERTILISER_ONLY = {
 
 RESPONSE_OK = {
     "request_id": "example-0001",
-    "api_version": "0.2.2",
+    "api_version": "1.0",
     "model_version": None,
     "rules_version": "rules-0.1-example",
     "generated_at": "2026-10-21T08:00:00Z",
@@ -79,7 +80,7 @@ RESPONSE_OK = {
 
 RESPONSE_ABSTAIN = {
     "request_id": "example-0002",
-    "api_version": "0.2.2",
+    "api_version": "1.0",
     "model_version": None,
     "rules_version": "rules-0.1-example",
     "generated_at": "2026-10-21T08:05:00Z",
@@ -101,4 +102,174 @@ ERROR_VALIDATION = {
         "details": [{"field": "soil.ph_water", "issue": "must be between 3.0 and 10.0"}],
         "request_id": "example-0003",
     }
+}
+
+
+# ------------------------------------------------------------ added in 1.0
+REQUEST_POINT = {"lat": -1.35, "lon": 30.30, "season": "B"}
+
+RESPONSE_POINT_OK = {
+    "request_id": "example-0004",
+    "api_version": "1.0",
+    "model_version": "XGB[all], trained on the 1,904 CIAT fields",
+    "rules_version": "crops-0.1-draft+fertiliser-0.1-interim-2026-11-18",
+    "generated_at": "2026-11-23T08:00:00Z",
+    "location": {
+        "district": "Nyagatare",
+        "province": "East",
+        "lat": -1.35,
+        "lon": 30.3,
+        "resolution": "point",
+    },
+    "season": {
+        "asked": "B",
+        "used": "B",
+    },
+    "abstain": False,
+    "abstain_message": None,
+    "recommendation": {
+        "crop": "maize",
+        "method": "xgboost",
+        "confidence": {
+            "level": "medium",
+            "tested_hit_rate": 0.68,
+            "lowered_by": [],
+        },
+        "close_second": None,
+        "alternatives": ["beans", "rice", "irish_potato"],
+        "why": [
+            ("In Nyagatare, XGBoost did better than the expert rules in testing on "
+                "new fields (0.37 against 0.09, main score), so the answer comes from "
+                "XGBoost."),
+            ("In that test, its first crop was the right one for 68% of the fields "
+                "in Nyagatare."),
+        ],
+    },
+    "fertiliser": {
+        "crop": "maize",
+        "status": "ok",
+        "engine_version": "0.2.0+rules-0.1-interim-2026-11-18",
+        "items": [
+            {
+                "input_type": "compound_fertiliser",
+                "product": "DAP (18-46-0)",
+                "rate": 100.0,
+                "rate_unit": "kg/ha",
+                "timing": "At planting",
+                "condition_matched": "maize-national-interim-01: applies to this crop in general",
+                "source": {
+                    "document": ("B. T. Mudereri et al., Smart Fertiliser Recommendations for Maize in "
+                        "Rwanda, CGIAR Sustainable Farming Science Program Report, Nov. 2025"),
+                    "section": "Table 2, treatment BR (blanket recommendation)",
+                    "page": "7",
+                    "url": "https://hdl.handle.net/10568/178714",
+                },
+                "explanation": ("Interim: published national rate, not yet confirmed by RAB. National "
+                    "blanket recommendation as used in the RAB and CGIAR maize trials: 100 "
+                    "kg/ha of DAP at planting."),
+                "explanation_method": "rule_text",
+            },
+            {
+                "input_type": "nitrogen",
+                "product": "Urea (46% N)",
+                "rate": 100.0,
+                "rate_unit": "kg/ha",
+                "timing": "Top dressing at 6 to 8 leaves, about 4 to 6 weeks after emergence",
+                "condition_matched": "maize-national-interim-01: applies to this crop in general",
+                "source": {
+                    "document": ("B. T. Mudereri et al., Smart Fertiliser Recommendations for Maize in "
+                        "Rwanda, CGIAR Sustainable Farming Science Program Report, Nov. 2025"),
+                    "section": "Table 2, treatment BR (blanket recommendation)",
+                    "page": "7",
+                    "url": "https://hdl.handle.net/10568/178714",
+                },
+                "explanation": ("Interim: published national rate, not yet confirmed by RAB. National "
+                    "blanket recommendation as used in the RAB and CGIAR maize trials: 100 "
+                    "kg/ha of urea as top dressing. An older report lists 50 kg/ha of urea "
+                    "for the government recommendation (IFDC, 2018, Table 2), so this rate "
+                    "needs RAB's confirmation."),
+                "explanation_method": "rule_text",
+            },
+        ],
+    },
+    "inputs_used": {
+        "elevation_m": 1350.2,
+        "elevation_source": "median GPS elevation of the CIAT fields in the block",
+        "soil_texture": "sandy clay loam",
+        "soil_0_20cm": {
+            "nitrogen": 1.37,
+            "phosphorous_extractable": 18.09,
+            "potassium_extractable": 171.07,
+            "ph": 5.84,
+            "sand": 49.78,
+            "clay": 32.78,
+            "silt": 20.44,
+            "carbon_organic": 14.57,
+            "cation_exchange_capacity": 10.94,
+        },
+        "field_data_from": {
+            "n_ciat_fields": 9,
+            "distance_km": 0.0,
+        },
+        "climate_season_b_2025": {
+            "rainfall_mm": 441.6,
+            "tmax_c": 27.67,
+            "tmin_c": 16.42,
+            "mean_temp_at_field_c": 22.42,
+            "solar_mj_m2_day": 17.65,
+        },
+        "nisr_crop_shares": {
+            "Beans": 0.531,
+            "Irish potato": 0.01,
+            "Maize": 0.421,
+            "Rice": 0.038,
+        },
+    },
+    "evaluation": None,
+    "warnings": [
+        {
+            "code": "FERTILISER_INTERIM",
+            "message": ("Fertiliser rates are interim: national blanket rates from published "
+                "sources, not yet confirmed by RAB, and the same for every field."),
+        },
+    ],
+    "disclaimer": ("Decision support for extension officers and agronomists. It does not "
+        "replace local field advice."),
+}
+
+RESPONSE_POINT_OUTSIDE = {
+    "request_id": "example-0005",
+    "api_version": "1.0",
+    "model_version": "XGB[all], trained on the 1,904 CIAT fields",
+    "rules_version": "crops-0.1-draft+fertiliser-0.1-interim-2026-11-18",
+    "generated_at": "2026-11-23T08:01:00Z",
+    "location": {
+        "district": "Nyarugenge",
+        "province": None,
+        "lat": -1.95,
+        "lon": 30.06,
+        "resolution": "point",
+    },
+    "season": {
+        "asked": "B",
+        "used": "B",
+    },
+    "abstain": True,
+    "abstain_message": ("Nyarugenge is not one of the four pilot districts (Musanze, Nyabihu, "
+        "Nyagatare, Ruhango). There is no CIAT data here, so no recommendation "
+        "is given. Please consult an extension officer."),
+    "recommendation": None,
+    "fertiliser": None,
+    "inputs_used": None,
+    "evaluation": None,
+    "warnings": [
+        {
+            "code": "OUTSIDE_PILOT_DISTRICTS",
+            "message": ("Nyarugenge is not one of the four pilot districts (Musanze, Nyabihu, "
+                "Nyagatare, Ruhango). There is no CIAT data here, so no recommendation "
+                "is given."),
+        },
+    ],
+    "disclaimer": ("Decision support for extension officers and agronomists. It does not "
+        "replace local field advice."),
 }

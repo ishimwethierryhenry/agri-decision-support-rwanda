@@ -1,8 +1,8 @@
-"""Pydantic models for the Recommendation API contract (DRAFT 0.2.2).
+"""Pydantic models for the Recommendation API contract (version 1.0, final for the practicum).
 
 These models are the executable form of docs/api_contracts.md. If a field changes,
 change this file and the document together, and bump CONTRACT_VERSION.
-Status: proposed. Nothing here claims a live endpoint.
+Implemented by 01-crop-recommendation/src/recommendation/service.py; 03-shared/apis/stub_app.py returns placeholders.
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CONTRACT_VERSION = "0.2.2"
+CONTRACT_VERSION = "1.0"
 
 # Approximate bounding box of Rwanda (decimal degrees, WGS84).
 LAT_MIN, LAT_MAX = -2.9, -1.0
@@ -21,9 +21,9 @@ LON_MIN, LON_MAX = 28.8, 31.0
 # Rwanda's land elevation runs from about 950 m (Rusizi river) to 4,507 m (Mount Karisimbi), with a small margin.
 ELEV_MIN, ELEV_MAX = 900.0, 4600.0
 
-# Candidate crop codes. The final list is still a team decision, so the API
-# checks crop codes at run time against GET /v1/metadata, not against this tuple.
-CANDIDATE_CROPS = ("beans", "irish_potato", "maize", "rice", "cassava")
+# The four crops of the CIAT season B 2025 data, the only labelled data (final list, version 1.0).
+# The service still checks crop codes at run time against GET /v1/metadata.
+CANDIDATE_CROPS = ("beans", "irish_potato", "maize", "rice")
 
 USDA_TEXTURES = (
     "sand", "loamy_sand", "sandy_loam", "loam", "silt_loam", "silt",
@@ -199,6 +199,95 @@ class RecommendResponse(Strict):
         ranks = [c.rank for c in self.crop_recommendations]
         if ranks != list(range(1, len(ranks) + 1)):
             raise ValueError("ranks must be 1..n in order")
+        return self
+
+
+# ------------------------------------------------- one answer for a point (POST /v1/recommend/point)
+class PointRequest(Strict):
+    lat: float = Field(..., ge=LAT_MIN, le=LAT_MAX)
+    lon: float = Field(..., ge=LON_MIN, le=LON_MAX)
+    season: Literal["A", "B", "C"]
+    elevation_m: Optional[float] = Field(None, ge=ELEV_MIN, le=ELEV_MAX,
+                                         description="Field elevation in metres. If omitted, the median GPS "
+                                                     "elevation of the CIAT fields in the nearest 2 km block.")
+    include_evaluation: bool = Field(False, description="Also return both methods' rankings and tested scores, "
+                                                        "for evaluators. Users only need the recommendation.")
+
+
+class Confidence(Strict):
+    level: Level
+    tested_hit_rate: Optional[float] = Field(None, ge=0, le=1,
+                                             description="Share of new fields in this district where the answering "
+                                                         "method's first crop was right in testing (eval_v1).")
+    lowered_by: list[str] = Field(default_factory=list, description="Why the level is lower than the hit rate "
+                                                                    "alone would give, in plain words.")
+
+
+class PointAnswer(Strict):
+    crop: str
+    method: Literal["xgboost", "expert_rules"]
+    confidence: Confidence
+    close_second: Optional[str] = Field(None, description="A crop that fits almost as well, if any.")
+    alternatives: list[str] = Field(default_factory=list, description="The method's next crops, in order.")
+    why: list[str] = Field(..., min_length=1)
+
+
+class SeasonUsed(Strict):
+    asked: Literal["A", "B", "C"]
+    used: Literal["B"] = "B"
+
+
+class FieldDataFrom(Strict):
+    n_ciat_fields: int = Field(..., ge=1, description="CIAT fields in the 2 km block the field inputs come from.")
+    distance_km: float = Field(..., ge=0, description="Distance from the point to that block.")
+
+
+class PointInputs(Strict):
+    elevation_m: float
+    elevation_source: str
+    soil_texture: Optional[str] = None
+    soil_0_20cm: dict[str, float]
+    field_data_from: FieldDataFrom
+    climate_season_b_2025: dict[str, float]
+    nisr_crop_shares: dict[str, float]
+
+
+class RankedCrop(Strict):
+    crop: str
+    score: float = Field(..., ge=0, le=1)
+
+
+class PointEvaluation(Strict):
+    xgboost_ranking: list[RankedCrop]
+    rules_ranking: list[RankedCrop]
+    tested_main_score_new_fields: dict[Literal["xgboost", "expert_rules"], Optional[float]]
+
+
+class PointResponse(Strict):
+    request_id: str
+    api_version: str = CONTRACT_VERSION
+    model_version: str
+    rules_version: str
+    generated_at: datetime
+    location: ResolvedLocation
+    season: SeasonUsed
+    abstain: bool = False
+    abstain_message: Optional[str] = None
+    recommendation: Optional[PointAnswer] = None
+    fertiliser: Optional[FertiliserAdvice] = None
+    inputs_used: Optional[PointInputs] = None
+    evaluation: Optional[PointEvaluation] = None
+    warnings: list[Warning_] = Field(default_factory=list)
+    disclaimer: str = DISCLAIMER
+
+    @model_validator(mode="after")
+    def one_answer_or_abstain(self) -> "PointResponse":
+        if self.abstain and (not self.abstain_message or self.recommendation is not None):
+            raise ValueError("abstain true needs abstain_message and no recommendation")
+        if not self.abstain and self.recommendation is None:
+            raise ValueError("abstain false needs a recommendation")
+        if self.recommendation and self.fertiliser and self.fertiliser.crop != self.recommendation.crop:
+            raise ValueError("fertiliser advice must be for the recommended crop")
         return self
 
 

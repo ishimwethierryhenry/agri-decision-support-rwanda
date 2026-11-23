@@ -1,7 +1,11 @@
-"""Recommendation service: the real POST /v1/recommend, built on the B1 expert-rules baseline.
+"""Recommendation service (contract 1.0): POST /v1/recommend on the B1 expert rules, and POST /v1/recommend/point,
+the one answer of the dashboard map.
 
 It follows the contract in docs/api_contracts.md (models in 03-shared/apis/recommend_schemas.py).
-What it does for one request:
+POST /v1/recommend/point runs map_model.MapRecommender, the same code as the dashboard map: one crop per point, from
+the method that tested better in that district, with a confidence level. It needs XGBoost and trains the model once,
+on the first request (a few seconds).
+What POST /v1/recommend does for one request:
   1. Resolve the location to one of the four pilot districts (by name, or the nearest district centre).
   2. Build the inputs B1 needs: elevation, and the season climate normal moved to the point's height.
   3. Rank crops with B1. Each crop gets a score, reasons with sources, and a reliability level that also
@@ -36,12 +40,12 @@ for p in (HERE, HERE.parent / "models", REPO / "03-shared" / "apis"):
 import expert_baseline as b1  # noqa: E402
 import fertiliser_engine as fert  # noqa: E402
 from recommend_schemas import (CONTRACT_VERSION, ErrorEnvelope, HealthResponse, MetadataResponse,  # noqa: E402
-                               RecommendRequest, RecommendResponse)
+                               PointRequest, PointResponse, RecommendRequest, RecommendResponse)
 
 PROFILES_PATH = HERE / "district_profiles.json"
 FERTILISER_RULES_PATH = HERE / "rules" / "fertiliser_rules.yaml"
 
-# Draft decision thresholds. They are documented in docs/api_contracts.md section 5 and can be tuned later.
+# Decision thresholds of POST /v1/recommend, documented in docs/api_contracts.md (sections 6 and 8).
 MIN_SCORE = 0.5                 # abstain when the best crop scores below this
 MAX_DISTRICT_DISTANCE_KM = 25   # a point further than this from every pilot district centre is "outside"
 EVALUATED_SEASONS = {"B"}       # B1 was evaluated on season B data only (CIAT, 2025)
@@ -190,7 +194,7 @@ def rules_weak_here(district: Optional[str], season: str) -> bool:
 
 
 def reliability_for(item: dict, district: Optional[str], season: str, row: dict) -> dict:
-    """B1 reliability rules (contract section 5). B1 is never 'high', because no ML model is adopted.
+    """B1 reliability rules (contract section 6). B1 is never 'high', because no ML model is adopted.
     'medium' needs a pilot district where B1 scored at least RULES_EVIDENCE_MIN when tested, season B,
     a crop whose rules are not weak, and every rule input present. Anything else is 'low'."""
     codes = ["ML_NOT_ADOPTED"]
@@ -222,10 +226,30 @@ def soil_inputs(req: RecommendRequest) -> tuple[dict, dict]:
 
 
 # ---------------------------------------------------------------- endpoints
+_MAP: dict[str, Any] = {}
+
+
+def xgboost_available() -> bool:
+    import importlib.util
+    return importlib.util.find_spec("xgboost") is not None
+
+
+def map_recommender():
+    """The dashboard map's recommender, built once on the first point request (it trains XGBoost in seconds)."""
+    if "rec" not in _MAP:
+        if not xgboost_available():
+            raise ApiError("MODEL_UNAVAILABLE", "XGBoost is not installed, so point answers are not available. "
+                                                "POST /v1/recommend still answers with the expert rules.", status=503)
+        import map_model
+        _MAP["module"], _MAP["rec"] = map_model, map_model.MapRecommender.load()
+    return _MAP["module"], _MAP["rec"]
+
+
 @app.get("/v1/health", response_model=HealthResponse)
 def health():
-    # "degraded" in the contract means: rules answer, but no trained ML model is loaded.
-    return HealthResponse(status="degraded", rules_loaded=True, model_loaded=False)
+    # "ok": the rules answer and the trained model can answer point requests. "degraded": only the rules answer.
+    ready = xgboost_available()
+    return HealthResponse(status="ok" if ready else "degraded", rules_loaded=True, model_loaded="rec" in _MAP)
 
 
 @app.get("/v1/metadata", response_model=MetadataResponse)
@@ -315,3 +339,46 @@ def recommend(req: RecommendRequest, request: Request):
         "inputs_used": {"soil": soil_used, "site": site},
         "warnings": warnings,
     }
+
+
+METHODS = {"model": "xgboost", "rules": "expert_rules"}
+OUTSIDE_CODES = {"outside_rwanda": "OUTSIDE_RWANDA", "outside_pilot": "OUTSIDE_PILOT_DISTRICTS"}
+
+
+@app.post("/v1/recommend/point", response_model=PointResponse)
+def recommend_point(req: PointRequest, request: Request):
+    """One recommended crop for a point, with its confidence level and fertiliser: the same answer as the map."""
+    mm, rec = map_recommender()
+    res = rec.recommend(req.lat, req.lon, req.season, elevation_m=req.elevation_m)
+    warnings = [{"code": c, "message": m} for c, m in zip(res["warning_codes"], res["warnings"])]
+    ok = res["status"] == "ok"
+    base = {"request_id": _rid(request), "model_version": f"{mm.MODEL_NAME}, trained on the 1,904 CIAT fields",
+            "rules_version": RULES_VERSION, "generated_at": datetime.now(timezone.utc),
+            "location": {"district": res["district"], "province": res["inputs"]["province"] if ok else None,
+                         "lat": req.lat, "lon": req.lon, "resolution": "point"},
+            "season": {"asked": req.season, "used": res["season"]["used"]}}
+    if not ok:
+        warnings.append({"code": OUTSIDE_CODES[res["status"]], "message": res["message"]})
+        return {**base, "abstain": True, "warnings": warnings,
+                "abstain_message": res["message"] + " Please consult an extension officer."}
+    a, inp = res["answer"], res["inputs"]
+    out = {**base, "abstain": False,
+           "recommendation": {"crop": a["crop"], "method": METHODS[a["method"]],
+                              "confidence": {"level": a["confidence"], "tested_hit_rate": a["hit_rate"],
+                                             "lowered_by": a["lowered_by"]},
+                              "close_second": a["close_second"], "alternatives": a["others"], "why": a["why"]},
+           "fertiliser": res["fertiliser"],
+           "inputs_used": {"elevation_m": inp["elevation_m"], "elevation_source": inp["block"]["elevation_source"],
+                           "soil_texture": inp["soil_texture"], "soil_0_20cm": inp["soil_0_20cm"],
+                           "field_data_from": {"n_ciat_fields": inp["block"]["n_fields"],
+                                               "distance_km": inp["block"]["distance_km"]},
+                           "climate_season_b_2025": inp["climate_season_b_2025"],
+                           "nisr_crop_shares": inp["nisr_crop_shares"]},
+           "warnings": warnings}
+    if req.include_evaluation:
+        out["evaluation"] = {
+            "xgboost_ranking": [{"crop": r["crop"], "score": r["probability"]} for r in res["model"]["ranking"]],
+            "rules_ranking": [{"crop": r["crop"], "score": r["score"]} for r in res["rules"]["ranking"]],
+            "tested_main_score_new_fields": {"xgboost": res["model"]["tested"].get("new_fields"),
+                                             "expert_rules": res["rules"]["tested"].get("new_fields")}}
+    return out
