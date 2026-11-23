@@ -658,7 +658,10 @@ def _md(frame: pd.DataFrame, index: bool = True) -> str:
         return "```\n" + _fmt(frame).to_string(index=index) + "\n```"
 
 
-def _gain_table(summ: pd.DataFrame, methods, views) -> pd.DataFrame:
+def _gain_table(summ: pd.DataFrame, methods, views, deciding: bool = True) -> pd.DataFrame:
+    """Protocol settings against tuned settings. Only the main test decides adoption (section 7), so on the other
+    test the rule column is labelled as information only."""
+    rule = "passes the adoption rule, tuned" if deciding else "would pass the same rule, tuned (information only)"
     rows = []
     for m in methods:
         for v in views:
@@ -670,7 +673,7 @@ def _gain_table(summ: pd.DataFrame, methods, views) -> pd.DataFrame:
                          "main score, tuned": t["macro_f1_mean"], "change": t["macro_f1_mean"] - u["macro_f1_mean"],
                          "worst district, tuned": t["worst_district_macro_f1"],
                          "better than B1 in, tuned": t["districts_beating_B1"],
-                         "passes the adoption rule, tuned": t["passes_rule"],
+                         rule: t["passes_rule"],
                          "first crop right, all fields, tuned": t["top1_all_fields"]})
     return pd.DataFrame(rows).set_index("model")
 
@@ -755,7 +758,7 @@ def write_report(out: Path, info: dict, df: pd.DataFrame, res: dict) -> Path:
     else:
         map_line = (f"The map keeps {mp['today']} with the protocol settings ({mp['today_score']:.3f} on new "
                     f"fields): no tuned model is ahead of it by more than {mp['margin']}.")
-    gains = {t: _gain_table(summ[t], methods, views) for t in TESTS}
+    gains = {t: _gain_table(summ[t], methods, views, deciding=(t == "lodo")) for t in TESTS}
     biggest = max(((t, i, r["change"]) for t in TESTS for i, r in gains[t].iterrows()), key=lambda x: x[2])
     by_method = {t: {m: gains[t].loc[[i for i in gains[t].index if i.startswith(m + "[")], "change"].mean()
                      for m in methods} for t in TESTS}
@@ -790,7 +793,9 @@ def write_report(out: Path, info: dict, df: pd.DataFrame, res: dict) -> Path:
         "time." + (" **Quick check only: these numbers are not reported.**" if info.get("quick_check_only") else ""),
         f"Table: `{info['table']}` (SHA-256 `{info['table_sha256'][:16]}...`). Code commit: "
         f"`{(info['git_commit'] or 'unknown')[:10]}`"
-        + (" (with uncommitted changes, so rerun after committing)." if info.get("uncommitted_changes") else "."),
+        + (" (with uncommitted changes, so rerun after committing)." if info.get("uncommitted_changes") else ".")
+        + (f" Report text rebuilt from the saved jobs at commit `{info['report_rebuilt_at_commit'][:10]}`, with the "
+           "same numbers." if info.get("report_rebuilt_at_commit") else ""),
         f"{info['n_candidates']} candidates per method (the protocol settings, then {info['n_draws']} random draws), "
         f"{info['inner_block_folds']} inner block folds, {info['n_shuffles']} shuffles per input.",
         "",
@@ -821,7 +826,8 @@ def write_report(out: Path, info: dict, df: pd.DataFrame, res: dict) -> Path:
         "## Second test: new fields in the known districts", "",
         "Settings chosen inside the training part of each block fold only, then scored once on the test fold.", "",
         _md(gains["blockcv"]), "",
-        f"B1 (expert rules): {blk.loc[ev.BASELINE, 'macro_f1_mean']:.3f}.", "",
+        f"B1 (expert rules): {blk.loc[ev.BASELINE, 'macro_f1_mean']:.3f}. This test does not decide adoption "
+        "(section 7): the rule column only says whether a model would pass the same rule here, as in `eval_v2`.", "",
         "Main score per district:", "", _md(_per_district(res["results"]["blockcv"], methods, views)), "",
         "## Settings chosen in each fold", "",
         "Candidate 0 is the protocol settings. The settings of every candidate are in `candidates.json`; the inner "
@@ -908,8 +914,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         "compute_hours": sum(p["seconds"] for p in run["parts"].values()) / 3600,
         "wall_hours_this_call": (time.time() - t0) / 3600,
         "workers": previous.get("workers") or args.workers, "job_minutes": job_minutes,
-        "table": table_rel, "table_sha256": ev.file_sha256(table), "git_commit": ev._git_commit(),
-        "uncommitted_changes": ev._git_has_uncommitted_changes(),
+        "table": table_rel, "table_sha256": ev.file_sha256(table),
+        # The commit the jobs ran at. Rebuilding only the report keeps it and records the rebuild separately.
+        "git_commit": previous.get("git_commit") or ev._git_commit(),
+        "uncommitted_changes": (previous["uncommitted_changes"] if "uncommitted_changes" in previous
+                                else ev._git_has_uncommitted_changes()),
+        **({"report_rebuilt_at_commit": ev._git_commit(),
+            "report_rebuilt_with_uncommitted_changes": ev._git_has_uncommitted_changes()} if previous else {}),
         "rows": {"before_filters": df.attrs.get("rows_before_filters"), "after_qc_ok": df.attrs.get("rows_after_qc"),
                  "main": len(df)},
         "methods": list(methods), "views": list(views), "n_draws": n_draws, "n_candidates": n_draws + 1,

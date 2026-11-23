@@ -190,6 +190,7 @@ def test_a_small_job_end_to_end_with_the_builtin_check(df, tmp_path, monkeypatch
             "quick_check_only": True}
     text = tune.write_report(tmp_path, info, df, res).read_text(encoding="utf-8")
     assert "**Built-in check: passed.**" in text and "## When the model is sure (LR[field_sat]" in text
+    assert "would pass the same rule, tuned (information only)" in text   # only the main test decides adoption
     for name in ("main_lodo_results.csv", "main_blockcv_results.csv", "confusion_counts.csv", "importance.csv",
                  "confidence_bands.csv", "answer_when_sure.csv", "mixed_land.csv", "chosen_settings.csv",
                  "inner_scores.csv", "candidates.json", "run_info.json"):
