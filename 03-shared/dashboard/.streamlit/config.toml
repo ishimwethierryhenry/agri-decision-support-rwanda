@@ -1,0 +1,7 @@
+# Dashboard theme, read when `streamlit run` is started from the repository root.
+[theme]
+base = "light"
+primaryColor = "#6a9e12"
+backgroundColor = "#eef1ea"
+secondaryBackgroundColor = "#e2e8da"
+textColor = "#1f2a1f"

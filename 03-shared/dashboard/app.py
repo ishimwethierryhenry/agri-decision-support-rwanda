@@ -5,12 +5,14 @@ Pages:
                    (default page). The sidebar's Evaluation view shows XGBoost and the rules side by side.
   Model scores   : how well every model did in the official evaluation, per district and per crop.
   Recommendation : calls POST /v1/recommend (Part B).
-  Diagnosis      : placeholder, built by the CV sub-team against /detect.
+  Diagnosis      : one leaf photo -> POST /v1/detect on the crop health detection service (port 8002).
 The data source in the sidebar is for the Recommendation page. Baseline mode (default) runs the real service on
 the B1 expert rules inside the app, so no server is needed. Mock mode shows clearly marked placeholder data from
 the stub. Live mode calls a running service. The Map page always runs its models inside the app.
 """
 import streamlit as st
+
+import ui_theme
 
 st.set_page_config(page_title="Smallholder decision support", layout="wide")
 
@@ -28,10 +30,13 @@ with st.sidebar:
     st.caption("The data source is for the Crop and fertiliser page. The map page runs XGBoost and the rules "
                "inside the app.")
 
-pages = [
-    st.Page("pages/map.py", title="Map: crop for a field", default=True),
-    st.Page("pages/scores.py", title="Model scores"),
-    st.Page("pages/recommendation.py", title="Crop and fertiliser"),
-    st.Page("pages/diagnosis.py", title="Crop health diagnosis"),
-]
-st.navigation(pages).run()
+pages = {  # short label of the top bar button: page
+    "Map": st.Page("pages/map.py", title="Map: crop for a field", default=True),
+    "Model scores": st.Page("pages/scores.py", title="Model scores"),
+    "Crop and fertiliser": st.Page("pages/recommendation.py", title="Crop and fertiliser"),
+    "Diagnosis": st.Page("pages/diagnosis.py", title="Crop health diagnosis"),
+}
+# The top bar (ui_theme.py) replaces the sidebar page list; the sidebar keeps the settings above
+current = st.navigation(list(pages.values()), position="hidden")
+ui_theme.apply(pages, current)
+current.run()
