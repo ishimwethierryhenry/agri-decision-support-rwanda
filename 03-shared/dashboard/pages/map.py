@@ -3,7 +3,8 @@
 Flow agreed at the stand-up of 28 Oct 2026: click a point, the page finds the district, reads the soil, elevation,
 satellite values, weather and crop shares for that point, and shows one recommended crop with its confidence and its
 fertiliser. Since 23 Nov 2026 the trained model is the tuned Random Forest that the protocol's rule chose for the map
-(reports/tuning_v1); the Evaluation view shows it next to the expert rules. The season follows today's date.
+(reports/tuning_v1); the Evaluation view shows it next to the expert rules. The page opens on season B, the only
+season in the training data; today's season is marked and can be picked.
 The model runs inside the dashboard (no server needed). Logic: 01-crop-recommendation/src/recommendation/map_model.py
 Since 24 Nov 2026 the page uses the shared Agri DSS look (ui_theme.py, rec_ui.py): a hero heading, the steps in one
 card and the answer in another, like the Diagnosis page.
@@ -172,7 +173,8 @@ with st.expander("How this page works"):
         + ".\n"
         "5. **Confidence**: how often that method named the right crop first in testing on new fields in the "
         "district. High from 75%, medium from 50%, low below. One step lower when two crops are close or when the "
-        "nearest CIAT data is more than 5 km away; low for a season that was never tested.\n"
+        "nearest CIAT data is more than 5 km away; low for a season that was never tested. Only season B has "
+        "labelled data, so the page opens on season B.\n"
         "6. **Fertiliser**: for the recommended crop. Until the RAB guideline is in, the rates are interim: "
         "national blanket rates copied from published sources, each shown with its page and link. Nothing is "
         "invented.\n\n"
@@ -185,9 +187,11 @@ left, right = st.columns([1.3, 1], gap="large")
 with left:
     with st.container(key="card_point"):
         ui.step(1, "Pick the season")
-        season = st.radio("Season", seasons, index=seasons.index(today), horizontal=True, key="pills_season",
-                          label_visibility="collapsed",
-                          format_func=lambda s: mm.SEASON_NAMES[s] + (", today" if s == today else ""))
+        # Opens on season B, the season the model and the rules were trained and tested on (CIAT, season B 2025)
+        season = st.radio("Season", seasons, index=seasons.index(mm.MODEL_SEASON), horizontal=True,
+                          key="pills_season", label_visibility="collapsed",
+                          format_func=lambda s: mm.SEASON_NAMES[s] + (", tested" if s == mm.MODEL_SEASON else "")
+                          + (", today" if s == today else ""))
         st.write("")
         ui.step(2, "Click a field on the map")
         if folium is None or st.session_state.get("hide_map"):

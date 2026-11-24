@@ -100,14 +100,16 @@ def test_fertiliser_for_the_recommended_crop_is_interim_and_cited():
     assert any(c.value.startswith("Source: ") and "[link](https://" in c.value for c in at.caption)
 
 
-def test_season_follows_today_and_other_seasons_get_a_note():
+def test_page_opens_on_the_tested_season_and_other_seasons_get_a_note():
     at = _page()
+    assert at.radio(key="pills_season").value == "B"        # the only season in the training data
+    assert not any("not in the training data yet" in i.value for i in at.info)
+    assert _confidence(at) == ["High"]                       # Musanze: tested hit rate 0.75
     at.radio(key="pills_season").set_value("A").run()
     assert any("not in the training data yet" in i.value for i in at.info)
     assert _confidence(at) == ["Low"]
     at.radio(key="pills_season").set_value("B").run()
-    assert not any("not in the training data yet" in i.value for i in at.info)
-    assert _confidence(at) == ["High"]                       # Musanze: tested hit rate 0.75
+    assert _confidence(at) == ["High"]
 
 
 def test_typed_point_in_nyagatare():
