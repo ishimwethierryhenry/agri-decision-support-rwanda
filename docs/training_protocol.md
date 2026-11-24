@@ -91,6 +91,7 @@ Any change after seeing results (rules, inputs, filters, settings, models) is re
 - 23 Nov: version 1.2 written down (section 11) before any tuning run.
 - 23 Nov, afternoon: official run of version 1.2, committed as `tuning_v1` (1.3 hours of computing, two jobs at a time). Built-in check passed: the section 6 settings give exactly the `eval_v2` numbers (88 rows). Main test: no tuned model passes the adoption rule, so B1 stays the default answer of the API. Settings chosen inside three districts did not carry over to the fourth: tuning lowered five of the nine models there, all three Random Forests among them (on field + satellite inputs, from 0.368 to 0.276). New fields: every tuned model did better than with the section 6 settings. The best is Random Forest on all + satellite inputs, 0.514 against 0.441 untuned and 0.451 for the model on the map, with the right first crop for 72 percent of the fields, so under decision 2 the map moves to it (the change to the map is a separate step). Expectation (a) did not hold on new fields: the gains were larger than a few hundredths, up to 0.126. Expectation (b) held in both tests.
 - 23 Nov, after the official run: decision 2 applied. The settings of the model on the map were chosen on all 1,904 fields with the same comparison as inside the nested test (3 folds over 2 km blocks, seed 0, `tune.py --final`): candidate 30 of the Random Forest (entropy, trees up to 16 levels, a third of the inputs tried at each split, 70 percent of the fields for each tree, 1 field per leaf, no class weights), which the nested test also chose in two of its five folds (`reports/tuning_v1/final_model.json`). The dashboard map and `POST /v1/recommend/point` (contract 1.1) now serve it, with its satellite inputs taken from the CIAT fields of the 2 km block, like soil. Its answer comes from the model in Musanze, Nyagatare and Ruhango and from the rules in Nyabihu, with the confidence from its tested hit rates in `tuning_v1`. The adoption rule and the API default (B1) do not change.
+- 24 Nov: version 1.3 written down (section 12) before any run of this version.
 
 ## 10. Version 1.1 (18 Nov 2026): inputs measured at each field from satellites
 
@@ -169,5 +170,64 @@ Class weight strength p gives each crop the weight (n / (k x n_crop)) to the pow
 **Expected before the run:** (a) tuning gives small gains on a table of this size, a few hundredths of main score at most; (b) Logistic Regression gains more than the tree models, because the curved shape lets it follow the elevation bands of the crops, which a straight line cannot.
 
 **Run.** `python 01-crop-recommendation/src/models/tune.py` with the pinned versions of `requirements-eval.txt`. It takes a few hours on two processor cores, so the official run is made once and saved with its `run_info.json`. `--quick` runs a tiny version for checks only, and its numbers are never reported.
+
+## 12. Version 1.3 (24 Nov 2026): second round of tuning
+
+Written on 24 Nov 2026 by Thierry, before any run of this version. Everything in sections 1 to 11 stays the same unless this section says otherwise. Results go to `01-crop-recommendation/reports/tuning_v2/`; `eval_v1`, `eval_v2` and `tuning_v1` are not touched.
+
+Why: version 1.2 moved the map to a tuned Random Forest (0.514 on new fields). This round asks how far the data lets us go, with three additions: a wider search, a third tree method with a blend of the three, and inputs that say which crops are grown on the surveyed fields of the nearby 2 km blocks. This round was decided after seeing the results of version 1.2, so it is reported as a second round next to version 1.2, never instead of it (section 8).
+
+**Table and rows.** Same as versions 1.1 and 1.2: `feature_table_v6b.csv` and the 1,904 single-crop fields.
+
+**Methods.**
+
+- Random Forest and XGBoost, as in version 1.2, with the wider ranges below.
+- Extra Trees (scikit-learn `ExtraTreesClassifier`): like Random Forest, but each split point is drawn at random instead of searched, which often overfits less on a small table.
+- Blend: the average of the probabilities of the tuned Random Forest, Extra Trees and XGBoost on the same view and the same fold, with equal weights fixed now. Each member is chosen inside the nested test as usual; the blend itself has nothing to tune, so its outer score is as fair as theirs.
+- Logistic Regression is not run again. In version 1.2 its best tuned score was 0.044 below the best tree model on new fields (0.470 against 0.514) and 0.033 below on the main test (0.293 against 0.326).
+
+**Views.**
+
+| View | Inputs | Tests |
+| --- | --- | --- |
+| field_sat | as in version 1.1 (14) | both |
+| all_sat | as in version 1.1 (25) | both |
+| field_sat_near | field_sat plus the 5 nearby-crop inputs (19) | new fields only |
+| all_sat_near | all_sat plus the 5 nearby-crop inputs (30) | new fields only |
+
+`all` is dropped: `all_sat` has every input of `all`, and in version 1.2 the satellite views beat `all` on new fields for every method. The nearby-crop views are not run in the main test: a district never seen has no surveyed field nearby by definition, so they would answer with the crops of another district.
+
+**Nearby-crop inputs (new).** For a field in 2 km block b:
+
+- Every training field in another block counts with the weight exp(-0.5 (d / h)^2), where d is the distance in km between the centres of the two blocks and h is a setting (2, 4 or 8 km). Blocks farther than 3h do not count.
+- `near_share_beans`, `near_share_irish_potato`, `near_share_maize` and `near_share_rice` are the weighted shares of each crop, and `near_weight` is the sum of the weights, which says how much nearby data there is. With no field counted, the shares are those of all training fields and `near_weight` is 0.
+- Fields of the field's own block are never counted, for training fields too. So no field ever sees its own crop or the crops of its own block, which is exactly the situation of the new-fields test, where the whole block is unseen.
+- They are computed inside every step from the training fields of that step only, so the test fields of the outer fold and the validation fields of the inner folds never inform them. The map follows the same rule: the fields of the clicked point's own block are left out.
+
+**Candidates.** For each method, the settings of section 6 come first (Extra Trees takes the Random Forest settings of section 6), then 100 random draws from the ranges below (scikit-learn `ParameterSampler`, seed 0). Random Forest also gets the settings of the map model of version 1.2 (candidate 30 of `tuning_v1`) as its second candidate. The distance h is part of every candidate (4 km for the section 6 settings) and is used only by the nearby-crop views. The same candidates are used in every fold and every view. How they are compared, the nested tests and the tie rule are those of section 11.
+
+| Method | Settings searched |
+| --- | --- |
+| Random Forest and Extra Trees | 300 trees. Maximum depth none, 6, 10, 16 or 24. At least 1, 2, 3, 5, 8 or 12 fields per leaf. Inputs tried at each split: square root of the number of inputs, 20, 33, 50 or 70 percent. Fields drawn for each tree: all, 85, 70 or 50 percent (Extra Trees draws fields only below all). Split rule Gini or entropy. Class weight strength 0, 0.5, 1 or 1.5. Distance h 2, 4 or 8 km. |
+| XGBoost | 100, 200, 300, 500, 800, 1,200 or 1,500 trees. Learning rate from 0.005 to 0.3 (log scale). Depth 2, 3, 4, 5, 6, 8 or 10. Minimum child weight 1, 2, 5, 10 or 20. Share of fields for each tree from 0.5 to 1.0, share of inputs for each tree from 0.3 to 1.0. L2 penalty from 0.01 to 100 (log scale). L1 penalty 0, 0.01, 0.1 or 1. Minimum gain to split 0, 0.1, 0.5, 1 or 2. Class weight strength 0, 0.5, 1 or 1.5. Distance h 2, 4 or 8 km. |
+
+Class weight strength 1.5 weights the rare crops more than the class balance of section 6.
+
+**Decisions fixed now.**
+
+1. The adoption rule of section 7 does not change. It is checked on the main test for the tuned models and blends of `field_sat` and `all_sat`. If one passes, it replaces B1 as the default answer of the API.
+2. The map moves only if the best tuned model or blend on new fields (nested) beats the model on the map today, the tuned Random Forest on `all_sat` of version 1.2 (0.514 in `tuning_v1`), by more than 0.01. Its final settings are then chosen on all 1,904 fields with the same comparison as inside the nested test, as in version 1.2. The choice between the model and the rules in each district and the confidence levels come from its nested results, with the rules of 22 Nov unchanged. If nothing beats 0.514 by more than 0.01, the map does not change.
+3. Results with the section 6 settings, tuned results and the version 1.2 results are reported side by side.
+
+**Built-in check.** Random Forest and XGBoost with the section 6 settings on `field_sat` and `all_sat` must give the `eval_v2` numbers in every district of both tests. Extra Trees and the nearby-crop views have no earlier numbers to compare with.
+
+**Also reported (none of these decide anything).**
+
+- Nearest surveyed fields: on new fields, the crop with the highest nearby share (h = 4 km), next to B0, the most common crop of the district and B1. It shows how much the models add to simply repeating what is grown nearby.
+- For the best model on new fields: how often the first crop is right at each level of its own probability, the share of fields it would answer if it answered only when sure, its confusion counts, and input importance (one input at a time, and groups of inputs, with the five nearby-crop inputs as one group), as in version 1.2.
+
+**Expected before the run:** (a) the nearby-crop inputs give the largest gain on new fields, because neighbouring blocks tend to grow the same crops (version 1.2: 49 percent of the blocks grow more than one crop, and the most common crop of a field's own block is right for 80 percent of the fields); (b) the wider search and Extra Trees add little, up to about 0.01; (c) on the main test, no model passes the adoption rule.
+
+**Run.** `python 01-crop-recommendation/src/models/tune_v2.py` with the pinned versions of `requirements-eval.txt`, about three hours on two processor cores. Finished jobs are saved, so a stopped run starts again where it stopped. `--quick` runs a tiny version for checks only, and its numbers are never reported.
 
 [1] J. Bergstra and Y. Bengio, "Random search for hyper-parameter optimization," *J. Mach. Learn. Res.*, vol. 13, pp. 281-305, 2012.
