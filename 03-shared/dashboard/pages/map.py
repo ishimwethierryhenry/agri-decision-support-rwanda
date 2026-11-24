@@ -1,8 +1,9 @@
 """Map page: click a field in one of the four pilot districts and get the crops for that point.
 
 Flow agreed at the stand-up of 28 Oct 2026: click a point, the page finds the district, reads the soil, elevation,
-weather and crop shares for that point, and shows the XGBoost ranking next to the expert rules, each with its
-tested score in that district, plus the fertiliser advice for the model's first crop. The season follows today's date.
+satellite values, weather and crop shares for that point, and shows one recommended crop with its confidence and its
+fertiliser. Since 23 Nov 2026 the trained model is the tuned Random Forest that the protocol's rule chose for the map
+(reports/tuning_v1); the Evaluation view shows it next to the expert rules. The season follows today's date.
 The model runs inside the dashboard (no server needed). Logic: 01-crop-recommendation/src/recommendation/map_model.py
 """
 import sys
@@ -28,7 +29,7 @@ PROVINCES = {"North": "Northern Province", "West": "Western Province", "East": "
 START = {"lat": -1.458, "lon": 29.556}  # a 2 km block in Musanze with many CIAT fields
 
 
-@st.cache_resource(show_spinner="Training XGBoost on the 1,904 CIAT fields (a few seconds, only once)...")
+@st.cache_resource(show_spinner=f"Training the {mm.MODEL_LABEL} on the 1,904 CIAT fields (a few seconds, only once)...")
 def recommender() -> mm.MapRecommender:
     return mm.MapRecommender.load()
 
@@ -113,14 +114,14 @@ def ranking(title: str, rows: list, value_key: str, tested: dict, district: str)
 
 
 def crop_table(rec: mm.MapRecommender, district: str, test: str) -> pd.DataFrame:
-    """Precision, recall and F1 of each crop in one district, for XGBoost and for the rules."""
+    """Precision, recall and F1 of each crop in one district, for the trained model and for the rules."""
     rows = []
     for c in mm.CROP_NAMES:
         found = {name: rec.crop_tested.get(district, {}).get(method, {}).get(c, {}).get(test)
-                 for name, method in (("XGBoost", "model"), ("Rules", "rules"))}
-        if not found["XGBoost"]:
+                 for name, method in ((mm.MODEL_LABEL, "model"), ("Rules", "rules"))}
+        if not found[mm.MODEL_LABEL]:
             continue
-        row = {"Crop": crop(c), "Fields": found["XGBoost"]["fields"]}
+        row = {"Crop": crop(c), "Fields": found[mm.MODEL_LABEL]["fields"]}
         # F1 first, so the main numbers are visible without scrolling in the narrow column
         for key, label in (("f1", "F1"), ("precision", "precision"), ("recall", "recall")):
             for name, x in found.items():
@@ -134,9 +135,9 @@ def tested_table(rec: mm.MapRecommender) -> pd.DataFrame:
     for d in PILOTS:
         t = rec.tested.get(d, {})
         rows.append({"District": d,
-                     "XGBoost, new fields": t.get("model", {}).get("new_fields"),
+                     f"{mm.MODEL_LABEL}, new fields": t.get("model", {}).get("new_fields"),
                      "Rules, new fields": t.get("rules", {}).get("new_fields"),
-                     "XGBoost, district left out": t.get("model", {}).get("new_district"),
+                     f"{mm.MODEL_LABEL}, district left out": t.get("model", {}).get("new_district"),
                      "Rules, district left out": t.get("rules", {}).get("new_district")})
     return pd.DataFrame(rows).set_index("District")
 
@@ -155,14 +156,17 @@ with st.expander("How this page works"):
     st.markdown(
         "1. **District**: the district outline the point falls in (geoBoundaries, Open Data Rwanda, CC BY 4.0). "
         "Only the four pilot districts have CIAT data.\n"
-        "2. **Field inputs**: soil (iSDAsoil, 0 to 20 cm) and elevation from the CIAT fields in the same 2 km "
+        "2. **Field inputs**: soil (iSDAsoil, 0 to 20 cm), elevation and four satellite values (SRTM elevation, "
+        "CHIRPS rainfall of the season, and two Sentinel-2 indices of 2024) from the CIAT fields in the same 2 km "
         "block, or from the nearest block in the district. The page says how far that block is.\n"
         "3. **District inputs**: season B 2025 weather (NASA POWER) and NISR crop shares, the values the model "
         "learned from.\n"
-        "4. **One answer**: two methods were tested, XGBoost on all inputs (trained on all 1,904 CIAT fields) "
-        "and the expert rules (B1). In each district, the answer comes from the one that did better in testing "
-        "on new fields there: "
-        + ", ".join(f"{'XGBoost' if answered_by[d] == 'model' else 'the rules'} in {d}" for d in PILOTS) + ".\n"
+        f"4. **One answer**: two methods were tested, the {mm.MODEL_TITLE} (trained on all 1,904 CIAT fields, "
+        "with the settings the tuning of 23 November chose without ever looking at the test fields) and the "
+        "expert rules (B1). In each district, the answer comes from the one that did better in testing on new "
+        "fields there: "
+        + ", ".join(f"{mm.MODEL_LABEL if answered_by[d] == 'model' else 'the rules'} in {d}" for d in PILOTS)
+        + ".\n"
         "5. **Confidence**: how often that method named the right crop first in testing on new fields in the "
         "district. High from 75%, medium from 50%, low below. One step lower when two crops are close or when the "
         "nearest CIAT data is more than 5 km away; low for a season that was never tested.\n"
@@ -242,7 +246,7 @@ with right:
             blk = inp["block"]
             where = ("the same 2 km block" if blk["distance_km"] == 0
                      else f"the nearest 2 km block, {blk['distance_km']:.1f} km away")
-            st.write(f"Soil and elevation come from {blk['n_fields']} CIAT field(s) in {where}.")
+            st.write(f"Soil, elevation and satellite values come from {blk['n_fields']} CIAT field(s) in {where}.")
             soil = inp["soil_0_20cm"]
             st.write(f"Soil, 0 to 20 cm (iSDAsoil): **{inp['soil_texture']}**, pH {soil['ph']:.1f}, organic carbon "
                      f"{soil['carbon_organic']:.1f} g/kg, nitrogen {soil['nitrogen']:.2f} g/kg, phosphorus "
@@ -253,6 +257,11 @@ with right:
             st.write(f"Elevation {inp['elevation_m']:.0f} m. Season B 2025 weather for the district (NASA POWER): "
                      f"rainfall {clim['rainfall_mm']:.0f} mm, mean temperature at this height "
                      f"{clim['mean_temp_at_field_c']:.1f} C.")
+            sat = inp.get("satellite_at_field") or {}
+            if sat:
+                st.write(f"Satellite at the field: SRTM elevation {sat['srtm_elevation_m']:.0f} m, CHIRPS rainfall "
+                         f"from February to June 2025 {sat['chirps_precip_mm']:.0f} mm, Sentinel-2 vegetation index "
+                         f"of 2024 {sat['ndvi_annual']:.2f}, shortwave ratio of 2024 {sat['swir_ratio']:.2f}.")
             shares = ", ".join(f"{k} {v:.0%}" for k, v in inp["nisr_crop_shares"].items())
             st.write(f"District crop shares (NISR, area of the four crops): {shares}.")
         if res["warnings"]:
@@ -263,14 +272,14 @@ with right:
             st.divider()
             st.markdown("#### Evaluation view: both methods at this point")
             st.caption("For the team. Users only see the answer above.")
-            st.markdown("**Tested scores (macro-F1, 0 to 1, protocol 1.0)**")
+            st.markdown("**Tested scores (macro-F1, 0 to 1, protocol 1.2)**")
             st.dataframe(tested_table(rec).style.format("{:.2f}", na_rep=""))
             st.caption("New fields: fields from 2 km blocks the model never saw, in a district it knows. District "
                        "left out: the model never saw the district at all. The API default stays the rules, because "
                        "no model passed the adoption rule when a district was left out.")
             top_model, top_rules = res["model"]["ranking"][0], res["rules"]["ranking"][0]
             b1, b2 = st.columns(2)
-            b1.caption("XGBoost suggests")
+            b1.caption(f"{mm.MODEL_LABEL} suggests")
             b1.markdown(f"### {crop(top_model['crop'])}")
             b1.caption(f"Model score {top_model['probability']:.2f} out of 1")
             b2.caption("Expert rules suggest")
@@ -279,17 +288,17 @@ with right:
             better = res["better_in_testing"]
             mt, rt = res["model"]["tested"].get("new_fields"), res["rules"]["tested"].get("new_fields")
             if better == "model":
-                st.success(f"On new fields in {res['district']}, XGBoost did better than the rules in testing "
-                           f"({mt:.2f} against {rt:.2f}).")
+                st.success(f"On new fields in {res['district']}, the {mm.MODEL_LABEL} did better than the rules in "
+                           f"testing ({mt:.2f} against {rt:.2f}).")
             elif better == "rules":
-                st.warning(f"On new fields in {res['district']}, the rules did better than XGBoost in testing "
-                           f"({rt:.2f} against {mt:.2f}). Read both rankings.")
+                st.warning(f"On new fields in {res['district']}, the rules did better than the {mm.MODEL_LABEL} in "
+                           f"testing ({rt:.2f} against {mt:.2f}). Read both rankings.")
             elif better == "same":
-                st.info(f"On new fields in {res['district']}, XGBoost and the rules scored about the same in "
-                        "testing.")
+                st.info(f"On new fields in {res['district']}, the {mm.MODEL_LABEL} and the rules scored about the "
+                        "same in testing.")
             c1, c2 = st.columns(2)
             with c1:
-                ranking("XGBoost (all inputs)", res["model"]["ranking"], "probability", res["model"]["tested"],
+                ranking(mm.MODEL_TITLE, res["model"]["ranking"], "probability", res["model"]["tested"],
                         res["district"])
             with c2:
                 ranking("Expert rules (B1)", res["rules"]["ranking"], "score", res["rules"]["tested"], res["district"])
@@ -306,8 +315,8 @@ with right:
                     st.dataframe(shown)
                 st.caption("Precision: when the method says this crop, how often it is right. Recall: of the fields "
                            "with this crop, how many the method found. F1 combines the two, from 0 to 1. Crops with "
-                           "fewer than 5 fields in the district are not scored. From the official evaluation "
-                           "(eval_v1). The Model scores page has every model.")
+                           "fewer than 5 fields in the district are not scored. From the tuning run (tuning_v1). "
+                           "The Model scores page has every model.")
             with st.expander("Why the rules say this"):
                 for r in res["rules"]["ranking"]:
                     st.markdown(f"**{crop(r['crop'])}** ({r['score']:.2f})")

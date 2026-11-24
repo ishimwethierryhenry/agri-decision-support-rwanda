@@ -32,7 +32,7 @@ Tuning (protocol 1.2, about an hour on two cores, same pinned versions):
 python 01-crop-recommendation/src/models/tune.py
 ```
 
-It writes `01-crop-recommendation/reports/tuning_v1/`: `report.md`, the results per test and district with the protocol settings and the tuned settings side by side, `chosen_settings.csv`, `inner_scores.csv` (every candidate in every fold), `candidates.json`, `importance.csv`, `confidence_bands.csv`, `answer_when_sure.csv`, `mixed_land.csv`, `confusion_counts.csv` and `run_info.json`. Finished jobs are saved in `tuning_v1/_work/` (not committed), so a stopped run starts again where it stopped. `--quick` runs a tiny version into a temporary folder to check the code; its numbers are never reported.
+It writes `01-crop-recommendation/reports/tuning_v1/`: `report.md`, the results per test and district with the protocol settings and the tuned settings side by side, `chosen_settings.csv`, `inner_scores.csv` (every candidate in every fold), `candidates.json`, `importance.csv`, `confidence_bands.csv`, `answer_when_sure.csv`, `mixed_land.csv`, `confusion_counts.csv` and `run_info.json`. Finished jobs are saved in `tuning_v1/_work/` (not committed), so a stopped run starts again where it stopped. `--quick` runs a tiny version into a temporary folder to check the code; its numbers are never reported. After the run, `--final` applies decision 2: it chooses the settings of the model on the map on all 1,904 fields, with the same comparison as inside the nested test, and writes `tuning_v1/final_model.json` (about two minutes).
 
 Rules for using results:
 

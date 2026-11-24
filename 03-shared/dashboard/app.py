@@ -2,7 +2,7 @@
 
 Pages:
   Map            : click a point in a pilot district; one recommended crop with its confidence and fertiliser
-                   (default page). The sidebar's Evaluation view shows XGBoost and the rules side by side.
+                   (default page). The sidebar's Evaluation view shows the trained model and the rules side by side.
   Model scores   : how well every model did in the official evaluation, per district and per crop.
   Recommendation : calls POST /v1/recommend (Part B).
   Diagnosis      : placeholder, built by the CV sub-team against /detect.
@@ -25,8 +25,8 @@ with st.sidebar:
     st.session_state.setdefault("base_url", "http://127.0.0.1:8001")
     if st.session_state["mode"] == "live":
         st.session_state["base_url"] = st.text_input("Service URL", st.session_state["base_url"])
-    st.caption("The data source is for the Crop and fertiliser page. The map page runs XGBoost and the rules "
-               "inside the app.")
+    st.caption("The data source is for the Crop and fertiliser page. The map page runs its trained model and the "
+               "rules inside the app.")
 
 pages = [
     st.Page("pages/map.py", title="Map: crop for a field", default=True),

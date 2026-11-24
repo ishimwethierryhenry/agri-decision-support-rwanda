@@ -9,7 +9,6 @@ import pytest
 
 DASH = Path(__file__).resolve().parents[1] / "dashboard"
 st_testing = pytest.importorskip("streamlit.testing.v1")
-pytest.importorskip("xgboost")
 
 
 def _page():
@@ -56,22 +55,24 @@ def test_default_point_shows_one_answer_with_its_confidence():
     at = _page()
     assert at.subheader[0].value == "Musanze (Northern Province)"
     assert _answer(at) == ["Irish potato"] and not _picks(at)       # one answer, no comparison for the user
-    assert "XGBoost suggests" not in [c.value for c in at.caption]
+    assert "Random Forest suggests" not in [c.value for c in at.caption]
     assert any(m.value.startswith("Confidence: ") for m in at.markdown)
     assert any(c.value.startswith("In testing on new fields in Musanze, the first crop was right about")
                for c in at.caption)
     text = " ".join(m.value for m in at.markdown)
     assert "Soil, 0 to 20 cm (iSDAsoil)" in text and "NISR" in text     # inputs stay available, folded
+    assert "Satellite at the field: SRTM elevation" in text
 
 
 def test_evaluation_view_shows_both_methods():
     at = _evaluation_view(_page())
     captions = [c.value for c in at.caption]
-    assert "XGBoost suggests" in captions and "Expert rules suggest" in captions
+    assert "Random Forest suggests" in captions and "Expert rules suggest" in captions
     picks = _picks(at)
     assert len(picks) == 2 and all(v[4:] in {"Beans", "Irish potato", "Maize", "Rice"} for v in picks)
-    # Musanze: the rules did better than XGBoost on new fields in testing, and the page says so
-    assert any("the rules did better" in w.value for w in at.warning)
+    # Musanze: the tuned Random Forest did better than the rules on new fields in testing (0.66 against 0.59)
+    assert any("the Random Forest did better than the rules" in s.value for s in at.success)
+    assert "**Tested scores (macro-F1, 0 to 1, protocol 1.2)**" in [m.value for m in at.markdown]
 
 
 def test_fertiliser_for_the_recommended_crop_is_interim_and_cited():
@@ -90,16 +91,16 @@ def test_season_follows_today_and_other_seasons_get_a_note():
     assert "Confidence: :red[**Low**]" in [m.value for m in at.markdown]
     at.selectbox[0].set_value("B").run()
     assert not any("not in the training data yet" in i.value for i in at.info)
-    assert "Confidence: :orange[**Medium**]" in [m.value for m in at.markdown]
+    assert "Confidence: :green[**High**]" in [m.value for m in at.markdown]      # Musanze: tested hit rate 0.75
 
 
 def test_typed_point_in_nyagatare():
     at = _type_point(_page(), -1.35, 30.30)
     assert at.subheader[0].value == "Nyagatare (Eastern Province)"
     assert _answer(at) == ["Maize"]
-    assert any("so the answer comes from XGBoost" in m.value for m in at.markdown)
+    assert any("so the answer comes from Random Forest" in m.value for m in at.markdown)
     at = _evaluation_view(at)
-    assert any("XGBoost did better than the rules" in s.value for s in at.success)
+    assert any("the Random Forest did better than the rules" in s.value for s in at.success)
 
 
 def test_points_outside_the_pilot_districts_or_rwanda_get_no_crop():
@@ -114,8 +115,9 @@ def test_crop_by_crop_table_for_the_clicked_district():
     at = _evaluation_view(_page())                   # default point: Musanze
     table = at.dataframe[-1].value
     assert list(table.index) == ["Beans", "Irish potato", "Maize", "Rice"]
-    assert table.loc["Rice", "XGBoost F1"] == "not scored"            # 1 rice field in Musanze
-    assert table.loc["Irish potato", "XGBoost F1"] == "0.77"
+    assert table.loc["Rice", "Random Forest F1"] == "not scored"            # 1 rice field in Musanze
+    assert table.loc["Irish potato", "Random Forest F1"] == "0.83"          # tuning_v1, new fields
+    assert table.loc["Irish potato", "Rules F1"] == "0.69"
     at.radio(key="crop_test").set_value("new_district").run()
     assert not at.exception
 
@@ -131,8 +133,14 @@ def test_scores_page_shows_every_model():
     assert len(main) == 18 and "Main score (macro-F1, 0 to 1)" in main.columns
     assert "Worst district (main score)" in main.columns and "Top-3 (mean)" not in main.columns
     assert "Passes the adoption rule" in main.columns and "Better than the rules in" in main.columns
-    assert any("the rules in Musanze, the rules in Nyabihu, XGBoost in Nyagatare, XGBoost in Ruhango" in m.value
-               for m in at.markdown)                                    # same choice as the map
+    assert any("Random Forest in Musanze, the rules in Nyabihu, Random Forest in Nyagatare, Random Forest in Ruhango"
+               in m.value for m in at.markdown)                         # same choice as the map
+    why = " ".join(m.value for m in at.markdown)
+    assert "The tuned Random Forest, all + satellite inputs scores 0.514 against 0.451" in why
+    assert "that crop is right 80% of the time" in why and "for only 80% of the fields" in why
+    gains = at.dataframe[5].value
+    assert len(gains) == 9 and {"Protocol settings", "Tuned", "Change"} <= set(gains.columns)
+    assert any("tuning lowered 5 of the 9 models" in c.value for c in at.caption)
     effect = at.dataframe[1].value
     assert list(effect.index) == ["Logistic Regression", "Random Forest", "XGBoost"]
     at.radio(key="scores_test").set_value("new_fields").run()
@@ -143,4 +151,4 @@ def test_scores_page_shows_every_model():
     assert crops.loc["Maize", "XGBoost F1"] == "0.80"
     at.selectbox(key="scores_other").set_value("XGB[all_sat]").run()
     assert not at.exception and "XGBoost, all + satellite inputs F1" in at.dataframe[4].value.columns
-    assert any("(+0.005)" in m.value for m in at.markdown)
+    assert any("Logistic Regression the most on average" in c.value for c in at.caption)

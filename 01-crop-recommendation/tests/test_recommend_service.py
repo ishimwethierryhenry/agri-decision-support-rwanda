@@ -34,10 +34,11 @@ def codes(resp):
     return [w.code for w in resp.warnings]
 
 
-def test_health_says_what_can_answer():
+def test_health_says_what_can_answer(monkeypatch):
     j = client.get("/v1/health").json()
-    assert j["rules_loaded"] and j["api_version"] == "1.0"
-    assert j["status"] == ("ok" if service.xgboost_available() else "degraded")
+    assert j["rules_loaded"] and j["api_version"] == "1.1" and j["status"] == "ok"   # XGBoost is not needed any more
+    monkeypatch.setattr(service, "map_ready", lambda: False)                         # model settings or data missing
+    assert client.get("/v1/health").json()["status"] == "degraded"
 
 
 def test_metadata_lists_the_pilot_districts_and_supported_crops():
@@ -256,18 +257,20 @@ def test_profile_builder_keeps_centres_when_the_table_has_no_coordinates(tmp_pat
 
 # ------------------------------------------------------------ added in 1.0: one answer for a point
 def point(body):
-    pytest.importorskip("xgboost")
     r = client.post("/v1/recommend/point", json=body)
     assert r.status_code == 200, r.text
     return PointResponse(**r.json()), r
 
 
 def test_point_gives_one_answer_with_confidence_and_fertiliser():
-    resp, r = point({"lat": -1.35, "lon": 30.30, "season": "B"})             # Nyagatare: XGBoost answers
-    assert r.headers["X-Request-ID"] == resp.request_id
+    resp, r = point({"lat": -1.35, "lon": 30.30, "season": "B"})             # Nyagatare: Random Forest answers
+    assert r.headers["X-Request-ID"] == resp.request_id and resp.api_version == "1.1"
     a = resp.recommendation
-    assert resp.location.district == "Nyagatare" and a.crop == "maize" and a.method == "xgboost"
-    assert a.confidence.level.value == "medium" and a.confidence.lowered_by == []
+    assert resp.location.district == "Nyagatare" and a.crop == "maize" and a.method == "random_forest"
+    assert a.confidence.level.value == "high" and a.confidence.tested_hit_rate == 0.759   # tuning_v1, new fields
+    assert a.confidence.lowered_by == [] and resp.model_version.startswith("RF[all_sat] tuned")
+    assert set(resp.inputs_used.satellite_at_field) == {"srtm_elevation_m", "chirps_precip_mm", "ndvi_annual",
+                                                        "swir_ratio"}
     assert resp.fertiliser.crop == "maize" and [i.rate for i in resp.fertiliser.items] == [100, 100]
     assert "FERTILISER_INTERIM" in codes(resp) and "CROPS_TIED" not in codes(resp)   # a rules tie does not matter here
     assert resp.inputs_used.field_data_from.n_ciat_fields >= 1 and resp.evaluation is None
@@ -282,9 +285,20 @@ def test_point_is_the_same_answer_as_the_map():
         m = rec.recommend(lat, lon, "B")
         assert resp.recommendation.crop == m["answer"]["crop"]
         assert resp.recommendation.confidence.level.value == m["answer"]["confidence"]
-        assert resp.recommendation.method == {"model": "xgboost", "rules": "expert_rules"}[m["answer"]["method"]]
+        assert resp.recommendation.method == {"model": "random_forest", "rules": "expert_rules"}[m["answer"]["method"]]
         assert [x.crop for x in resp.evaluation.rules_ranking] == [x["crop"] for x in m["rules"]["ranking"]]
+        assert [x.crop for x in resp.evaluation.model_ranking] == [x["crop"] for x in m["model"]["ranking"]]
+        assert resp.evaluation.model == "random_forest" and resp.evaluation.xgboost_ranking is None
+        assert set(resp.evaluation.tested_main_score_new_fields) == {"random_forest", "expert_rules"}
     assert map_model.MODEL_NAME in resp.model_version
+
+
+def test_point_without_the_model_files_is_503(monkeypatch):
+    monkeypatch.setattr(service, "_MAP", {})              # not built yet
+    monkeypatch.setattr(service, "map_ready", lambda: False)
+    r = client.post("/v1/recommend/point", json={"lat": -1.35, "lon": 30.30, "season": "B"})
+    assert r.status_code == 503 and ErrorEnvelope(**r.json()).error.code == "MODEL_UNAVAILABLE"
+    assert client.post("/v1/recommend", json={"district": "Musanze", "season": "B"}).status_code == 200
 
 
 def test_point_in_an_untested_season_is_low_with_a_warning():
