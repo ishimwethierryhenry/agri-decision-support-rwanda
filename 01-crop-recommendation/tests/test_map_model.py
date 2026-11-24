@@ -1,8 +1,10 @@
 """Tests for the map recommender (dashboard map page and Colab notebook).
 
-They use the committed feature table, district outlines and eval_v1 results, and train XGBoost once (a few seconds).
+They use the committed feature table (v6b), district outlines and tuning_v1 results, and train the model on the map,
+the tuned Random Forest, once (a few seconds).
 Run from the repo root:  python -m pytest 01-crop-recommendation/tests/test_map_model.py -q
 """
+import json
 import sys
 from datetime import date
 from pathlib import Path
@@ -13,7 +15,6 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "01-crop-recommendation" / "src" / "recommendation"))
-pytest.importorskip("xgboost")
 import map_model as mm  # noqa: E402
 
 PILOTS = {"Musanze", "Nyabihu", "Nyagatare", "Ruhango"}
@@ -56,10 +57,15 @@ def test_lookup_holds_block_centres_only_not_farm_points(rec):
     assert rec.blocks["n_fields"].sum() == 2728                # every field that passes qc_ok
 
 
-def test_model_is_the_protocol_xgboost_on_all_inputs(rec):
+def test_model_is_the_tuned_model_the_protocol_chose_for_the_map(rec):
     import evaluate as ev
-    assert rec.model.name == "XGB[all]" and rec.model.used_ == ev.VIEWS["all"]
+    run = json.loads((mm.EVAL_DIR / "run_info.json").read_text(encoding="utf-8"))
+    assert rec.final["model"] == mm.MODEL_NAME == run["decisions"]["map"]["serve"] == "RF[all_sat] tuned"
+    assert rec.model.used_ == ev.VIEWS_V11["all_sat"] and rec.model.params == rec.final["settings"]
+    est = rec.model.estimator.get_params()
+    assert est["n_estimators"] == 300 and est["max_depth"] == rec.final["settings"]["max_depth"]
     assert len(rec.main) == 1904 and list(rec.model.classes_) == ["beans", "irish_potato", "maize", "rice"]
+    assert mm.API_METHOD == "random_forest" and mm.METHOD_NAMES["model"] == "Random Forest"
 
 
 def test_every_ciat_block_gets_an_answer_for_its_own_district(rec):
@@ -76,8 +82,11 @@ def test_answer_has_both_methods_with_tested_scores(rec):
     assert {x["crop"] for x in r["model"]["ranking"]} == {"beans", "irish_potato", "maize", "rice"}
     assert r["rules"]["ranking"][0]["reasons"]
     blockcv = pd.read_csv(mm.EVAL_DIR / "main_blockcv_results.csv")
-    xgb = blockcv[(blockcv.model == "XGB[all]") & (blockcv.district == "Musanze")]["macro_f1"].iloc[0]
-    assert abs(r["model"]["tested"]["new_fields"] - xgb) < 0.0005
+    tested = blockcv[(blockcv.model == mm.MODEL_NAME) & (blockcv.district == "Musanze")]["macro_f1"].iloc[0]
+    assert abs(r["model"]["tested"]["new_fields"] - tested) < 0.0005
+    sat = r["inputs"]["satellite_at_field"]
+    assert set(sat) == {"srtm_elevation_m", "chirps_precip_mm", "ndvi_annual", "swir_ratio"}
+    assert abs(sat["srtm_elevation_m"] - r["inputs"]["elevation_m"]) < 100   # SRTM and GPS agree on CIAT fields
     assert r["better_in_testing"] in {"model", "rules", "same"}
     assert r["fertiliser"]["status"] == "ok" and r["fertiliser"]["crop"] == r["answer"]["crop"]
     assert any(w.startswith("Fertiliser rates are interim") for w in r["warnings"])
@@ -86,20 +95,21 @@ def test_answer_has_both_methods_with_tested_scores(rec):
 
 
 def test_one_answer_comes_from_the_method_that_tested_better_in_the_district(rec):
+    # tuning_v1, new fields: Random Forest 0.661, 0.627, 0.432, 0.337 against the rules 0.592, 0.645, 0.090, 0.186
     assert {d: rec.method_for(d) for d in sorted(PILOTS)} == {
-        "Musanze": "rules", "Nyabihu": "rules", "Nyagatare": "model", "Ruhango": "model"}
+        "Musanze": "model", "Nyabihu": "rules", "Nyagatare": "model", "Ruhango": "model"}
     blockcv = pd.read_csv(mm.EVAL_DIR / "main_blockcv_results.csv")
     for d in PILOTS:
-        for method, model in (("model", "XGB[all]"), ("rules", "B1_expert_rules")):
+        for method, model in (("model", mm.MODEL_NAME), ("rules", "B1_expert_rules")):
             top1 = blockcv[(blockcv.model == model) & (blockcv.district == d)]["top1"].iloc[0]
             assert rec.hit_rates[d][method] == round(top1, 3)
-    r = rec.recommend(-1.4580, 29.5560, "B")                       # a Musanze block: the rules answer
+    r = rec.recommend(-1.4580, 29.5560, "B")                       # a Musanze block: Random Forest answers
     a = r["answer"]
-    assert a["method"] == "rules" and a["crop"] == r["rules"]["ranking"][0]["crop"] == "irish_potato"
-    assert a["confidence"] == "medium" and a["hit_rate"] == rec.hit_rates["Musanze"]["rules"]
-    assert a["others"] == [x["crop"] for x in r["rules"]["ranking"][1:]] and a["close_second"] is None
-    assert a["why"][0].startswith("In Musanze, the expert rules did as well as or better than XGBoost")
-    r = rec.recommend(-1.35, 30.30, "B")                           # Nyagatare: XGBoost answers
+    assert a["method"] == "model" and a["crop"] == r["model"]["ranking"][0]["crop"] == "irish_potato"
+    assert a["hit_rate"] == rec.hit_rates["Musanze"]["model"] == 0.75 and a["confidence"] == "high"
+    assert a["others"] == [x["crop"] for x in r["model"]["ranking"][1:]] and a["close_second"] is None
+    assert a["why"][0].startswith("In Musanze, Random Forest did better than the expert rules")
+    r = rec.recommend(-1.35, 30.30, "B")                           # Nyagatare: Random Forest answers
     assert r["answer"]["method"] == "model" and r["answer"]["crop"] == r["model"]["ranking"][0]["crop"]
     assert r["fertiliser"]["crop"] == r["answer"]["crop"]
     a = rec.recommend(-1.35, 30.30, "A")["answer"]                      # a season never tested
@@ -147,18 +157,30 @@ def test_far_from_ciat_data_is_flagged(rec):
     pytest.skip("no point far from CIAT data found in Nyagatare")
 
 
+def test_user_elevation_replaces_both_elevations(rec):
+    r = rec.recommend(-1.4580, 29.5560, "B", elevation_m=1900)
+    assert r["inputs"]["elevation_m"] == 1900 and r["inputs"]["satellite_at_field"]["srtm_elevation_m"] == 1900
+    assert r["inputs"]["block"]["elevation_source"] == "user"
+
+
 def test_feature_importance_and_export(rec, tmp_path):
-    imp = rec.feature_importance()
-    assert set(imp["feature"]) <= set(rec.model.used_) and abs(imp["share"].sum() - 1) < 1e-9
-    folder = rec.export(tmp_path / "xgb")
-    assert (folder / "xgboost_all_inputs.json").exists() and (folder / "meta.json").exists()
+    imp = rec.feature_importance()                      # tested drop in main score on new fields (tuning_v1)
+    assert set(imp["feature"]) == set(rec.model.used_) and abs(imp["share"].sum() - 1) < 1e-9
+    assert imp.iloc[0]["feature"] in {"srtm_elevation_m", "elevation_m"}       # elevation matters most
+    folder = rec.export(tmp_path / "model")
+    assert (folder / "model.joblib").exists() and (folder / "meta.json").exists()
+    meta = json.loads((folder / "meta.json").read_text(encoding="utf-8"))
+    assert meta["model"] == mm.MODEL_NAME and meta["features"] == rec.model.used_
+    import joblib
+    rows = rec.main[rec.model.used_].head(5).fillna(rec.model.fill_)
+    assert np.allclose(joblib.load(folder / "model.joblib").predict_proba(rows), rec.model.estimator.predict_proba(rows))
 
 
 def test_each_ranked_crop_carries_its_tested_scores_in_the_district(rec):
     r = rec.recommend(-1.350, 30.258, "B")                               # a Nyagatare block
     maize = next(x for x in r["model"]["ranking"] if x["crop"] == "maize")
     assert maize["tested_here"]["new_fields"]["fields"] == 792
-    assert round(maize["tested_here"]["new_fields"]["f1"], 2) == 0.80
+    assert round(maize["tested_here"]["new_fields"]["f1"], 3) == 0.852               # tuning_v1 confusion counts
     rules_maize = next(x for x in r["rules"]["ranking"] if x["crop"] == "maize")
     assert rules_maize["tested_here"]["new_fields"]["f1"] == 0.0
     r = rec.recommend(-1.4580, 29.5560, "B")                             # Musanze: 1 rice field, not scored

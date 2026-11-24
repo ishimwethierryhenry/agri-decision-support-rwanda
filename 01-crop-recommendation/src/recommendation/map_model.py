@@ -3,14 +3,16 @@
 What happens when someone clicks a point:
   1. District: the district polygon the point falls in (data/reference/rwanda_districts.geojson, geoBoundaries,
      source Open Data Rwanda, CC BY 4.0). Only the four pilot districts have CIAT data.
-  2. Field inputs: the feature table has no coordinates any more (privacy), so soil and elevation come from the
-     CIAT fields in the same 2 km block (Part A's block_id, cells of 0.018 degrees), or from the nearest block
-     in the same district. The answer says how far that block is.
+  2. Field inputs: the feature table has no coordinates any more (privacy), so soil, elevation and the four
+     satellite inputs (SRTM elevation, CHIRPS rainfall of the season, Sentinel-2 vegetation index and shortwave ratio
+     of 2024) come from the CIAT fields in the same 2 km block (Part A's block_id, cells of 0.018 degrees), or from
+     the nearest block in the same district. The answer says how far that block is.
   3. District inputs: season climate (NASA POWER) and NISR crop shares of season B 2025, the season the model
      learned from. The model only knows season B, so another season is shown as a note, not as an answer.
-  4. Two methods, each with its tested score in that district (reports/eval_v1): XGBoost on all inputs, trained
-     on all 1,904 fields with the protocol settings, and the B1 expert rules. Every crop in each ranking also
-     carries its tested precision, recall and F1 in that district.
+  4. Two methods, each with its tested score in that district (reports/tuning_v1): the trained model the protocol's
+     rule chose for the map (decision 2 of docs/training_protocol.md, section 11: the tuned Random Forest on all
+     inputs plus satellite, settings in reports/tuning_v1/final_model.json), trained on all 1,904 fields, and the B1
+     expert rules. Every crop in each ranking also carries its tested precision, recall and F1 in that district.
   5. One answer for the user (client feedback, 19 Nov 2026: show one recommendation and its confidence, not the
      comparison). In each district the answer comes from the method that did better in testing on new fields
      there (main score, ahead by more than 0.01; otherwise the rules, the API default). The confidence level
@@ -50,24 +52,40 @@ import evaluate as ev  # noqa: E402
 import expert_baseline as b1  # noqa: E402
 import fertiliser_engine as fert  # noqa: E402
 import model_scores as ms  # noqa: E402
+import tune  # noqa: E402
 
-TABLE_PATH = MODULE / "data" / "processed" / "feature_table_v2.csv"
+TABLE_PATH = MODULE / "data" / "processed" / "feature_table_v6b.csv"   # the v2 rows and inputs plus satellite
 BOUNDARIES_PATH = MODULE / "data" / "reference" / "rwanda_districts.geojson"
-EVAL_DIR = MODULE / "reports" / "eval_v1"
+EVAL_DIR = MODULE / "reports" / "tuning_v1"
+FINAL_MODEL_PATH = EVAL_DIR / "final_model.json"
 FERTILISER_RULES_PATH = HERE / "rules" / "fertiliser_rules.yaml"
 
 BLOCK_DEG = 0.018          # Part A's block_id is round(lat / 0.018) and round(lon / 0.018)
-MODEL_NAME = "XGB[all]"    # the protocol's XGBoost on all inputs (view "all")
 MODEL_SEASON = "B"         # the only season in the training data (CIAT, season B 2025)
 NEAR_KM = 5.0              # nearest CIAT block further than this: the answer warns that the data is far away
 BORDER_KM = 1.5            # a point this close to a CIAT block, just across a district line, uses that block
 CROP_NAMES = {"beans": "Beans", "irish_potato": "Irish potato", "maize": "Maize", "rice": "Rice"}
-METHOD_NAMES = {"model": "XGBoost", "rules": "the expert rules"}
+ALGO_NAMES = {"LR": "Logistic Regression", "RF": "Random Forest", "XGB": "XGBoost"}
+API_METHODS = {"RF": "random_forest", "XGB": "xgboost"}      # recommendation.method in the API (contract 1.1)
+VIEW_NAMES = {"all": "all inputs", "field_sat": "field + satellite inputs", "all_sat": "all + satellite inputs"}
 CHOICE_MARGIN = 0.01       # same margin as the adoption rule: a method answers only if it is ahead by more than this
 HIGH_HIT, LOW_HIT = 0.75, 0.50   # tested hit rate bands for the confidence level (simple, fixed, not tuned)
 CLOSE_CALL = 0.10          # first and second crop closer than this in the method's own score: a close call
 LEVELS = ("low", "medium", "high")
 SEASON_NAMES = {"A": "Season A (Sep to Jan)", "B": "Season B (Feb to Jun)", "C": "Season C (Jul to Aug)"}
+
+
+def load_final_model(path: Path = FINAL_MODEL_PATH) -> dict:
+    """Settings of the model on the map, chosen under decision 2 of the protocol (tune.py --final)."""
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+FINAL = load_final_model()
+MODEL_NAME = FINAL["model"]                     # its name in the tuning_v1 results, "RF[all_sat] tuned"
+MODEL_LABEL = ALGO_NAMES[FINAL["method"]]       # "Random Forest"
+MODEL_TITLE = f"{MODEL_LABEL}, {VIEW_NAMES[FINAL['view']]}" + (", tuned" if FINAL["tuned"] else "")
+API_METHOD = API_METHODS[FINAL["method"]]
+METHOD_NAMES = {"model": MODEL_LABEL, "rules": "the expert rules"}
 
 
 # ------------------------------------------------------------------ small helpers
@@ -184,13 +202,14 @@ class Districts:
 
 # ------------------------------------------------------------------ the recommender
 class MapRecommender:
-    """Trains the protocol's XGBoost on all fields once, then answers one point at a time."""
+    """Trains the model on the map on all fields once (a few seconds), then answers one point at a time."""
 
     def __init__(self, raw: pd.DataFrame, districts: Districts, evaluation_dir: Optional[Path] = EVAL_DIR,
-                 n_estimators: int = 300):
+                 final: Optional[dict] = None):
         self.districts = districts
         self.main = ev.prepare(raw)                                 # the 1,904 training fields
-        self.model = next(m for m in ev.default_models(n_estimators=n_estimators) if m.name == MODEL_NAME)
+        self.final = final or FINAL
+        self.model = tune.Tunable(self.final["method"], self.final["settings"], self.final["view"])
         self.model.fit(self.main, self.main["label"])
         self.crop_prior = self.main["label"].value_counts(normalize=True).to_dict()
         self.rules = b1.load_rules()
@@ -211,8 +230,10 @@ class MapRecommender:
         ij = qc["block_id"].astype(str).str.split("_", expand=True).astype(int)
         qc["block_lat"], qc["block_lon"] = ij[0] * BLOCK_DEG, ij[1] * BLOCK_DEG
         soil = ev.SOIL_TOP + ev.SOIL_SUB
+        # Satellite inputs of the block: SRTM elevation like the GPS elevation (median), the others like soil (mean).
+        sat = {c: (c, "median" if c == "srtm_elevation_m" else "mean") for c in ev.SATELLITE if c in qc.columns}
         agg = {"lat": ("block_lat", "first"), "lon": ("block_lon", "first"), "n_fields": ("GPS_Elev", "size"),
-               "elevation_m": ("GPS_Elev", "median"), **{c: (c, "mean") for c in soil}}
+               "elevation_m": ("GPS_Elev", "median"), **{c: (c, "mean") for c in soil}, **sat}
         self.blocks = qc.groupby(["District", "block_id"]).agg(**agg).reset_index()
         self.district_values: dict[str, dict] = {}
         district_cols = ["precip_mm", "tmax_c", "tmin_c", "solar_mj_m2"] + ev.NISR_SHARES
@@ -299,7 +320,12 @@ class MapRecommender:
                "tmean_point_c": float(b1.adjust_to_height(tmean, elev, d["ref_elevation_m"])),
                "tmin_point_c": float(b1.adjust_to_height(d["tmin_c"], elev, d["ref_elevation_m"])),
                **{c: d[c] for c in ev.NISR_SHARES},
-               **{c: float(b[c]) for c in ev.SOIL_TOP + ev.SOIL_SUB}}
+               **{c: float(b[c]) for c in ev.SOIL_TOP + ev.SOIL_SUB},
+               **{c: float(b[c]) for c in ev.SATELLITE if c in b.index}}
+        if elevation_m is not None and "srtm_elevation_m" in row:
+            # An elevation given by the user replaces both elevations: on the CIAT fields SRTM and GPS agree
+            # within about 11 m (median), so keeping the block's SRTM value would contradict the user's.
+            row["srtm_elevation_m"] = elev
         info = {"block_id": str(b["block_id"]), "block_lat": float(b["lat"]), "block_lon": float(b["lon"]),
                 "distance_km": round(km, 2), "n_fields": int(b["n_fields"]),
                 "elevation_source": "user" if elevation_m is not None else "median GPS elevation of the CIAT fields in the block"}
@@ -347,8 +373,9 @@ class MapRecommender:
                   f"sampled block, {info['distance_km']:.1f} km away.")
         if district in ("Musanze", "Nyabihu"):
             _warn(out, "SHARED_WEATHER_CELL",
-                  "Musanze and Nyabihu share one NASA POWER weather cell, so their rainfall and temperature are the "
-                  "same. Per-field rainfall (CHIRPS) comes later.")
+                  "Musanze and Nyabihu share one NASA POWER weather cell, so their district rainfall and temperature "
+                  "are the same. The model also uses the season's rainfall measured at the field by satellite "
+                  "(CHIRPS).")
         out["inputs"] = {
             "block": info,
             "elevation_m": round(row["elevation_m"], 1),
@@ -360,12 +387,14 @@ class MapRecommender:
                                       "solar_mj_m2_day": round(d["solar_mj_m2"], 2)},
             "nisr_crop_shares": {CROP_NAMES[k.replace("nisr_share_", "").replace("paddy_", "")]: round(d[k], 3)
                                  for k in ev.NISR_SHARES},
+            "satellite_at_field": {c: round(row[c], 1 if c in ("srtm_elevation_m", "chirps_precip_mm") else 3)
+                                   for c in ev.SATELLITE if c in row},
             "province": d["province"],
         }
         proba = self.model.predict_proba(pd.DataFrame([row]))[0]
         order = np.argsort(-proba)
         crop_tested = self.crop_tested.get(district, {})
-        out["model"] = {"name": "XGBoost, all inputs",
+        out["model"] = {"name": MODEL_TITLE,
                         "ranking": [{"crop": str(self.model.classes_[i]), "probability": round(float(proba[i]), 3),
                                      "tested_here": crop_tested.get("model", {}).get(str(self.model.classes_[i]), {})}
                                     for i in order],
@@ -412,10 +441,10 @@ class MapRecommender:
         mine = out[method]["tested"].get("new_fields")
         theirs = out[other]["tested"].get("new_fields")
         if mine is not None and theirs is not None and method == "model":
-            why = [f"In {district}, XGBoost did better than the expert rules in testing on new fields "
-                   f"({mine:.2f} against {theirs:.2f}, main score), so the answer comes from XGBoost."]
+            why = [f"In {district}, {MODEL_LABEL} did better than the expert rules in testing on new fields "
+                   f"({mine:.2f} against {theirs:.2f}, main score), so the answer comes from {MODEL_LABEL}."]
         elif mine is not None and theirs is not None:
-            why = [f"In {district}, the expert rules did as well as or better than XGBoost in testing on new fields "
+            why = [f"In {district}, the expert rules did as well as or better than {MODEL_LABEL} in testing on new fields "
                    f"({mine:.2f} against {theirs:.2f}, main score), so the answer comes from the rules."]
         else:
             why = [f"The answer comes from {METHOD_NAMES[method]}."]
@@ -442,28 +471,32 @@ class MapRecommender:
                 "others": [r["crop"] for r in ranked[1:]], "why": why}
 
     # ----------------------------------------------------------- for the notebook
-    def feature_importance(self) -> pd.DataFrame:
-        booster = self.model.estimator.get_booster()
-        gain = booster.get_score(importance_type="gain")
-        names = self.model.used_
-        rows = [{"feature": names[int(k[1:])] if k.startswith("f") and k[1:].isdigit() else k, "gain": v}
-                for k, v in gain.items()]
-        df = pd.DataFrame(rows).sort_values("gain", ascending=False)
-        df["share"] = df["gain"] / df["gain"].sum()
+    def feature_importance(self, evaluation_dir: Path = EVAL_DIR) -> pd.DataFrame:
+        """How much each input matters for the model on the map: the drop in main score on new fields when the input
+        is shuffled among the test fields (tuning_v1, importance.csv). Share: the positive drops, scaled to sum to 1."""
+        imp = pd.read_csv(Path(evaluation_dir) / "importance.csv")
+        imp = imp[(imp["test"] == "blockcv") & (imp["model"] == self.final["model"]) & (imp["kind"] == "input")]
+        df = (imp.rename(columns={"name": "feature", "drop_mean": "drop_in_main_score"})
+              [["feature", "drop_in_main_score"]].sort_values("drop_in_main_score", ascending=False))
+        positive = df["drop_in_main_score"].clip(lower=0)
+        df["share"] = positive / positive.sum()
         return df.reset_index(drop=True)
 
     def export(self, folder: Path) -> Path:
+        """The trained model (joblib), its input importance and what is needed to use it (inputs in order, the
+        median values that fill gaps, classes, settings)."""
+        import joblib
+        import sklearn
         folder = Path(folder)
         folder.mkdir(parents=True, exist_ok=True)
-        self.model.estimator.save_model(str(folder / "xgboost_all_inputs.json"))
+        joblib.dump(self.model.estimator, folder / "model.joblib")
         self.feature_importance().to_csv(folder / "feature_importance.csv", index=False)
-        import sklearn
-        import xgboost
-        meta = {"model": MODEL_NAME, "trained_on_fields": int(len(self.main)), "features": self.model.used_,
+        meta = {"model": self.final["model"], "settings": self.final["settings"], "chosen_by": self.final["chosen_by"],
+                "trained_on_fields": int(len(self.main)), "features": self.model.used_,
+                "fill_missing_with": {k: round(float(v), 6) for k, v in self.model.fill_.items()},
                 "classes": [str(c) for c in self.model.classes_], "season": MODEL_SEASON,
-                "settings": repr(self.model.estimator),
-                "versions": {"xgboost": xgboost.__version__, "scikit-learn": sklearn.__version__,
-                             "pandas": pd.__version__, "numpy": np.__version__}}
+                "estimator": repr(self.model.estimator),
+                "versions": {"scikit-learn": sklearn.__version__, "pandas": pd.__version__, "numpy": np.__version__}}
         (folder / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
         return folder
 
@@ -482,7 +515,7 @@ def _print(result: dict) -> None:
         print(f"  soil {inp['soil_texture']}, pH {inp['soil_0_20cm']['ph']}, elevation {inp['elevation_m']} m, "
               f"block {inp['block']['block_id']} ({inp['block']['n_fields']} CIAT fields, "
               f"{inp['block']['distance_km']} km away)")
-        print("  XGBoost: " + ", ".join(f"{CROP_NAMES[r['crop']]} {r['probability']:.2f}"
+        print(f"  {MODEL_LABEL}: " + ", ".join(f"{CROP_NAMES[r['crop']]} {r['probability']:.2f}"
                                        for r in result["model"]["ranking"]))
         print("  Rules:   " + ", ".join(f"{CROP_NAMES[r['crop']]} {r['score']:.2f}" for r in result["rules"]["ranking"]))
         print(f"  tested on new fields here: model {result['model']['tested'].get('new_fields')}, "

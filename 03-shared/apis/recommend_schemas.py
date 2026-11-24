@@ -1,4 +1,4 @@
-"""Pydantic models for the Recommendation API contract (version 1.0, final for the practicum).
+"""Pydantic models for the Recommendation API contract (version 1.1: 1.0 plus optional fields for the tuned model).
 
 These models are the executable form of docs/api_contracts.md. If a field changes,
 change this file and the document together, and bump CONTRACT_VERSION.
@@ -12,7 +12,7 @@ from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CONTRACT_VERSION = "1.0"
+CONTRACT_VERSION = "1.1"
 
 # Approximate bounding box of Rwanda (decimal degrees, WGS84).
 LAT_MIN, LAT_MAX = -2.9, -1.0
@@ -225,14 +225,16 @@ class Confidence(Strict):
     level: Level
     tested_hit_rate: Optional[float] = Field(None, ge=0, le=1,
                                              description="Share of new fields in this district where the answering "
-                                                         "method's first crop was right in testing (eval_v1).")
+                                                         "method's first crop was right in testing (reports/tuning_v1).")
     lowered_by: list[str] = Field(default_factory=list, description="Why the level is lower than the hit rate "
                                                                     "alone would give, in plain words.")
 
 
 class PointAnswer(Strict):
     crop: str
-    method: Literal["xgboost", "expert_rules"]
+    method: Literal["random_forest", "xgboost", "expert_rules"] = Field(
+        ..., description="The method that answers in this district. random_forest since 1.1 (the tuned model on the "
+                         "map); xgboost was the model on the map in 1.0.")
     confidence: Confidence
     close_second: Optional[str] = Field(None, description="A crop that fits almost as well, if any.")
     alternatives: list[str] = Field(default_factory=list, description="The method's next crops, in order.")
@@ -257,6 +259,10 @@ class PointInputs(Strict):
     field_data_from: FieldDataFrom
     climate_season_b_2025: dict[str, float]
     nisr_crop_shares: dict[str, float]
+    satellite_at_field: Optional[dict[str, float]] = Field(
+        None, description="Added in 1.1. The model's satellite inputs, from the CIAT fields of the same 2 km block: "
+                          "srtm_elevation_m (SRTM, 30 m), chirps_precip_mm (CHIRPS rainfall, 1 February to 30 June "
+                          "2025), ndvi_annual and swir_ratio (Sentinel-2 medians of 2024).")
 
 
 class RankedCrop(Strict):
@@ -265,9 +271,14 @@ class RankedCrop(Strict):
 
 
 class PointEvaluation(Strict):
-    xgboost_ranking: list[RankedCrop]
+    model: Optional[Literal["random_forest", "xgboost"]] = Field(None, description="Added in 1.1. The trained model "
+                                                                                     "on the map.")
+    model_ranking: Optional[list[RankedCrop]] = Field(None, description="Added in 1.1. The trained model's crops, "
+                                                                        "with its probability for each.")
+    xgboost_ranking: Optional[list[RankedCrop]] = Field(None, description="Deprecated in 1.1: null unless the model "
+                                                                          "on the map is XGBoost. Use model_ranking.")
     rules_ranking: list[RankedCrop]
-    tested_main_score_new_fields: dict[Literal["xgboost", "expert_rules"], Optional[float]]
+    tested_main_score_new_fields: dict[Literal["random_forest", "xgboost", "expert_rules"], Optional[float]]
 
 
 class PointResponse(Strict):

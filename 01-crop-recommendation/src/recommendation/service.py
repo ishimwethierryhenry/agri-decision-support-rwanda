@@ -1,10 +1,11 @@
-"""Recommendation service (contract 1.0): POST /v1/recommend on the B1 expert rules, and POST /v1/recommend/point,
+"""Recommendation service (contract 1.1): POST /v1/recommend on the B1 expert rules, and POST /v1/recommend/point,
 the one answer of the dashboard map.
 
 It follows the contract in docs/api_contracts.md (models in 03-shared/apis/recommend_schemas.py).
 POST /v1/recommend/point runs map_model.MapRecommender, the same code as the dashboard map: one crop per point, from
-the method that tested better in that district, with a confidence level. It needs XGBoost and trains the model once,
-on the first request (a few seconds).
+the method that tested better in that district, with a confidence level. Since 1.1 the trained model is the tuned
+Random Forest (scikit-learn, reports/tuning_v1/final_model.json); it is trained once, on the first request (a few
+seconds).
 What POST /v1/recommend does for one request:
   1. Resolve the location to one of the four pilot districts (by name, or the nearest district centre).
   2. Build the inputs B1 needs: elevation, and the season climate normal moved to the point's height.
@@ -229,17 +230,23 @@ def soil_inputs(req: RecommendRequest) -> tuple[dict, dict]:
 _MAP: dict[str, Any] = {}
 
 
-def xgboost_available() -> bool:
-    import importlib.util
-    return importlib.util.find_spec("xgboost") is not None
+def map_ready() -> bool:
+    """True when point answers can be built: the settings of the model on the map and its data files are in place."""
+    try:
+        import map_model
+    except Exception:           # map_model reads the model's settings when it is imported
+        return False
+    return all(p.exists() for p in (map_model.TABLE_PATH, map_model.BOUNDARIES_PATH, map_model.FINAL_MODEL_PATH,
+                                    map_model.EVAL_DIR / "main_blockcv_results.csv"))
 
 
 def map_recommender():
-    """The dashboard map's recommender, built once on the first point request (it trains XGBoost in seconds)."""
+    """The dashboard map's recommender, built once on the first point request (it trains the model in seconds)."""
     if "rec" not in _MAP:
-        if not xgboost_available():
-            raise ApiError("MODEL_UNAVAILABLE", "XGBoost is not installed, so point answers are not available. "
-                                                "POST /v1/recommend still answers with the expert rules.", status=503)
+        if not map_ready():
+            raise ApiError("MODEL_UNAVAILABLE", "The trained model's settings or data files are missing, so point "
+                                                "answers are not available. POST /v1/recommend still answers with "
+                                                "the expert rules.", status=503)
         import map_model
         _MAP["module"], _MAP["rec"] = map_model, map_model.MapRecommender.load()
     return _MAP["module"], _MAP["rec"]
@@ -248,8 +255,7 @@ def map_recommender():
 @app.get("/v1/health", response_model=HealthResponse)
 def health():
     # "ok": the rules answer and the trained model can answer point requests. "degraded": only the rules answer.
-    ready = xgboost_available()
-    return HealthResponse(status="ok" if ready else "degraded", rules_loaded=True, model_loaded="rec" in _MAP)
+    return HealthResponse(status="ok" if map_ready() else "degraded", rules_loaded=True, model_loaded="rec" in _MAP)
 
 
 @app.get("/v1/metadata", response_model=MetadataResponse)
@@ -341,7 +347,6 @@ def recommend(req: RecommendRequest, request: Request):
     }
 
 
-METHODS = {"model": "xgboost", "rules": "expert_rules"}
 OUTSIDE_CODES = {"outside_rwanda": "OUTSIDE_RWANDA", "outside_pilot": "OUTSIDE_PILOT_DISTRICTS"}
 
 
@@ -362,8 +367,9 @@ def recommend_point(req: PointRequest, request: Request):
         return {**base, "abstain": True, "warnings": warnings,
                 "abstain_message": res["message"] + " Please consult an extension officer."}
     a, inp = res["answer"], res["inputs"]
+    methods = {"model": mm.API_METHOD, "rules": "expert_rules"}
     out = {**base, "abstain": False,
-           "recommendation": {"crop": a["crop"], "method": METHODS[a["method"]],
+           "recommendation": {"crop": a["crop"], "method": methods[a["method"]],
                               "confidence": {"level": a["confidence"], "tested_hit_rate": a["hit_rate"],
                                              "lowered_by": a["lowered_by"]},
                               "close_second": a["close_second"], "alternatives": a["others"], "why": a["why"]},
@@ -373,12 +379,16 @@ def recommend_point(req: PointRequest, request: Request):
                            "field_data_from": {"n_ciat_fields": inp["block"]["n_fields"],
                                                "distance_km": inp["block"]["distance_km"]},
                            "climate_season_b_2025": inp["climate_season_b_2025"],
-                           "nisr_crop_shares": inp["nisr_crop_shares"]},
+                           "nisr_crop_shares": inp["nisr_crop_shares"],
+                           "satellite_at_field": inp.get("satellite_at_field")},
            "warnings": warnings}
     if req.include_evaluation:
+        model_ranking = [{"crop": r["crop"], "score": r["probability"]} for r in res["model"]["ranking"]]
         out["evaluation"] = {
-            "xgboost_ranking": [{"crop": r["crop"], "score": r["probability"]} for r in res["model"]["ranking"]],
+            "model": mm.API_METHOD, "model_ranking": model_ranking,
+            # 1.0 field, kept so 1.0 clients still parse the answer: null unless the model on the map is XGBoost
+            "xgboost_ranking": model_ranking if mm.API_METHOD == "xgboost" else None,
             "rules_ranking": [{"crop": r["crop"], "score": r["score"]} for r in res["rules"]["ranking"]],
-            "tested_main_score_new_fields": {"xgboost": res["model"]["tested"].get("new_fields"),
+            "tested_main_score_new_fields": {mm.API_METHOD: res["model"]["tested"].get("new_fields"),
                                              "expert_rules": res["rules"]["tested"].get("new_fields")}}
     return out
