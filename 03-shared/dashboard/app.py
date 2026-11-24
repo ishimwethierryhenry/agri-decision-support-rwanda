@@ -1,4 +1,4 @@
-"""Dashboard (D6). Run from this folder:  streamlit run app.py
+"""Dashboard (D6). Run from this folder:  python -m streamlit run app.py
 
 Pages:
   Map            : click a point in a pilot district; one recommended crop with its confidence and fertiliser
@@ -14,7 +14,8 @@ import streamlit as st
 
 import ui_theme
 
-st.set_page_config(page_title="Smallholder decision support", layout="wide")
+# The sidebar (data source, Evaluation view, detection service URL) starts closed; the >> button opens it
+st.set_page_config(page_title="Smallholder decision support", layout="wide", initial_sidebar_state="collapsed")
 
 with st.sidebar:
     st.title("Decision support")

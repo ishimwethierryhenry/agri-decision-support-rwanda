@@ -12,7 +12,9 @@ Streamlit app (D6, task T037) with four pages:
 Run from this folder (Python 3.12 or newer, because of the pinned library versions):
 
     python -m pip install -r requirements.txt
-    streamlit run app.py
+    python -m streamlit run app.py
+
+`python -m streamlit` also works when the `streamlit` command is not on the PATH, which happens on Windows when pip installs into the user folder.
 
 `requirements.txt` includes `01-crop-recommendation/requirements-eval.txt`, so the map page trains its model (the tuned Random Forest, scikit-learn) with the same library versions as the official evaluation. Training takes a few seconds, once, when the map page first opens.
 
@@ -23,7 +25,8 @@ button per page (the current page is filled), cards and form widgets. `app.py` a
 the page, so the pages themselves stay plain Streamlit. `rec_ui.py` adds the parts that the Map, Model scores
 and Crop and fertiliser pages share with the Diagnosis page: numbered steps, card headings, and the answer shown
 as a confidence badge, the crop name and a bar. The sidebar keeps the settings (data source, Evaluation
-view, detection service URL). `.streamlit/config.toml` sets the green theme; Streamlit reads it when the app is
+view, detection service URL). It starts closed so the pages get the full width; the >> button at the top left
+opens it. `.streamlit/config.toml` sets the green theme; Streamlit reads it when the app is
 started from this folder.
 
 ## Diagnosis page
