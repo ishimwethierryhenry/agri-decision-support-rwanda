@@ -3,6 +3,7 @@
 The map itself is a browser component, so these tests set the point with the coordinate boxes below the map,
 which go through the same code as a click.
 """
+import re
 from pathlib import Path
 
 import pytest
@@ -23,9 +24,24 @@ def _picks(at):
     return [m.value for m in at.markdown if m.value.startswith("### ")]
 
 
+def _html(at, pattern):
+    """Text pieces of the result card (rec_ui.py writes it as HTML through st.markdown)."""
+    return [x for m in at.markdown for x in re.findall(pattern, m.value)]
+
+
 def _answer(at):
-    """The one recommended crop shown to the user."""
-    return [m.value[3:] for m in at.markdown if m.value.startswith("## ")]
+    """The one recommended crop shown to the user: the title of the result card."""
+    return _html(at, r'class="card-title"[^>]*>([^<]+)<')
+
+
+def _confidence(at):
+    """The confidence badge of the answer: High, Medium or Low."""
+    return _html(at, r'class="result-badge \w+">(\w+) confidence<')
+
+
+def _place(at):
+    """District and point line at the top of the result card."""
+    return _html(at, r'class="place">([^<]+)<')
 
 
 def _evaluation_view(at):
@@ -46,20 +62,20 @@ def test_app_opens_on_the_map_page():
     at = st_testing.AppTest.from_file(str(DASH / "app.py"), default_timeout=60)
     at.run()
     assert not at.exception
-    assert [h.value for h in at.header] == ["Click a field on the map"]
+    assert any("Which <em>crop</em> fits this field?" in m.value for m in at.markdown)       # hero of the map page
     at.switch_page("pages/recommendation.py").run()
-    assert not at.exception and "Crop and fertiliser" in at.header[0].value
+    assert not at.exception
+    assert any("What should I <em>plant</em> in my district?" in m.value for m in at.markdown)
 
 
 def test_default_point_shows_one_answer_with_its_confidence():
     at = _page()
-    assert at.subheader[0].value == "Musanze (Northern Province)"
+    assert _place(at) == ["Musanze (Northern Province), point -1.458, 29.556"]
     assert _answer(at) == ["Irish potato"] and not _picks(at)       # one answer, no comparison for the user
     assert "Random Forest suggests" not in [c.value for c in at.caption]
-    assert any(m.value.startswith("Confidence: ") for m in at.markdown)
-    assert any(c.value.startswith("In testing on new fields in Musanze, the first crop was right about")
-               for c in at.caption)
+    assert len(_confidence(at)) == 1 and _confidence(at)[0] in {"High", "Medium", "Low"}
     text = " ".join(m.value for m in at.markdown)
+    assert "In testing on new fields in Musanze, the first crop was right about" in text
     assert "Soil, 0 to 20 cm (iSDAsoil)" in text and "NISR" in text     # inputs stay available, folded
     assert "Satellite at the field: SRTM elevation" in text
 
@@ -79,24 +95,24 @@ def test_fertiliser_for_the_recommended_crop_is_interim_and_cited():
     at = _page()
     pick = _answer(at)[0]
     text = " ".join(m.value for m in at.markdown)
-    assert f"**Fertiliser for {pick}**" in text and "kg/ha" in text
+    assert f"Fertiliser for {pick} <b>" in text and "kg/ha" in text
     assert any(w.value.startswith("Interim rates") for w in at.warning)
     assert any(c.value.startswith("Source: ") and "[link](https://" in c.value for c in at.caption)
 
 
 def test_season_follows_today_and_other_seasons_get_a_note():
     at = _page()
-    at.selectbox[0].set_value("A").run()
+    at.radio(key="pills_season").set_value("A").run()
     assert any("not in the training data yet" in i.value for i in at.info)
-    assert "Confidence: :red[**Low**]" in [m.value for m in at.markdown]
-    at.selectbox[0].set_value("B").run()
+    assert _confidence(at) == ["Low"]
+    at.radio(key="pills_season").set_value("B").run()
     assert not any("not in the training data yet" in i.value for i in at.info)
-    assert "Confidence: :green[**High**]" in [m.value for m in at.markdown]      # Musanze: tested hit rate 0.75
+    assert _confidence(at) == ["High"]                       # Musanze: tested hit rate 0.75
 
 
 def test_typed_point_in_nyagatare():
     at = _type_point(_page(), -1.35, 30.30)
-    assert at.subheader[0].value == "Nyagatare (Eastern Province)"
+    assert _place(at)[0].startswith("Nyagatare (Eastern Province)")
     assert _answer(at) == ["Maize"]
     assert any("so the answer comes from Random Forest" in m.value for m in at.markdown)
     at = _evaluation_view(at)
@@ -105,10 +121,10 @@ def test_typed_point_in_nyagatare():
 
 def test_points_outside_the_pilot_districts_or_rwanda_get_no_crop():
     at = _type_point(_page(), -1.95, 30.06)       # Kigali
-    assert at.subheader[0].value == "Nyarugenge" and not _picks(at) and not _answer(at)
+    assert _place(at) == ["Nyarugenge"] and not _picks(at) and not _answer(at)
     assert "not one of the four pilot districts" in at.warning[0].value
     at = _type_point(at, 10.0, 200.0)             # nowhere near Rwanda, and no crash on odd numbers
-    assert at.subheader[0].value == "Outside Rwanda" and not _picks(at)
+    assert _place(at) == ["Outside Rwanda"] and not _picks(at)
 
 
 def test_crop_by_crop_table_for_the_clicked_district():
@@ -143,7 +159,7 @@ def test_scores_page_shows_every_model():
     assert any("tuning lowered 5 of the 9 models" in c.value for c in at.caption)
     effect = at.dataframe[1].value
     assert list(effect.index) == ["Logistic Regression", "Random Forest", "XGBoost"]
-    at.radio(key="scores_test").set_value("new_fields").run()
+    at.radio(key="pills_scores_test").set_value("new_fields").run()
     assert not at.exception
     assert any("within 0.003 of the best model" in c.value for c in at.caption)
     at.selectbox(key="scores_district").set_value("Nyagatare").run()

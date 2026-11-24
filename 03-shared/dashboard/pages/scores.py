@@ -5,6 +5,8 @@ next to the recommendations. Updated on 18 Nov 2026 for protocol 1.1, which adds
 each field (the 12 combinations of the midterm give the same numbers as in eval_v1), and on 23 Nov 2026 for protocol
 1.2: the tuning run (reports/tuning_v1) and why its tuned Random Forest is now the trained model on the map.
 Everything here is read from the committed result files. Logic: 01-crop-recommendation/src/models/model_scores.py
+Since 24 Nov 2026 the page uses the shared Agri DSS look (ui_theme.py, rec_ui.py): a hero heading and one card per
+section.
 """
 import sys
 from pathlib import Path
@@ -15,7 +17,10 @@ import streamlit as st
 MODELS_DIR = Path(__file__).resolve().parents[3] / "01-crop-recommendation" / "src" / "models"
 if str(MODELS_DIR) not in sys.path:
     sys.path.insert(0, str(MODELS_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import model_scores as ms  # noqa: E402
+import rec_ui as ui  # noqa: E402
+from ui_theme import hero  # noqa: E402
 
 BASELINES = ("B0_majority", ms.BASELINE)
 
@@ -76,7 +81,10 @@ def score_table(df: pd.DataFrame) -> pd.DataFrame:
     return df.drop(columns=["model", "Top-3 (mean)"]).rename(columns=DISPLAY)
 
 
-st.header("How well each model did")
+hero("Model scores", "How well does each <em>model</em> do?",
+     "Every method was tested the same way, on the same fields, with the same scores. Everything here is read "
+     "from the committed result files.")
+ui.styles()
 st.caption("Official evaluation of 18 November 2026 (protocol 1.1): 1,904 CIAT fields of season B 2025 in Musanze, "
            "Nyabihu, Nyagatare and Ruhango, 18 model and input combinations, the same tests and the same scores "
            "for all. Version 1.1 adds four inputs measured at each field by satellite: SRTM elevation, CHIRPS "
@@ -100,62 +108,67 @@ if not passing:
 else:
     st.success(f"Passing the adoption rule on the main test: {', '.join(passing)}.")
 
-test = st.radio("Test", list(ms.TESTS), format_func=ms.TEST_NAMES.get, horizontal=True, key="scores_test")
+test = st.radio("Which test", list(ms.TESTS), format_func=ms.TEST_NAMES.get, horizontal=True,
+                key="pills_scores_test")
 
-st.subheader("Main score of every model")
-table = score_table(scores.main_scores(test))
-st.dataframe(table, hide_index=True, column_config=SCORE_COLUMNS, height=rows_height(len(table)))
-st.caption("How to read it. The main score checks, in each district, how well the method names the right crop "
-           "first, crop by crop, so that rice counts as much as maize (macro-F1, from 0 to 1; crops with fewer than 5 "
-           "fields in a district are left out). The table shows the average of the four districts, and the worst "
-           "district shows the same score where the method does worst. Accuracy is the share of fields where the "
-           "first crop is right, averaged over the four districts. A trained model replaces the rules only if, on the "
-           "main test, its average is higher and it is better than the rules by more than 0.01 in at least 3 of the "
-           "4 districts. Top-3 is not shown: with only four crops it is close to 1 for every method, so it tells "
-           "nothing apart.")
+with st.container(key="card_main"):
+    st.subheader("Main score of every model")
+    table = score_table(scores.main_scores(test))
+    st.dataframe(table, hide_index=True, column_config=SCORE_COLUMNS, height=rows_height(len(table)))
+    st.caption("How to read it. The main score checks, in each district, how well the method names the right crop "
+               "first, crop by crop, so that rice counts as much as maize (macro-F1, from 0 to 1; crops with fewer than 5 "
+               "fields in a district are left out). The table shows the average of the four districts, and the worst "
+               "district shows the same score where the method does worst. Accuracy is the share of fields where the "
+               "first crop is right, averaged over the four districts. A trained model replaces the rules only if, on the "
+               "main test, its average is higher and it is better than the rules by more than 0.01 in at least 3 of the "
+               "4 districts. Top-3 is not shown: with only four crops it is close to 1 for every method, so it tells "
+               "nothing apart.")
 
-st.subheader("What the satellite inputs changed")
-effect = scores.satellite_effect(test)
-changes = [c for c in effect.columns if c.startswith("Change")]
-st.dataframe(effect.style.format("{:.3f}").format("{:+.3f}", subset=changes), height=rows_height(len(effect)))
-if test == "new_fields":
-    near = fields.loc["XGB[field_sat]", "Main score"]
-    st.caption("Main score of each method on the same inputs, without and with the four satellite inputs. On new "
-               "fields every method gains, most when it has field inputs only. XGBoost on field + satellite inputs "
-               f"({near:.3f}) uses no input that is the same for a whole district, yet comes within "
-               f"{round(fields.loc[best_fields, 'Main score'], 3) - round(near, 3):.3f} of the best model.")
-else:
-    st.caption("Main score of each method on the same inputs, without and with the four satellite inputs. In a "
-               "district the model never saw, Random Forest gains the most and is now the closest to the rules, but "
-               "it still loses to them in the highlands (Musanze, Nyabihu). XGBoost barely moves, and Logistic "
-               "Regression drops with all inputs.")
+with st.container(key="card_satellite"):
+    st.subheader("What the satellite inputs changed")
+    effect = scores.satellite_effect(test)
+    changes = [c for c in effect.columns if c.startswith("Change")]
+    st.dataframe(effect.style.format("{:.3f}").format("{:+.3f}", subset=changes), height=rows_height(len(effect)))
+    if test == "new_fields":
+        near = fields.loc["XGB[field_sat]", "Main score"]
+        st.caption("Main score of each method on the same inputs, without and with the four satellite inputs. On new "
+                   "fields every method gains, most when it has field inputs only. XGBoost on field + satellite inputs "
+                   f"({near:.3f}) uses no input that is the same for a whole district, yet comes within "
+                   f"{round(fields.loc[best_fields, 'Main score'], 3) - round(near, 3):.3f} of the best model.")
+    else:
+        st.caption("Main score of each method on the same inputs, without and with the four satellite inputs. In a "
+                   "district the model never saw, Random Forest gains the most and is now the closest to the rules, but "
+                   "it still loses to them in the highlands (Musanze, Nyabihu). XGBoost barely moves, and Logistic "
+                   "Regression drops with all inputs.")
 
-st.subheader("Main score in each district (macro-F1, 0 to 1)")
-per_district = scores.per_district(test)
-st.dataframe(per_district.style.format("{:.3f}"), height=rows_height(len(per_district)))
-st.caption("The trained models win in the lowlands (Nyagatare, Ruhango), where the rules are weak, and lose in the "
-           "highlands (Musanze, Nyabihu), where the rules already work well.")
+with st.container(key="card_districts"):
+    st.subheader("Main score in each district (macro-F1, 0 to 1)")
+    per_district = scores.per_district(test)
+    st.dataframe(per_district.style.format("{:.3f}"), height=rows_height(len(per_district)))
+    st.caption("The trained models win in the lowlands (Nyagatare, Ruhango), where the rules are weak, and lose in the "
+               "highlands (Musanze, Nyabihu), where the rules already work well.")
 
-st.subheader("Overall scores, all test fields together")
-overall = scores.overall(test).drop(columns="model")
-st.dataframe(overall, hide_index=True, height=rows_height(len(overall)),
-             column_config={c: st.column_config.NumberColumn(format="%.3f") for c in overall.columns
-                            if c not in ("Model", "Inputs")})
-st.caption("Accuracy: share of fields where the first crop is the true crop; it mostly reflects Nyagatare, which "
-           "has 1,084 of the 1,904 fields. Balanced accuracy and macro-F1 give every crop the same weight. "
-           "Cohen's kappa: 0 is chance agreement, 1 is perfect; 0.41 to 0.60 is usually read as moderate.")
+    st.subheader("Overall scores, all test fields together")
+    overall = scores.overall(test).drop(columns="model")
+    st.dataframe(overall, hide_index=True, height=rows_height(len(overall)),
+                 column_config={c: st.column_config.NumberColumn(format="%.3f") for c in overall.columns
+                                if c not in ("Model", "Inputs")})
+    st.caption("Accuracy: share of fields where the first crop is the true crop; it mostly reflects Nyagatare, which "
+               "has 1,084 of the 1,904 fields. Balanced accuracy and macro-F1 give every crop the same weight. "
+               "Cohen's kappa: 0 is chance agreement, 1 is perfect; 0.41 to 0.60 is usually read as moderate.")
 
-st.subheader("Each crop in each district")
-c1, c2 = st.columns(2)
-district = c1.selectbox("District", ms.DISTRICTS, key="scores_district")
-choices = [m for m in scores.models if m != "XGB[all]"]
-other = c2.selectbox("Compare XGBoost (all inputs) with", choices, index=choices.index("B1_expert_rules"),
-                     format_func=ms.short_label, key="scores_other")
-crops = scores.crop_table(test, district, ("XGB[all]", other))
-st.dataframe(fmt(crops, digits=2))
-st.caption("Precision: when the model says this crop, how often it is right. Recall: of the fields with this crop, "
-           "how many the model found. F1 combines the two. Crops with fewer than 5 fields in the district are not "
-           "scored.")
+with st.container(key="card_crops"):
+    st.subheader("Each crop in each district")
+    c1, c2 = st.columns(2)
+    district = c1.selectbox("District", ms.DISTRICTS, key="scores_district")
+    choices = [m for m in scores.models if m != "XGB[all]"]
+    other = c2.selectbox("Compare XGBoost (all inputs) with", choices, index=choices.index("B1_expert_rules"),
+                         format_func=ms.short_label, key="scores_other")
+    crops = scores.crop_table(test, district, ("XGB[all]", other))
+    st.dataframe(fmt(crops, digits=2))
+    st.caption("Precision: when the model says this crop, how often it is right. Recall: of the fields with this crop, "
+               "how many the model found. F1 combines the two. Crops with fewer than 5 fields in the district are not "
+               "scored.")
 
 @st.cache_resource(show_spinner=False)
 def load_tuning() -> ms.Tuning:
@@ -169,24 +182,25 @@ def pct(x: float) -> str:
 tuning = load_tuning()
 gains = tuning.gains(test)
 algo_gain = gains.groupby("Model", sort=False)["Change"].mean()
-st.subheader("Tuning: the same models with better settings")
-st.dataframe(gains.drop(columns="model"), hide_index=True, height=rows_height(len(gains)),
-             column_config={"Protocol settings": st.column_config.NumberColumn(format="%.3f"),
-                            "Tuned": st.column_config.NumberColumn(format="%.3f"),
-                            "Change": st.column_config.NumberColumn(format="%+.3f"),
-                            "First crop right, all fields (tuned)": st.column_config.NumberColumn(format="%.3f")})
-how = ("Main score (macro-F1, 0 to 1) of each method with the settings of the protocol and with tuned settings "
-       "(tuning run of 23 November 2026, protocol 1.2). Each method tried 61 settings. In every fold the settings "
-       "were chosen with the training fields only, then scored once on the test fields, so the test fields never "
-       "helped choose them. ")
-if test == "new_fields":
-    st.caption(how + f"On new fields every model gains, {algo_gain.idxmax()} the most on average "
-                     f"({algo_gain.max():+.3f}).")
-else:
-    lowered = int((gains["Change"] < 0).sum())
-    st.caption(how + f"In a district the model never saw, settings chosen on three districts did not carry over to "
-                     f"the fourth: tuning lowered {lowered} of the {len(gains)} models, and none passes the adoption "
-                     "rule, so the rules stay the default answer of the API.")
+with st.container(key="card_tuning"):
+    st.subheader("Tuning: the same models with better settings")
+    st.dataframe(gains.drop(columns="model"), hide_index=True, height=rows_height(len(gains)),
+                 column_config={"Protocol settings": st.column_config.NumberColumn(format="%.3f"),
+                                "Tuned": st.column_config.NumberColumn(format="%.3f"),
+                                "Change": st.column_config.NumberColumn(format="%+.3f"),
+                                "First crop right, all fields (tuned)": st.column_config.NumberColumn(format="%.3f")})
+    how = ("Main score (macro-F1, 0 to 1) of each method with the settings of the protocol and with tuned settings "
+           "(tuning run of 23 November 2026, protocol 1.2). Each method tried 61 settings. In every fold the settings "
+           "were chosen with the training fields only, then scored once on the test fields, so the test fields never "
+           "helped choose them. ")
+    if test == "new_fields":
+        st.caption(how + f"On new fields every model gains, {algo_gain.idxmax()} the most on average "
+                         f"({algo_gain.max():+.3f}).")
+    else:
+        lowered = int((gains["Change"] < 0).sum())
+        st.caption(how + f"In a district the model never saw, settings chosen on three districts did not carry over to "
+                         f"the fourth: tuning lowered {lowered} of the {len(gains)} models, and none passes the adoption "
+                         "rule, so the rules stay the default answer of the API.")
 
 # The model on the map since 23 Nov: decision 2 of the protocol, section 11 (written before the tuning run).
 mp = tuning.decisions["map"]
@@ -199,42 +213,43 @@ at_07 = sure[sure["Answers only from"] == 0.7].iloc[0]
 alt = tuning.alternatives().set_index("Choice")
 district_rule = "Most common crop of the field's district"
 mixed = tuning.mixed.loc["all"]
-st.subheader(f"Why the tuned {algo} is the trained model on the map")
-st.markdown(
-    f"- **The rule was written before the run.** The map changes only if a tuned model beats the model on the map on "
-    f"new fields by more than {mp['margin']}. The tuned {ms.short_label(on_map.replace(ms.TUNED, ''))} scores "
-    f"{tf.loc[on_map, 'macro_f1_mean']:.3f} against {mp['today_score']:.3f} for {ms.short_label(mp['today'])} with "
-    "the protocol settings, so the map moved to it.\n"
-    "- **One answer per point.** In each district it comes from the method that did better on new fields there: "
-    + ", ".join(f"{algo if w == 'model' else 'the rules'} in {d}" for d, w in who.items()) + ".\n"
-    f"- **It knows when to be trusted.** When it gives its first crop a probability of 0.7 or more "
-    f"({pct(at_07['Fields answered'])} of the fields), that crop is right {pct(at_07['First crop right'])} of the "
-    "time. When it is less sure, it is right less often, as the table below shows.\n"
-    f"- **It beats the simple choices.** Its first crop is right for {pct(tf.loc[on_map, 'top1_all_fields'])} of "
-    f"the fields, against {pct(alt.loc['Expert rules (B1)', 'First crop right, all fields'])} for the rules and "
-    f"{pct(alt.loc[district_rule, 'First crop right, all fields'])} for the most common crop of the district, which "
-    f"never names another crop (main score {alt.loc[district_rule, 'Main score']:.3f}).\n"
-    f"- **The data has a limit.** {pct(mixed['blocks_with_more_than_one_crop'])} of the 2 km blocks grow more than "
-    "one crop. Even the most common crop of each field's own block, which no model can know in advance, would be "
-    f"right for only {pct(mixed['block_most_common_crop_right'])} of the fields.\n"
-    f"- **Limit.** In a district it has never seen, it scores {tm.loc[on_map, 'macro_f1_mean']:.3f}, below the "
-    f"rules ({tm.loc[ms.BASELINE, 'macro_f1_mean']:.3f}), so the rules stay the default answer of the API.")
-c1, c2 = st.columns(2)
-with c1:
-    st.markdown("**If it answered only when sure (new fields)**")
-    st.dataframe(pd.DataFrame({"Answers only from": [f"{v:.1f}" for v in sure["Answers only from"]],
-                               "Fields answered": [pct(v) for v in sure["Fields answered"]],
-                               "First crop right": [pct(v) for v in sure["First crop right"]]}),
-                 hide_index=True, height=rows_height(len(sure)))
-with c2:
-    st.markdown("**Simple choices on the same fields**")
-    st.dataframe(pd.DataFrame({"Choice": alt.index,
-                               "Main score": [f"{v:.3f}" for v in alt["Main score"]],
-                               "First crop right": [pct(v) for v in alt["First crop right, all fields"]]}),
-                 hide_index=True, height=rows_height(len(alt)))
-st.caption("Out-of-fold predictions of the new-fields test: no field was predicted by a model that saw its 2 km "
-           "block. 'Answers only from' is the model's probability for its first crop. Full report: "
-           "01-crop-recommendation/reports/tuning_v1/report.md.")
+with st.container(key="card_why"):
+    st.subheader(f"Why the tuned {algo} is the trained model on the map")
+    st.markdown(
+        f"- **The rule was written before the run.** The map changes only if a tuned model beats the model on the map on "
+        f"new fields by more than {mp['margin']}. The tuned {ms.short_label(on_map.replace(ms.TUNED, ''))} scores "
+        f"{tf.loc[on_map, 'macro_f1_mean']:.3f} against {mp['today_score']:.3f} for {ms.short_label(mp['today'])} with "
+        "the protocol settings, so the map moved to it.\n"
+        "- **One answer per point.** In each district it comes from the method that did better on new fields there: "
+        + ", ".join(f"{algo if w == 'model' else 'the rules'} in {d}" for d, w in who.items()) + ".\n"
+        f"- **It knows when to be trusted.** When it gives its first crop a probability of 0.7 or more "
+        f"({pct(at_07['Fields answered'])} of the fields), that crop is right {pct(at_07['First crop right'])} of the "
+        "time. When it is less sure, it is right less often, as the table below shows.\n"
+        f"- **It beats the simple choices.** Its first crop is right for {pct(tf.loc[on_map, 'top1_all_fields'])} of "
+        f"the fields, against {pct(alt.loc['Expert rules (B1)', 'First crop right, all fields'])} for the rules and "
+        f"{pct(alt.loc[district_rule, 'First crop right, all fields'])} for the most common crop of the district, which "
+        f"never names another crop (main score {alt.loc[district_rule, 'Main score']:.3f}).\n"
+        f"- **The data has a limit.** {pct(mixed['blocks_with_more_than_one_crop'])} of the 2 km blocks grow more than "
+        "one crop. Even the most common crop of each field's own block, which no model can know in advance, would be "
+        f"right for only {pct(mixed['block_most_common_crop_right'])} of the fields.\n"
+        f"- **Limit.** In a district it has never seen, it scores {tm.loc[on_map, 'macro_f1_mean']:.3f}, below the "
+        f"rules ({tm.loc[ms.BASELINE, 'macro_f1_mean']:.3f}), so the rules stay the default answer of the API.")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**If it answered only when sure (new fields)**")
+        st.dataframe(pd.DataFrame({"Answers only from": [f"{v:.1f}" for v in sure["Answers only from"]],
+                                   "Fields answered": [pct(v) for v in sure["Fields answered"]],
+                                   "First crop right": [pct(v) for v in sure["First crop right"]]}),
+                     hide_index=True, height=rows_height(len(sure)))
+    with c2:
+        st.markdown("**Simple choices on the same fields**")
+        st.dataframe(pd.DataFrame({"Choice": alt.index,
+                                   "Main score": [f"{v:.3f}" for v in alt["Main score"]],
+                                   "First crop right": [pct(v) for v in alt["First crop right, all fields"]]}),
+                     hide_index=True, height=rows_height(len(alt)))
+    st.caption("Out-of-fold predictions of the new-fields test: no field was predicted by a model that saw its 2 km "
+               "block. 'Answers only from' is the model's probability for its first crop. Full report: "
+               "01-crop-recommendation/reports/tuning_v1/report.md.")
 
 with st.expander("Second check: the 650 fields CIAT marked \"Used\""):
     used_scores = load("used_only")

@@ -1,0 +1,7 @@
+# Dashboard theme, read when `streamlit run app.py` is started from 03-shared/dashboard.
+[theme]
+base = "light"
+primaryColor = "#6a9e12"
+backgroundColor = "#eef1ea"
+secondaryBackgroundColor = "#e2e8da"
+textColor = "#1f2a1f"

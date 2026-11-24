@@ -56,10 +56,20 @@ def test_recommendation_page_renders_and_submits_in_mock_mode():
     assert any("placeholder" in w.value.lower() for w in at.warning)
 
 
-def test_diagnosis_page_is_a_placeholder():
+def test_diagnosis_page_waits_for_a_photo():
     at = st_testing.AppTest.from_file(str(DASH / "pages" / "diagnosis.py"))
     at.run()
-    assert not at.exception and "CV sub-team" in at.info[0].value
+    assert not at.exception
+    assert at.radio(key="pills_crop").value == "maize"
+    assert at.button[0].disabled  # Diagnose stays off until a photo is added
+    assert at.sidebar.text_input[0].value.endswith(":8002")
+
+
+def test_app_renders_the_top_bar_and_the_default_page():
+    at = st_testing.AppTest.from_file(str(DASH / "app.py"), default_timeout=120)
+    at.run()
+    assert not at.exception
+    assert any("Which <em>crop</em> fits this field?" in m.value for m in at.markdown)   # the map page's hero
 
 
 def test_baseline_mode_calls_the_real_service():
