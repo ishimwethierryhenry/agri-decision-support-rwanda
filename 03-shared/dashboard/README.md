@@ -20,7 +20,9 @@ Run from this folder (Python 3.12 or newer, because of the pinned library versio
 
 `ui_theme.py` holds the shared look: the crop-row background, the frosted panel, the top bar with one pill
 button per page (the current page is filled), cards and form widgets. `app.py` applies it once before running
-the page, so the pages themselves stay plain Streamlit. The sidebar keeps the settings (data source, Evaluation
+the page, so the pages themselves stay plain Streamlit. `rec_ui.py` adds the parts that the Map, Model scores
+and Crop and fertiliser pages share with the Diagnosis page: numbered steps, card headings, and the answer shown
+as a confidence badge, the crop name and a bar. The sidebar keeps the settings (data source, Evaluation
 view, detection service URL). `.streamlit/config.toml` sets the green theme; Streamlit reads it when the app is
 started from this folder.
 

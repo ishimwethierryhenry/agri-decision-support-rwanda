@@ -1,4 +1,4 @@
-# Dashboard theme, read when `streamlit run` is started from the repository root.
+# Dashboard theme, read when `streamlit run app.py` is started from 03-shared/dashboard.
 [theme]
 base = "light"
 primaryColor = "#6a9e12"

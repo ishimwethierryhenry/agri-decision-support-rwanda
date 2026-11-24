@@ -69,7 +69,7 @@ def test_app_renders_the_top_bar_and_the_default_page():
     at = st_testing.AppTest.from_file(str(DASH / "app.py"), default_timeout=120)
     at.run()
     assert not at.exception
-    assert any("Click a field on the map" in h.value for h in at.header)
+    assert any("Which <em>crop</em> fits this field?" in m.value for m in at.markdown)   # the map page's hero
 
 
 def test_baseline_mode_calls_the_real_service():
