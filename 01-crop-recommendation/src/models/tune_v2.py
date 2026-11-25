@@ -563,7 +563,7 @@ def _lodo_table(summ: pd.DataFrame, round1: pd.DataFrame) -> pd.DataFrame:
         untuned = i.replace(TUNED, "")
         rows.append({"model": label(i), "main score": r["macro_f1_mean"],
                      "worst district": r["worst_district_macro_f1"],
-                     "better than B1 in": r["districts_beating_B1"], "passes the adoption rule": r["passes_rule"],
+                     "better than B1 in": f"{int(r['districts_beating_B1'])} of 4", "passes the adoption rule": r["passes_rule"],
                      "section 6 settings": summ.loc[untuned, "macro_f1_mean"] if untuned in summ.index else np.nan,
                      "version 1.2, tuned": round1.loc[i, "macro_f1_mean"] if i in round1.index else np.nan})
     return pd.DataFrame(rows)
@@ -591,7 +591,7 @@ def _settings_table(chosen: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for test in TESTS:
         for (model,), g in chosen[chosen["test"] == test].groupby(["model"], sort=False):
-            rows.append({"test": TEST_NAMES[test], "model": label(model),
+            rows.append({"test": TEST_NAMES[test], "model": label(model + TUNED),
                          "candidate chosen in each fold": ", ".join(f"{o}: {c}" for o, c in zip(g["outer"], g["candidate"])),
                          "folds that kept the section 6 settings": f"{int((g['candidate'] == 0).sum())} of {len(g)}"})
     return pd.DataFrame(rows)
