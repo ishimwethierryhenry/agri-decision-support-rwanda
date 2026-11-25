@@ -20,7 +20,8 @@ check fits the version 1.3 choice of every fold again and must give exactly the 
 Run from the repo root (about an hour on two cores):
     python 01-crop-recommendation/src/models/tune_v3.py
 Options: --workers N (default 2), --quick (a tiny run into a temporary folder, to check the code; its numbers are
-never reported), --assemble-only (rebuild the report from the saved tasks), --table, --out
+never reported), --assemble-only (rebuild the report from the saved tasks), --final (after the run: the settings and
+crop weights of the model the map serves, chosen on all fields), --table, --out
 """
 from __future__ import annotations
 
@@ -62,6 +63,10 @@ MAP_MODEL = "RF[all_sat]" + TUNED           # the model on the map since 23 Nov 
 MAP_MARGIN, TOP1_MARGIN = 0.01, 0.01
 VARIANTS = ("v1.3", "steady", "steady+weights")
 BLEND = "Blend"
+# The baselines do not depend on this round: they are copied from tuning_v2 (same rows, same folds), so that this folder
+# holds everything the dashboard map reads about the model on the map and the rules.
+REFERENCES = ("B0_majority", "B0d_district_majority", ev.BASELINE)
+FINAL_FILE = "final_model.json"
 
 
 # ------------------------------------------------------------------ small steps
@@ -84,6 +89,14 @@ def best_group(df: pd.DataFrame, inner: dict[str, np.ndarray]) -> tuple[tuple, l
     the smaller group, then Random Forest, Extra Trees, XGBoost."""
     scores = [r1.block_score(df, np.mean([inner[m] for m in g], axis=0)) for g in GROUPS]
     return GROUPS[r1.pick(scores)], [float(s) for s in scores]
+
+
+def apply_weights(proba: np.ndarray, weights) -> np.ndarray:
+    """Probabilities times one weight per crop, normalised again so each row sums to 1. The first crop is the same
+    as without normalising; the map also needs the gap between the first two crops, so it uses this form."""
+    p = np.asarray(proba) * np.asarray(weights, dtype=float)
+    total = p.sum(axis=1, keepdims=True)
+    return np.divide(p, total, out=np.zeros_like(p), where=total > 0)
 
 
 def _outer_split(df: pd.DataFrame, test: str, outer) -> tuple[np.ndarray, np.ndarray, str]:
@@ -220,17 +233,40 @@ def collect(df: pd.DataFrame, parts: list[dict]) -> dict:
         st["idx"].append(p["te"])
         for m, r in p["members"].items():
             w = np.array(r["weights"])
-            for variant, proba in (("v1.3", r["proba_v13"]), ("steady", r["proba"]), ("steady+weights", r["proba"] * w)):
+            for variant, proba in (("v1.3", r["proba_v13"]), ("steady", r["proba"]),
+                                   ("steady+weights", apply_weights(r["proba"], w))):
                 st["probas"].setdefault(f"{m}[{p['view']}] {variant}", []).append(proba)
         b = p["blend"]
         st["probas"].setdefault(f"{BLEND}[{p['view']}] chosen inside", []).append(b["proba"])
-        st["probas"].setdefault(f"{BLEND}[{p['view']}] chosen inside+weights", []).append(b["proba"] * np.array(b["weights"]))
-    rows = []
+        st["probas"].setdefault(f"{BLEND}[{p['view']}] chosen inside+weights", []).append(
+            apply_weights(b["proba"], b["weights"]))
+    rows, conf, oof = [], [], {}
+    y, dist = df["label"].to_numpy(), df[ev.GROUP_COL].to_numpy()
     for (test, view), st in stacks.items():
         idx = np.concatenate(st["idx"])
         for name, chunks in st["probas"].items():
-            rows += _scores(name, test, df, idx, np.vstack(chunks))
-    return {"results": pd.DataFrame(rows)}
+            proba = np.vstack(chunks)
+            rows += _scores(name, test, df, idx, proba)
+            pred = LABELS[np.argmax(proba, axis=1)]
+            for d in sorted(set(dist[idx])):
+                m = dist[idx] == d
+                conf.append(ev._confusion("main", r1.TESTS[test], name, d, y[idx][m], pred[m]))
+            full = np.zeros((len(df), len(CROPS)))
+            full[idx] = proba
+            oof[(test, name)] = full
+    return {"results": pd.DataFrame(rows), "confusion": pd.concat(conf, ignore_index=True), "oof": oof}
+
+
+def references() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """The baselines of tuning_v2 on the same folds (B0, the district's most common crop, B1)."""
+    rows = [pd.read_csv(ROUND2_DIR / f"main_{t}_results.csv").assign(test=t) for t in ("blockcv", "lodo")]
+    rows = pd.concat(rows, ignore_index=True)
+    rows = rows[rows["model"].isin(REFERENCES)][["test", "model", "district", "n_test"]
+                                               + [c for c in rows.columns if c not in
+                                                  ("test", "model", "district", "n_test", "version", "candidate",
+                                                   "n_train")]]
+    conf = pd.read_csv(ROUND2_DIR / "confusion_counts.csv")
+    return rows.reset_index(drop=True), conf[conf["model"].isin(REFERENCES)].reset_index(drop=True)
 
 
 def summarise(results: pd.DataFrame, b1: pd.Series) -> pd.DataFrame:
@@ -266,9 +302,10 @@ def builtin_check(results: pd.DataFrame) -> dict:
 def decisions(summ: pd.DataFrame) -> dict:
     r1sum = pd.read_csv(ROUND1_DIR / "main_blockcv_summary.csv").set_index("model")
     today, today_top1 = float(r1sum.loc[MAP_MODEL, "macro_f1_mean"]), float(r1sum.loc[MAP_MODEL, "top1_all_fields"])
-    new = summ[(summ["test"] == "blockcv") & ~summ["model"].str.endswith(" v1.3")].set_index("model")
+    ours = ~summ["model"].str.endswith(" v1.3") & ~summ["model"].isin(REFERENCES)
+    new = summ[(summ["test"] == "blockcv") & ours].set_index("model")
     beating = new[(new["macro_f1_mean"] > today + MAP_MARGIN) & (new["top1_all_fields"] >= today_top1 - TOP1_MARGIN)]
-    lodo = summ[(summ["test"] == "lodo") & ~summ["model"].str.endswith(" v1.3")].set_index("model")
+    lodo = summ[(summ["test"] == "lodo") & ours].set_index("model")
     best = new["macro_f1_mean"].idxmax()
     return {"map": {"today": MAP_MODEL, "today_score": today, "today_top1": today_top1, "margin": MAP_MARGIN,
                     "top1_margin": TOP1_MARGIN, "best": best, "best_score": float(new.loc[best, "macro_f1_mean"]),
@@ -315,10 +352,13 @@ def write_report(out: Path, info: dict, res: dict, parts: list[dict]) -> Path:
                         "inner_score": b["inner_score"], "inner_score_weighted": b["inner_score_weighted"]})
     ch = pd.DataFrame(choices)
     ch.to_csv(out / "choices.csv", index=False)
+    res["confusion"].to_csv(out / "confusion_counts.csv", index=False)
+    res["analyses"]["bands"].to_csv(out / "confidence_bands.csv", index=False)
+    res["analyses"]["sure"].to_csv(out / "answer_when_sure.csv", index=False)
     (out / "run_info.json").write_text(json.dumps(info, indent=2, default=str) + "\n", encoding="utf-8")
 
     def table(test: str) -> pd.DataFrame:
-        s = summ[summ["test"] == test].sort_values("macro_f1_mean", ascending=False)
+        s = summ[(summ["test"] == test) & ~summ["model"].isin(REFERENCES)].sort_values("macro_f1_mean", ascending=False)
         cols = {"model": s["model"].map(label), "main score": s["macro_f1_mean"],
                 "worst district": s["worst_district_macro_f1"], "first crop right, all fields": s["top1_all_fields"]}
         if test == "lodo":
@@ -343,7 +383,9 @@ def write_report(out: Path, info: dict, res: dict, parts: list[dict]) -> Path:
         f"Protocol: `docs/training_protocol.md`, version 1.4 (section 13). Run at {info['run_at_utc']} UTC: "
         f"{info['compute_hours']:.1f} hours of computing, {info['workers']} tasks at a time. Code commit: "
         f"`{(info['git_commit'] or 'none')[:10]}`." + (" Quick check only: these numbers are never reported."
-                                                       if info.get("quick_check_only") else ""), "",
+                                                       if info.get("quick_check_only") else "")
+        + (f" Report text rebuilt from the saved tasks at commit `{info['report_rebuilt_at_commit'][:10]}`, with the "
+           "same tasks." if info.get("report_rebuilt_at_commit") else ""), "",
         f"**Built-in check: {'passed' if check['passed'] else 'FAILED'}.** Fitting the version 1.3 choice of every "
         f"fold again gives the `tuning_v2` main score in {check['rows_compared'] - len(check['mismatches'])} of "
         f"{check['rows_compared']} rows (model and district).", "",
@@ -372,8 +414,17 @@ def write_report(out: Path, info: dict, res: dict, parts: list[dict]) -> Path:
         "## New fields in the known districts (decides the map)", "",
         "Everything chosen inside the training part of each block fold, then scored once on the test fold.", "",
         _md(table("blockcv")), "",
+        "References on the same folds (from `tuning_v2`): "
+        + "; ".join(f"{ {'B0_majority': 'B0, most common crop', 'B0d_district_majority': 'most common crop of the district', ev.BASELINE: 'B1, expert rules'}[m]} "
+                    f"{blk.loc[m, 'macro_f1_mean']:.3f} (first crop right {blk.loc[m, 'top1_all_fields']:.3f})"
+                    for m in REFERENCES if m in blk.index) + ".", "",
         "Groups the blend chose inside the training part (new fields, 2 views x 5 folds): "
         + ", ".join(f"{g} {n}" for g, n in groups.items()) + ".", "",
+        f"## When the model the map serves is sure ({label(res['analyses']['model'])}, new fields)", "",
+        "If it answered only when its probability for the first crop is at least this high (out-of-fold, crop weights "
+        "applied):", "",
+        _md(res["analyses"]["sure"][res["analyses"]["sure"]["district"] == "all"].drop(columns=["district", "model"])
+            .rename(columns=r1.PLAIN)), "",
         "## Main test: leave one district out (decides adoption)", "",
         _md(table("lodo")), "",
         "## How to read this", "",
@@ -392,12 +443,83 @@ def write_report(out: Path, info: dict, res: dict, parts: list[dict]) -> Path:
 
 def assemble(df: pd.DataFrame, parts: list[dict]) -> dict:
     res = collect(df, parts)
-    b1 = pd.read_csv(ROUND2_DIR / "main_lodo_results.csv")
-    b1 = b1[b1["model"] == ev.BASELINE].set_index("district")["macro_f1"]
+    ref_rows, ref_conf = references()
+    res["results"] = pd.concat([res["results"], ref_rows], ignore_index=True)
+    res["confusion"] = pd.concat([res["confusion"], ref_conf], ignore_index=True)
+    b1 = ref_rows[(ref_rows["test"] == "lodo") & (ref_rows["model"] == ev.BASELINE)].set_index("district")["macro_f1"]
     res["summary"] = summarise(res["results"], b1)
     res["check"] = builtin_check(res["results"])
     res["decisions"] = decisions(res["summary"])
+    # How often the first crop is right at each level of the model's probability, for the model the map serves
+    # (or the best of this round when the map does not change), on the new-fields test
+    shown = res["decisions"]["map"]["serve"] if res["decisions"]["map"]["changes"] else res["decisions"]["map"]["best"]
+    proba = res["oof"][("blockcv", shown)]
+    res["analyses"] = {"model": shown,
+                       "bands": r1.confidence_bands(df, proba).assign(model=shown),
+                       "sure": r1.answer_when_sure(df, proba).assign(model=shown)}
     return res
+
+
+# ------------------------------------------------------------------ the model the map serves
+def final_model(df: pd.DataFrame, out: Path = DEFAULT_OUT, log: Callable = print) -> dict:
+    """Decision 2 of section 13 (with section 12): when the map moves, its settings are chosen on all 1,904 fields
+    with the same comparison as inside the nested test. Every candidate is scored on 3 block folds (seed 0), the 8
+    best again on seeds 1 and 2, the best mean wins (ties: the candidate drawn first), and the crop weights are chosen
+    on its out-of-fold probabilities (mean over the three splits). Writes <out>/final_model.json."""
+    info = json.loads((Path(out) / "run_info.json").read_text(encoding="utf-8"))
+    mp = info["decisions"]["map"]
+    import sklearn
+    result = {"model": mp["serve"], "changes": mp["changes"], "decided_by": "decision 2 of docs/training_protocol.md, "
+              "section 13", "run_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
+              "git_commit": ev._git_commit(), "uncommitted_changes": ev._git_has_uncommitted_changes(),
+              "versions": {"python": platform.python_version(), "pandas": pd.__version__, "numpy": np.__version__,
+                           "scikit-learn": sklearn.__version__}}
+    if not mp["changes"]:
+        result["note"] = "The map keeps the model of version 1.2: 01-crop-recommendation/reports/tuning_v1/final_model.json"
+    else:
+        core, _, variant = mp["serve"].partition(" ")
+        method, view = core.rstrip("]").split("[")
+        if method == BLEND:
+            raise SystemExit("A blend on the map is not supported yet: add it to map_model.py first.")
+        cands = t2.candidates(method)
+
+        def make(c):
+            return lambda: t2.Tunable(method, cands[c], view)
+
+        t0 = time.time()
+        folds = {seed: ev.block_folds(df, n_splits=r1.INNER_BLOCK_FOLDS, seed=seed) for seed in (SEED,) + EXTRA_SEEDS}
+        oof0 = {c: r1.oof_proba(df, folds[SEED], make(c)) for c in range(len(cands))}
+        s0 = [r1.block_score(df, oof0[c]) for c in range(len(cands))]
+        top = sorted(range(len(cands)), key=lambda c: (-s0[c], c))[:TOP_K]
+        oofs, means = {}, {}
+        for c in top:
+            oofs[c] = [oof0[c]] + [r1.oof_proba(df, folds[seed], make(c)) for seed in EXTRA_SEEDS]
+            means[c] = float(np.mean([r1.block_score(df, p) for p in oofs[c]]))
+        chosen = min(c for c in top if means[c] == max(means.values()))
+        inner_p = np.mean(oofs[chosen], axis=0)
+        weights, w_score, w_none = best_weights(df, inner_p) if variant.endswith("+weights") else (
+            np.ones(len(CROPS)), r1.block_score(df, inner_p), r1.block_score(df, inner_p))
+        log(f"{core}: candidate {chosen} chosen on all {len(df)} fields (mean of three splits {means[chosen]:.3f}), "
+            f"crop weights {[round(float(w), 3) for w in weights]} ({w_none:.3f} -> {w_score:.3f}), "
+            f"{time.time() - t0:.0f} s")
+        result.update({
+            "method": method, "view": view, "tuned": True, "candidate": chosen, "settings": cands[chosen],
+            "crops": CROPS, "crop_weights": [round(float(w), 6) for w in weights],
+            "chosen_by": (f"same comparison as inside the nested test of section 13, on all {len(df)} fields: every "
+                          f"candidate of version 1.3 on 3 folds over 2 km blocks (seed {SEED}), the {TOP_K} best "
+                          f"again on seeds {', '.join(map(str, EXTRA_SEEDS))}, best mean; then one weight per crop "
+                          "(2/3, 1 or 3/2) chosen on its out-of-fold probabilities"),
+            "comparison_scores_seed0": [round(x, 6) for x in s0], "top": top,
+            "means": {str(k): round(v, 6) for k, v in means.items()},
+            "inner_score": round(w_none, 6), "inner_score_weighted": round(w_score, 6),
+            "importance_from": {"folder": "01-crop-recommendation/reports/tuning_v2", "model": f"{core}{TUNED}",
+                                "note": "input importance measured in version 1.3 for the tuned model of the same "
+                                        "method and inputs; this round did not measure it again"},
+        })
+    path = Path(out) / FINAL_FILE
+    path.write_text(json.dumps(result, indent=2, default=str) + "\n", encoding="utf-8")
+    log(f"Written to {path}")
+    return result
 
 
 # ------------------------------------------------------------------ command line
@@ -408,9 +530,14 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--workers", type=int, default=2)
     ap.add_argument("--quick", action="store_true", help="Tiny run to check the code. Never reported.")
     ap.add_argument("--assemble-only", action="store_true")
+    ap.add_argument("--final", action="store_true", help="After the run: the settings and crop weights of the model "
+                                                         "the map serves (decision 2), chosen on all fields.")
     args = ap.parse_args(argv)
     table = Path(args.table) if args.table else TABLE
     df = ev.prepare(pd.read_csv(table, low_memory=False))
+    if args.final:
+        final_model(df, Path(args.out) if args.out else DEFAULT_OUT, log=lambda s: print(s, flush=True))
+        return 0
     cands = {m: json.loads((ROUND2_DIR / "candidates.json").read_text(encoding="utf-8"))[m] for m in METHODS}
     assert all(cands[m] == t2.candidates(m) for m in METHODS), "the candidates of version 1.3 changed"
     inner13 = pd.read_csv(ROUND2_DIR / "inner_scores.csv")
@@ -439,6 +566,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             "workers": previous.get("workers") or args.workers,
             "git_commit": previous.get("git_commit") or ev._git_commit(),
             "uncommitted_changes": previous.get("uncommitted_changes", ev._git_has_uncommitted_changes()),
+            **({"report_rebuilt_at_commit": ev._git_commit(),
+                "report_rebuilt_with_uncommitted_changes": ev._git_has_uncommitted_changes()} if previous else {}),
             "table_sha256": ev.file_sha256(table), "methods": list(METHODS),
             "views": sorted({t[0] for t in tasks}), "top_k": top_k, "extra_seeds": list(EXTRA_SEEDS),
             "weight_steps": [round(w, 4) for w in WEIGHT_STEPS], "groups": ["+".join(g) for g in GROUPS],
