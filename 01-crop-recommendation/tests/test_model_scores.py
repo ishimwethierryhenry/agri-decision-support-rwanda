@@ -128,3 +128,15 @@ def test_labels():
     assert ms.short_label("B1_expert_rules") == "B1, expert rules"
     assert ms.model_label("RF[field_sat]") == ("Random Forest", "field + satellite (14)")
     assert ms.short_label("XGB[all_sat]") == "XGBoost, all + satellite inputs"
+    assert ms.short_label("ET[field_sat]") == "Extra Trees, field + satellite inputs"
+    assert ms.model_label("Blend[all_sat_near]") == ("Blend of the three", "all + satellite + nearby crops (30)")
+
+
+def test_second_round_of_tuning_keeps_the_map_model():
+    """Protocol 1.3 (reports/tuning_v2): the best of the round must beat the map model by more than 0.01 to move it."""
+    r2 = ms.second_round()
+    assert r2["map_model"] == r2["serve"] == "RF[all_sat] tuned" and not r2["changes"]
+    assert r2["best"] == "ET[field_sat] tuned" and r2["best_score"] == pytest.approx(0.5214, abs=1e-4)
+    assert r2["map_score"] == pytest.approx(0.5141, abs=1e-4) and r2["best_score"] - r2["map_score"] <= r2["margin"]
+    assert r2["settings"] == {"RF": 102, "ET": 101, "XGB": 101}
+    assert ms.second_round(ms.MODULE / "reports" / "no_such_folder") is None

@@ -156,6 +156,10 @@ def test_scores_page_shows_every_model():
     why = " ".join(m.value for m in at.markdown)
     assert "The tuned Random Forest, all + satellite inputs scores 0.514 against 0.451" in why
     assert "that crop is right 80% of the time" in why and "for only 80% of the fields" in why
+    # Second round of tuning (protocol 1.3, tuning_v2): nothing beat the model on the map by more than 0.01
+    assert "A second, bigger search found nothing better." in why and "tried 304 settings" in why
+    assert "the tuned Extra Trees, field + satellite inputs, scored 0.521 on new fields" in why
+    assert any("tuning_v2/report.md" in c.value for c in at.caption)
     gains = at.dataframe[5].value
     assert len(gains) == 9 and {"Protocol settings", "Tuned", "Change"} <= set(gains.columns)
     assert any("tuning lowered 5 of the 9 models" in c.value for c in at.caption)
