@@ -1,6 +1,6 @@
 # Confidence of the map's answer (map_confidence)
 
-Made by `src/recommendation/build_map_confidence.py` on 2026-11-25 09:49 UTC (code commit `fa46868477`), from the new-fields test of the model on the map (RF[field_sat] steady+weights, `reports/tuning_v3`). Decided on 25 Nov 2026 after looking at the map: see `docs/training_protocol.md`, section 9.
+Made by `src/recommendation/build_map_confidence.py` on 2026-11-25 10:01 UTC (code commit `2f4b559305`), from the new-fields test of the model on the map (RF[field_sat] steady+weights, `reports/tuning_v3`). Decided on 25 Nov 2026 after looking at the map: see `docs/training_protocol.md`, section 9.
 
 **Built-in check: passed.** The five refitted fold models give exactly the `tuning_v3` share of first crops right in every district: Musanze 0.756, Nyabihu 0.720, Nyagatare 0.756, Ruhango 0.637.
 

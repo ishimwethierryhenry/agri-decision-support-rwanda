@@ -1,7 +1,7 @@
 {
-  "run_at_utc": "2026-11-25 09:49",
-  "git_commit": "fa468684776068e1ea1f4672c8c4e5d4d3245c15",
-  "uncommitted_changes": true,
+  "run_at_utc": "2026-11-25 10:01",
+  "git_commit": "2f4b559305d924f4b5eeb95e8e9d8e977a3dc24d",
+  "uncommitted_changes": false,
   "table": "01-crop-recommendation/data/processed/feature_table_v6b.csv",
   "table_sha256": "0bb9096237a38bc0a3aff73a72130bbea72726154f92093d39ea0eb0683a49be",
   "model": "RF[field_sat] steady+weights",
