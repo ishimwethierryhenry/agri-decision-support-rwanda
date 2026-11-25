@@ -9,13 +9,13 @@ district, the same kind of answer, and field inputs taken from about as far from
   half the time.
 - Distance. The map takes soil, elevation and the satellite values from the CIAT fields of the clicked 2 km block, or
   of the nearest block in the district. Within 5 km the rates come from the new-fields test of the model on the map
-  (tuning_v1), where every field kept its own inputs. Farther away, every test field is predicted again with the
+  (reports/tuning_v3 since 25 Nov 2026), where every field kept its own inputs. Farther away, every test field is predicted again with the
   inputs of the nearest training block 5 to 10 km away, or 10 to 20 km away, in its own district, as the map does for
   a point that far from any surveyed field. Beyond 20 km nothing was tested, so the map gives no answer.
 
-Every number comes from the new-fields test of tuning_v1 (5 folds over 2 km blocks, seed 0). Each fold's Random Forest
-is fitted again with the settings that fold chose (tuning_v1/chosen_settings.csv), and the built-in check makes sure
-its first crops give exactly the tuning_v1 hit rate in every district. No field is ever predicted by a model that saw
+Every number comes from the new-fields test of the model on the map (5 folds over 2 km blocks, seed 0). Each fold's
+model is fitted again with the settings and crop weights that fold chose (tuning_v3/choices.csv), and the built-in
+check makes sure its first crops give exactly the tested hit rate in every district. No field is ever predicted by a model that saw
 its block. A cell with fewer than 30 fields takes the value of the four districts together.
 
 The report also replays the answers on the tested fields and on a grid of points over the four districts (season B,
@@ -45,6 +45,7 @@ import evaluate as ev  # noqa: E402
 import expert_baseline as b1  # noqa: E402
 import map_model as mm  # noqa: E402
 import tune  # noqa: E402
+import tune_v2  # noqa: E402
 
 OUT = mm.CONFIDENCE_TABLE_PATH.parent
 OWN = "within 5 km"                        # the test fields keep their own inputs
@@ -54,20 +55,42 @@ PILOTS = ["Musanze", "Nyabihu", "Nyagatare", "Ruhango"]
 
 
 # ------------------------------------------------------------------ predictions of the new-fields test
-def fold_predictions(df: pd.DataFrame, rec: mm.MapRecommender, log=print) -> pd.DataFrame:
-    """One row per test field and distance band: the first two crops of that fold's model and whether they were
-    close, with the field's own inputs (within 5 km) or the inputs of a training block 5 to 10 or 10 to 20 km away."""
+def fold_settings() -> list[tuple[dict, list]]:
+    """The settings and crop weights the model on the map chose in each fold of its new-fields test: from
+    choices.csv (tuning_v3) or chosen_settings.csv (tuning_v1, no weights)."""
+    base = mm.MODEL_NAME.split(" ")[0]                                  # e.g. RF[field_sat]
+    if (mm.EVAL_DIR / "choices.csv").exists():
+        ch = pd.read_csv(mm.EVAL_DIR / "choices.csv")
+        ch = ch[(ch["test"] == "blockcv") & (ch["model"] == base)].copy()
+        ch["n"] = ch["outer"].str.replace("fold ", "").astype(int)
+        cands = tune_v2.candidates(mm.FINAL["method"])
+        weighted = mm.MODEL_NAME.endswith("+weights")
+        return [(cands[int(r.candidate)], json.loads(r.weights) if weighted else [1.0] * len(ev.CROPS))
+                for r in ch.sort_values("n").itertuples()]
     chosen = pd.read_csv(mm.EVAL_DIR / "chosen_settings.csv")
     chosen = chosen[(chosen["test"] == "blockcv") & (chosen["model"] == mm.MODEL_NAME.replace(tune.TUNED, ""))]
-    chosen = chosen.reset_index(drop=True)
+    return [(json.loads(x), [1.0] * len(ev.CROPS)) for x in chosen["settings"]]
+
+
+def fold_predictions(df: pd.DataFrame, rec: mm.MapRecommender, log=print) -> pd.DataFrame:
+    """One row per test field and distance band: the first two crops of that fold's model and whether they were
+    close, with the field's own inputs (within 5 km) or the inputs of a training block 5 to 10 or 10 to 20 km away.
+    Probabilities get the fold's crop weights and are normalised again, as on the map."""
+    settings = fold_settings()
     blocks = rec.blocks.assign(bid=rec.blocks["block_id"].astype(str))
     y, dist = df["label"].to_numpy(), df["district"].to_numpy()
     rows = []
     for f, (tr, te) in enumerate(ev.block_folds(df)):
         t0 = time.time()
         train, test = df.iloc[tr].reset_index(drop=True), df.iloc[te].reset_index(drop=True)
-        model = tune.Tunable(mm.FINAL["method"], json.loads(chosen.loc[f, "settings"]), mm.FINAL["view"])
+        params, weights = settings[f]
+        model = tune_v2.Tunable(mm.FINAL["method"], params, mm.FINAL["view"])
         model.fit(train, train["label"])
+        w = np.array([dict(zip(ev.CROPS, weights))[str(c)] for c in model.classes_], dtype=float)
+
+        def proba_of(X, model=model, w=w):
+            p = model.predict_proba(X) * w
+            return p / p.sum(axis=1, keepdims=True)
         test_blocks = set(test[ev.BLOCK_COL].astype(str))
         inputs, meta = [], []
         for k, i in enumerate(te):
@@ -81,8 +104,8 @@ def fold_predictions(df: pd.DataFrame, rec: mm.MapRecommender, log=print) -> pd.
                     inputs.append(rec.block_row(bd.loc[cand.idxmin()], d))
                     meta.append((i, band, float(cand.min())))
         for band, proba, idx, kms in (
-                (OWN, model.predict_proba(test), list(te), [0.0] * len(te)),
-                (None, model.predict_proba(pd.DataFrame(inputs)), [m[0] for m in meta], [m[2] for m in meta])):
+                (OWN, proba_of(test), list(te), [0.0] * len(te)),
+                (None, proba_of(pd.DataFrame(inputs)), [m[0] for m in meta], [m[2] for m in meta])):
             order = np.argsort(-proba, axis=1)
             for j, i in enumerate(idx):
                 p = proba[j]
@@ -100,13 +123,14 @@ def fold_predictions(df: pd.DataFrame, rec: mm.MapRecommender, log=print) -> pd.
 
 
 def builtin_check(pred: pd.DataFrame) -> dict:
-    """The refitted folds must give exactly the tuning_v1 share of first crops right in every district."""
+    """The refitted folds must give exactly the tested share of first crops right in every district."""
     res = pd.read_csv(mm.EVAL_DIR / "main_blockcv_results.csv")
     ref = res[res["model"] == mm.MODEL_NAME].set_index("district")["top1"]
     own = pred[pred["band"] == OWN].groupby("district")["first_right"].mean()
-    rows = {d: {"tuning_v1": float(ref[d]), "replayed": float(own[d])} for d in ref.index}
-    return {"compared_with": "01-crop-recommendation/reports/tuning_v1/main_blockcv_results.csv", "districts": rows,
-            "passed": all(abs(v["tuning_v1"] - v["replayed"]) < 1e-9 for v in rows.values())}
+    rows = {d: {"tested": float(ref[d]), "replayed": float(own[d])} for d in ref.index}
+    return {"compared_with": f"01-crop-recommendation/reports/{mm.EVAL_DIR.name}/main_blockcv_results.csv",
+            "model": mm.MODEL_NAME, "districts": rows,
+            "passed": all(abs(v["tested"] - v["replayed"]) < 1e-9 for v in rows.values())}
 
 
 # ------------------------------------------------------------------ the table
@@ -236,10 +260,10 @@ def write_report(table: pd.DataFrame, replay: pd.DataFrame, grid: pd.DataFrame, 
         "# Confidence of the map's answer (map_confidence)", "",
         f"Made by `src/recommendation/build_map_confidence.py` on {info['run_at_utc']} UTC (code commit "
         f"`{(info['git_commit'] or 'none')[:10]}`), from the new-fields test of the model on the map "
-        f"({mm.MODEL_NAME}, `reports/tuning_v1`). Decided on 25 Nov 2026 after looking at the map: see "
+        f"({mm.MODEL_NAME}, `reports/{mm.EVAL_DIR.name}`). Decided on 25 Nov 2026 after looking at the map: see "
         "`docs/training_protocol.md`, section 9.", "",
         f"**Built-in check: {'passed' if check['passed'] else 'FAILED'}.** The five refitted fold models give exactly "
-        "the tuning_v1 share of first crops right in every district: "
+        f"the `{mm.EVAL_DIR.name}` share of first crops right in every district: "
         + ", ".join(f"{d} {v['replayed']:.3f}" for d, v in check["districts"].items()) + ".", "",
         "## How the map answers", "",
         "1. Season. Only season B was tested, so another season gets no answer.",
@@ -253,11 +277,12 @@ def write_report(table: pd.DataFrame, replay: pd.DataFrame, grid: pd.DataFrame, 
         "4. Level. High from 75 percent, medium from 50 percent, as before. Below 50 percent the map gives no answer "
         "instead of a low one, so a farmer never gets one crop with a low confidence.", "",
         "## The table", "",
-        "Share right, of how many tested fields. Within 5 km: the fields' own inputs (the tuning_v1 test). 5 to 10 km "
+        f"Share right, of how many tested fields. Within 5 km: the fields' own inputs (the `{mm.EVAL_DIR.name}` test). 5 to 10 km "
         "and 10 to 20 km: the same fields predicted with the inputs of a training block that far away in their own "
         f"district. A cell with fewer than {mm.MIN_TESTED_FIELDS} fields takes the value of the four districts.", "",
         _md(pv, index=False), "",
         "## Replay on the tested fields (season B, within 5 km)", "",
+        "The three rules applied to the predictions of the model on the map now. "
         "What each of the 1,904 tested fields would have been shown, and how often it was right (first crop for a "
         "one-crop answer, one of the two for a two-crop answer).", "",
         _md(rpv), "",
@@ -299,8 +324,8 @@ def main(argv=None) -> int:
     info = {"run_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"), "git_commit": ev._git_commit(),
             "uncommitted_changes": ev._git_has_uncommitted_changes(), "table": "01-crop-recommendation/data/"
             "processed/feature_table_v6b.csv", "table_sha256": ev.file_sha256(mm.TABLE_PATH),
-            "model": mm.MODEL_NAME, "folds": "5 folds over block_id (StratifiedGroupKFold, seed 0), settings of "
-            "tuning_v1/chosen_settings.csv", "close_call": mm.CLOSE_CALL, "bands": [b for _, b in mm.DATA_BANDS],
+            "model": mm.MODEL_NAME, "folds": "5 folds over block_id (StratifiedGroupKFold, seed 0), settings and crop weights of each fold from "
+            f"{mm.EVAL_DIR.name}", "close_call": mm.CLOSE_CALL, "bands": [b for _, b in mm.DATA_BANDS],
             "min_tested_fields": mm.MIN_TESTED_FIELDS, "levels": {"high": mm.HIGH_HIT, "medium": mm.LOW_HIT},
             "grid_step_degrees": args.grid_step, "builtin_check": check, "minutes": round((time.time() - t0) / 60, 1),
             "versions": {"python": platform.python_version(), "pandas": pd.__version__, "numpy": np.__version__,

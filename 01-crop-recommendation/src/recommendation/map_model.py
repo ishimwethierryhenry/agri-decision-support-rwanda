@@ -9,9 +9,11 @@ What happens when someone clicks a point:
      the nearest block in the same district. The answer says how far that block is.
   3. District inputs: season climate (NASA POWER) and NISR crop shares of season B 2025, the season the model
      learned from. The model only knows season B, so another season is shown as a note, not as an answer.
-  4. Two methods, each with its tested score in that district (reports/tuning_v1): the trained model the protocol's
-     rule chose for the map (decision 2 of docs/training_protocol.md, section 11: the tuned Random Forest on all
-     inputs plus satellite, settings in reports/tuning_v1/final_model.json), trained on all 1,904 fields, and the B1
+  4. Two methods, each with its tested score in that district (reports/tuning_v3): the trained model the protocol's
+     rule chose for the map (decision 2 of docs/training_protocol.md, section 13, since 25 Nov 2026: the Random
+     Forest on field + satellite inputs with one weight per crop at decision time, settings and weights in
+     reports/tuning_v3/final_model.json; from 23 to 25 Nov the tuned Random Forest on all inputs plus satellite of
+     reports/tuning_v1), trained on all 1,904 fields, and the B1
      expert rules. Every crop in each ranking also carries its tested precision, recall and F1 in that district.
   5. One answer for the user (client feedback, 19 Nov 2026: show one recommendation and its confidence, not the
      comparison). In each district the answer comes from the method that named the right crop first more often
@@ -55,10 +57,13 @@ import expert_baseline as b1  # noqa: E402
 import fertiliser_engine as fert  # noqa: E402
 import model_scores as ms  # noqa: E402
 import tune  # noqa: E402
+import tune_v2  # noqa: E402  (Tunable: Random Forest, Extra Trees and XGBoost with the settings of tuning_v2 and v3)
 
 TABLE_PATH = MODULE / "data" / "processed" / "feature_table_v6b.csv"   # the v2 rows and inputs plus satellite
 BOUNDARIES_PATH = MODULE / "data" / "reference" / "rwanda_districts.geojson"
-EVAL_DIR = MODULE / "reports" / "tuning_v1"
+# The model on the map since 25 Nov 2026: the third round of tuning (protocol 1.4, decision 2 of section 13). Its
+# folder also holds the expert rules' numbers on the same folds, copied from tuning_v2.
+EVAL_DIR = MODULE / "reports" / "tuning_v3"
 FINAL_MODEL_PATH = EVAL_DIR / "final_model.json"
 FERTILISER_RULES_PATH = HERE / "rules" / "fertiliser_rules.yaml"
 # How often answers like each one were right in testing (built by build_map_confidence.py, since 25 Nov 2026)
@@ -69,7 +74,7 @@ MODEL_SEASON = "B"         # the only season in the training data (CIAT, season 
 NEAR_KM = 5.0              # nearest CIAT block further than this: the answer warns that the data is far away
 BORDER_KM = 1.5            # a point this close to a CIAT block, just across a district line, uses that block
 CROP_NAMES = {"beans": "Beans", "irish_potato": "Irish potato", "maize": "Maize", "rice": "Rice"}
-ALGO_NAMES = {"LR": "Logistic Regression", "RF": "Random Forest", "XGB": "XGBoost"}
+ALGO_NAMES = {"LR": "Logistic Regression", "RF": "Random Forest", "ET": "Extra Trees", "XGB": "XGBoost"}
 API_METHODS = {"RF": "random_forest", "XGB": "xgboost"}      # recommendation.method in the API (contract 1.1)
 VIEW_NAMES = {"all": "all inputs", "field_sat": "field + satellite inputs", "all_sat": "all + satellite inputs"}
 CHOICE_MARGIN = 0.01       # the model answers only if its tested first crop right is ahead of the rules' by more than this
@@ -90,7 +95,7 @@ def load_final_model(path: Path = FINAL_MODEL_PATH) -> dict:
 
 
 FINAL = load_final_model()
-MODEL_NAME = FINAL["model"]                     # its name in the tuning_v1 results, "RF[all_sat] tuned"
+MODEL_NAME = FINAL["model"]                     # its name in the tuning_v3 results, "RF[field_sat] steady+weights"
 MODEL_LABEL = ALGO_NAMES[FINAL["method"]]       # "Random Forest"
 MODEL_TITLE = f"{MODEL_LABEL}, {VIEW_NAMES[FINAL['view']]}" + (", tuned" if FINAL["tuned"] else "")
 API_METHOD = API_METHODS[FINAL["method"]]
@@ -236,8 +241,11 @@ class MapRecommender:
         self.confidence = load_confidence_table(confidence_table)
         self.main = ev.prepare(raw)                                 # the 1,904 training fields
         self.final = final or FINAL
-        self.model = tune.Tunable(self.final["method"], self.final["settings"], self.final["view"])
+        self.model = tune_v2.Tunable(self.final["method"], self.final["settings"], self.final["view"])
         self.model.fit(self.main, self.main["label"])
+        # One weight per crop at decision time (tuning_v3), then normalised again; all ones for older models
+        weights = dict(zip(self.final.get("crops", list(CROP_NAMES)), self.final.get("crop_weights", [1.0] * 4)))
+        self.crop_weights = np.array([weights.get(str(c), 1.0) for c in self.model.classes_], dtype=float)
         self.crop_prior = self.main["label"].value_counts(normalize=True).to_dict()
         self.rules = b1.load_rules()
         self.fert_rules = fert.load_rules(FERTILISER_RULES_PATH)
@@ -245,6 +253,11 @@ class MapRecommender:
         self.tested = self._load_tested(evaluation_dir)
         self.hit_rates = self._load_hit_rates(evaluation_dir)
         self.crop_tested = self._load_crop_tested(evaluation_dir)
+
+    def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
+        """The model's probabilities with its crop weights, normalised again (columns follow self.model.classes_)."""
+        p = self.model.predict_proba(X) * self.crop_weights
+        return p / p.sum(axis=1, keepdims=True)
 
     @classmethod
     def load(cls, table: Path = TABLE_PATH, boundaries: Path = BOUNDARIES_PATH,
@@ -429,7 +442,7 @@ class MapRecommender:
                                    for c in ev.SATELLITE if c in row},
             "province": d["province"],
         }
-        proba = self.model.predict_proba(pd.DataFrame([row]))[0]
+        proba = self.predict_proba(pd.DataFrame([row]))[0]
         order = np.argsort(-proba)
         crop_tested = self.crop_tested.get(district, {})
         out["model"] = {"name": MODEL_TITLE,
@@ -601,9 +614,15 @@ class MapRecommender:
     # ----------------------------------------------------------- for the notebook
     def feature_importance(self, evaluation_dir: Path = EVAL_DIR) -> pd.DataFrame:
         """How much each input matters for the model on the map: the drop in main score on new fields when the input
-        is shuffled among the test fields (tuning_v1, importance.csv). Share: the positive drops, scaled to sum to 1."""
-        imp = pd.read_csv(Path(evaluation_dir) / "importance.csv")
-        imp = imp[(imp["test"] == "blockcv") & (imp["model"] == self.final["model"]) & (imp["kind"] == "input")]
+        is shuffled among the test fields (importance.csv). Share: the positive drops, scaled to sum to 1. The third
+        round of tuning did not measure it again, so final_model.json names where it comes from (the tuned model of
+        the same method and inputs in tuning_v2)."""
+        source, model = Path(evaluation_dir), self.final["model"]
+        if not (source / "importance.csv").exists() and self.final.get("importance_from"):
+            source = ev.REPO / self.final["importance_from"]["folder"]
+            model = self.final["importance_from"]["model"]
+        imp = pd.read_csv(source / "importance.csv")
+        imp = imp[(imp["test"] == "blockcv") & (imp["model"] == model) & (imp["kind"] == "input")]
         df = (imp.rename(columns={"name": "feature", "drop_mean": "drop_in_main_score"})
               [["feature", "drop_in_main_score"]].sort_values("drop_in_main_score", ascending=False))
         positive = df["drop_in_main_score"].clip(lower=0)
@@ -620,6 +639,9 @@ class MapRecommender:
         joblib.dump(self.model.estimator, folder / "model.joblib")
         self.feature_importance().to_csv(folder / "feature_importance.csv", index=False)
         meta = {"model": self.final["model"], "settings": self.final["settings"], "chosen_by": self.final["chosen_by"],
+                "crop_weights": dict(zip([str(c) for c in self.model.classes_], self.crop_weights.round(6).tolist())),
+                "how_to_use": "multiply predict_proba by crop_weights (same order as classes), then divide each row "
+                              "by its sum",
                 "trained_on_fields": int(len(self.main)), "features": self.model.used_,
                 "fill_missing_with": {k: round(float(v), 6) for k, v in self.model.fill_.items()},
                 "classes": [str(c) for c in self.model.classes_], "season": MODEL_SEASON,

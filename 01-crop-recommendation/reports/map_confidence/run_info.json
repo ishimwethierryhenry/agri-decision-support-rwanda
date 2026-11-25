@@ -1,11 +1,11 @@
 {
-  "run_at_utc": "2026-11-25 08:24",
-  "git_commit": "ce6951b5421d42d385fb0d8e9d2ed225ce97c6b8",
-  "uncommitted_changes": false,
+  "run_at_utc": "2026-11-25 09:49",
+  "git_commit": "fa468684776068e1ea1f4672c8c4e5d4d3245c15",
+  "uncommitted_changes": true,
   "table": "01-crop-recommendation/data/processed/feature_table_v6b.csv",
   "table_sha256": "0bb9096237a38bc0a3aff73a72130bbea72726154f92093d39ea0eb0683a49be",
-  "model": "RF[all_sat] tuned",
-  "folds": "5 folds over block_id (StratifiedGroupKFold, seed 0), settings of tuning_v1/chosen_settings.csv",
+  "model": "RF[field_sat] steady+weights",
+  "folds": "5 folds over block_id (StratifiedGroupKFold, seed 0), settings and crop weights of each fold from tuning_v3",
   "close_call": 0.1,
   "bands": [
     "within 5 km",
@@ -19,23 +19,24 @@
   },
   "grid_step_degrees": 0.01,
   "builtin_check": {
-    "compared_with": "01-crop-recommendation/reports/tuning_v1/main_blockcv_results.csv",
+    "compared_with": "01-crop-recommendation/reports/tuning_v3/main_blockcv_results.csv",
+    "model": "RF[field_sat] steady+weights",
     "districts": {
       "Musanze": {
-        "tuning_v1": 0.75,
-        "replayed": 0.75
+        "tested": 0.7560975609756098,
+        "replayed": 0.7560975609756098
       },
       "Nyabihu": {
-        "tuning_v1": 0.7440476190476191,
-        "replayed": 0.7440476190476191
+        "tested": 0.7202380952380952,
+        "replayed": 0.7202380952380952
       },
       "Nyagatare": {
-        "tuning_v1": 0.7592250922509225,
-        "replayed": 0.7592250922509225
+        "tested": 0.7555350553505535,
+        "replayed": 0.7555350553505535
       },
       "Ruhango": {
-        "tuning_v1": 0.6290983606557377,
-        "replayed": 0.6290983606557377
+        "tested": 0.6372950819672131,
+        "replayed": 0.6372950819672131
       }
     },
     "passed": true

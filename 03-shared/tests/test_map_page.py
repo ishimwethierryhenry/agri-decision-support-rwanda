@@ -88,7 +88,7 @@ def test_evaluation_view_shows_both_methods():
     assert len(picks) == 2 and all(v[4:] in {"Beans", "Irish potato", "Maize", "Rice"} for v in picks)
     # Musanze: the tuned Random Forest did better than the rules on new fields in testing (0.66 against 0.59)
     assert any("the Random Forest did better than the rules" in s.value for s in at.success)
-    assert "**Tested scores (macro-F1, 0 to 1, protocol 1.2)**" in [m.value for m in at.markdown]
+    assert "**Tested scores (macro-F1, 0 to 1, protocol 1.4)**" in [m.value for m in at.markdown]
 
 
 def test_fertiliser_for_the_recommended_crop_is_interim_and_cited():
@@ -125,27 +125,28 @@ def test_typed_point_in_nyagatare():
 
 def test_nyabihu_is_answered_by_the_method_that_names_the_right_crop_first_more_often():
     """The point Thierry checked on 25 Nov. The rules rate maize, Irish potato and rice the same there, so while they
-    answered in Nyabihu (main score 0.645 against 0.627) the badge was Low. The Random Forest names the right crop
-    first more often in Nyabihu (74% against 66% of the new fields), so it answers now."""
+    answered in Nyabihu the badge was Low. The Random Forest names the right crop first more often in Nyabihu (72%
+    against 66% of the new fields with the model of tuning_v3), so it answers now. Its one-crop answers in Nyabihu were
+    right for 75% of 154 tested fields (115), just under the line for High, so the badge is Medium."""
     at = _type_point(_page(), -1.692, 29.538)
     assert _place(at)[0].startswith("Nyabihu (Western Province)")
-    assert _answer(at) == ["Maize"] and _confidence(at) == ["High"]      # one clear first crop: 78% of 147 fields
-    assert any("Random Forest named the right crop first for 74% of the new fields in testing, against 66% for the "
+    assert _answer(at) == ["Maize"] and _confidence(at) == ["Medium"]    # one clear first crop: 115 of 154 fields
+    assert any("Random Forest named the right crop first for 72% of the new fields in testing, against 66% for the "
                "expert rules" in m.value for m in at.markdown)
     assert any("Random Forest in all four districts" in m.value for m in at.markdown)   # How this page works
     at = _evaluation_view(at)
-    assert any("the rules did better than the Random Forest in testing (main score 0.65 against 0.63). First crop "
-               "right: 74% for the Random Forest and 66% for the rules." in w.value for w in at.warning)
+    assert any("had about the same main score in testing. First crop right: 72% for the Random Forest and 66% for "
+               "the rules." in i.value for i in at.info)
 
 
 def test_ruhango_point_where_two_crops_fit_gives_both():
     """The point Thierry checked on 25 Nov: beans and maize fit almost equally, which gave one crop with a Low badge.
-    Now the page gives both, with how often the crop planted was one of the two (79% of 61 Ruhango close calls)."""
+    Now the page gives both, with how often the crop planted was one of the two (93% of 60 Ruhango close calls)."""
     at = _type_point(_page(), -2.196, 29.592)
     assert _place(at)[0].startswith("Ruhango (Southern Province)")
     assert _answer(at) == ["Beans or Maize"] and _confidence(at) == ["High"]
     text = " ".join(m.value for m in at.markdown)
-    assert "the crop planted was one of these two about 8 times out of 10" in text
+    assert "the crop planted was one of these two about 9 times out of 10" in text
     assert "Fertiliser for Beans <b>" in text and "Fertiliser for Maize <b>" in text
 
 
@@ -162,7 +163,7 @@ def test_crop_by_crop_table_for_the_clicked_district():
     table = at.dataframe[-1].value
     assert list(table.index) == ["Beans", "Irish potato", "Maize", "Rice"]
     assert table.loc["Rice", "Random Forest F1"] == "not scored"            # 1 rice field in Musanze
-    assert table.loc["Irish potato", "Random Forest F1"] == "0.83"          # tuning_v1, new fields
+    assert table.loc["Irish potato", "Random Forest F1"] == "0.82"          # tuning_v3, new fields
     assert table.loc["Irish potato", "Rules F1"] == "0.69"
     at.radio(key="crop_test").set_value("new_district").run()
     assert not at.exception
@@ -182,12 +183,13 @@ def test_scores_page_shows_every_model():
     assert any("named the right crop first more often in testing on new fields there: the tuned Random Forest in all "
                "four districts" in m.value for m in at.markdown)        # same choice as the map
     why = " ".join(m.value for m in at.markdown)
-    assert "The tuned Random Forest, all + satellite inputs scores 0.514 against 0.451" in why
+    assert "Round 1 (23 Nov): the tuned Random Forest, all + satellite inputs scored 0.514 against 0.451" in why
     assert "that crop is right 80% of the time" in why and "for only 80% of the fields" in why
-    # Second round of tuning (protocol 1.3, tuning_v2): nothing beat the model on the map by more than 0.01
-    assert "A second, bigger search found nothing better." in why and "tried 304 settings" in why
-    assert "the tuned Extra Trees, field + satellite inputs, scored 0.521 on new fields" in why
-    assert any("tuning_v2/report.md" in c.value for c in at.caption)
+    # Round 2 (protocol 1.3, tuning_v2) found nothing better; round 3 (protocol 1.4, tuning_v3) moved the map
+    assert "Round 2: 304 settings" in why and "found nothing better by more than 0.01 (best 0.521)" in why
+    assert ("the Random Forest, field + satellite inputs with crop weights scores 0.531, with its first crop right as "
+            "often as before (72%), so the map moved to it" in why)
+    assert any("tuning_v2/report.md" in c.value and "tuning_v3/report.md" in c.value for c in at.caption)
     gains = at.dataframe[5].value
     assert len(gains) == 9 and {"Protocol settings", "Tuned", "Change"} <= set(gains.columns)
     assert any("tuning lowered 5 of the 9 models" in c.value for c in at.caption)

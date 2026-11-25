@@ -1,8 +1,8 @@
 # Confidence of the map's answer (map_confidence)
 
-Made by `src/recommendation/build_map_confidence.py` on 2026-11-25 08:24 UTC (code commit `ce6951b542`), from the new-fields test of the model on the map (RF[all_sat] tuned, `reports/tuning_v1`). Decided on 25 Nov 2026 after looking at the map: see `docs/training_protocol.md`, section 9.
+Made by `src/recommendation/build_map_confidence.py` on 2026-11-25 09:49 UTC (code commit `fa46868477`), from the new-fields test of the model on the map (RF[field_sat] steady+weights, `reports/tuning_v3`). Decided on 25 Nov 2026 after looking at the map: see `docs/training_protocol.md`, section 9.
 
-**Built-in check: passed.** The five refitted fold models give exactly the tuning_v1 share of first crops right in every district: Musanze 0.750, Nyabihu 0.744, Nyagatare 0.759, Ruhango 0.629.
+**Built-in check: passed.** The five refitted fold models give exactly the `tuning_v3` share of first crops right in every district: Musanze 0.756, Nyabihu 0.720, Nyagatare 0.756, Ruhango 0.637.
 
 ## How the map answers
 
@@ -13,30 +13,30 @@ Made by `src/recommendation/build_map_confidence.py` on 2026-11-25 08:24 UTC (co
 
 ## The table
 
-Share right, of how many tested fields. Within 5 km: the fields' own inputs (the tuning_v1 test). 5 to 10 km and 10 to 20 km: the same fields predicted with the inputs of a training block that far away in their own district. A cell with fewer than 30 fields takes the value of the four districts.
+Share right, of how many tested fields. Within 5 km: the fields' own inputs (the `tuning_v3` test). 5 to 10 km and 10 to 20 km: the same fields predicted with the inputs of a training block that far away in their own district. A cell with fewer than 30 fields takes the value of the four districts.
 
-| field data from   | answer           | Musanze                     | Nyabihu                     | Nyagatare                   | Ruhango    |
-|:------------------|:-----------------|:----------------------------|:----------------------------|:----------------------------|:-----------|
-| within 5 km       | one crop         | 76% of 153                  | 78% of 147                  | 78% of 1031                 | 65% of 427 |
-| within 5 km       | two crops, close | 87% of 146 (four districts) | 87% of 146 (four districts) | 98% of 53                   | 79% of 61  |
-| within 5 km       | two crops, any   | 89% of 164                  | 97% of 168                  | 97% of 1084                 | 88% of 488 |
-| 5 to 10 km        | one crop         | 58% of 159                  | 72% of 166                  | 73% of 1055                 | 56% of 409 |
-| 5 to 10 km        | two crops, close | 91% of 115 (four districts) | 91% of 115 (four districts) | 91% of 115 (four districts) | 92% of 79  |
-| 5 to 10 km        | two crops, any   | 77% of 164                  | 96% of 168                  | 94% of 1084                 | 90% of 488 |
-| 10 to 20 km       | one crop         | 32% of 164                  | 45% of 144                  | 72% of 1061                 | 55% of 420 |
-| 10 to 20 km       | two crops, close | 85% of 115 (four districts) | 85% of 115 (four districts) | 85% of 115 (four districts) | 99% of 68  |
-| 10 to 20 km       | two crops, any   | 73% of 164                  | 70% of 168                  | 94% of 1084                 | 86% of 488 |
+| field data from   | answer           | Musanze                     | Nyabihu                     | Nyagatare                  | Ruhango                    |
+|:------------------|:-----------------|:----------------------------|:----------------------------|:---------------------------|:---------------------------|
+| within 5 km       | one crop         | 77% of 151                  | 75% of 154                  | 77% of 1017                | 64% of 428                 |
+| within 5 km       | two crops, close | 94% of 154 (four districts) | 94% of 154 (four districts) | 94% of 67                  | 93% of 60                  |
+| within 5 km       | two crops, any   | 87% of 164                  | 94% of 168                  | 96% of 1084                | 90% of 488                 |
+| 5 to 10 km        | one crop         | 55% of 150                  | 71% of 164                  | 72% of 1072                | 57% of 463                 |
+| 5 to 10 km        | two crops, close | 89% of 55 (four districts)  | 89% of 55 (four districts)  | 89% of 55 (four districts) | 89% of 55 (four districts) |
+| 5 to 10 km        | two crops, any   | 76% of 164                  | 95% of 168                  | 94% of 1084                | 88% of 488                 |
+| 10 to 20 km       | one crop         | 30% of 159                  | 42% of 154                  | 72% of 1068                | 56% of 440                 |
+| 10 to 20 km       | two crops, close | 58% of 83 (four districts)  | 58% of 83 (four districts)  | 58% of 83 (four districts) | 46% of 48                  |
+| 10 to 20 km       | two crops, any   | 63% of 164                  | 66% of 168                  | 91% of 1084                | 84% of 488                 |
 
 ## Replay on the tested fields (season B, within 5 km)
 
-What each of the 1,904 tested fields would have been shown, and how often it was right (first crop for a one-crop answer, one of the two for a two-crop answer).
+The three rules applied to the predictions of the model on the map now. What each of the 1,904 tested fields would have been shown, and how often it was right (first crop for a one-crop answer, one of the two for a two-crop answer).
 
 | shown            | until 25 Nov             | 25 Nov, first crop right   | now, by situation        |
 |:-----------------|:-------------------------|:---------------------------|:-------------------------|
-| one crop, high   | 62% of fields, right 77% | 62% of fields, right 77%   | 70% of fields, right 77% |
-| one crop, low    | 8% of fields, right 47%  | 4% of fields, right 48%    |                          |
-| one crop, medium | 30% of fields, right 66% | 34% of fields, right 66%   | 22% of fields, right 65% |
-| two crops, high  |                          |                            | 8% of fields, right 87%  |
+| one crop, high   | 61% of fields, right 77% | 61% of fields, right 77%   | 61% of fields, right 77% |
+| one crop, low    | 8% of fields, right 51%  | 4% of fields, right 55%    |                          |
+| one crop, medium | 31% of fields, right 66% | 35% of fields, right 65%   | 31% of fields, right 67% |
+| two crops, high  |                          |                            | 8% of fields, right 94%  |
 
 ## Replay on the map (season B, a point about every 1 km)
 
@@ -44,13 +44,13 @@ What each of the 1,904 tested fields would have been shown, and how often it was
 
 | rule   | shown on the map   | Musanze   | Nyabihu   | Nyagatare   | Ruhango   |
 |:-------|:-------------------|:----------|:----------|:------------|:----------|
-| before | one crop, high     | 93%       |           | 77%         |           |
-| before | one crop, low      |           | 13%       | under 1%    | 19%       |
-| before | one crop, medium   | 7%        | 87%       | 23%         | 81%       |
+| before | one crop, high     | 91%       |           | 78%         |           |
+| before | one crop, low      |           | 15%       | under 1%    | 15%       |
+| before | one crop, medium   | 9%        | 85%       | 22%         | 85%       |
 | now    | no answer          |           |           | under 1%    |           |
-| now    | one crop, high     | 92%       | 87%       | 77%         |           |
-| now    | one crop, medium   | 6%        | 10%       | 19%         | 85%       |
-| now    | two crops, high    | 1%        | 3%        | 3%          | 15%       |
+| now    | one crop, high     | 91%       |           | 78%         |           |
+| now    | one crop, medium   | 6%        | 95%       | 20%         | 90%       |
+| now    | two crops, high    | 3%        | 5%        | 2%          | 10%       |
 
 ## How to read this
 

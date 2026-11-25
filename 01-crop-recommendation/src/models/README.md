@@ -50,7 +50,7 @@ Third round of tuning (protocol 1.4, about half an hour on two cores):
 python 01-crop-recommendation/src/models/tune_v3.py
 ```
 
-It writes `01-crop-recommendation/reports/tuning_v3/`: `report.md`, the results and summaries of both tests, `choices.csv` (the candidate, crop weights and blend group chosen in every fold) and `run_info.json`. Finished tasks are kept in `tuning_v3/_work/` (not committed). `--quick` checks the code on one fold; its numbers are never reported.
+It writes `01-crop-recommendation/reports/tuning_v3/`: `report.md`, the results and summaries of both tests, `choices.csv` (the candidate, crop weights and blend group chosen in every fold) and `run_info.json`. Finished tasks are kept in `tuning_v3/_work/` (not committed). `--quick` checks the code on one fold; its numbers are never reported. `--final` chooses the settings and crop weights of the model the map serves on all 1,904 fields (about five minutes). The official run (25 Nov 2026) moved the map to the Random Forest on `field_sat` with crop weights (0.531 against 0.514 on new fields).
 
 Rules for using results:
 

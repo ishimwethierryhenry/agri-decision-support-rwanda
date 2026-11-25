@@ -1,6 +1,7 @@
-"""Pydantic models for the Recommendation API contract (version 1.3: 1.0 plus optional fields for the tuned model in 1.1;
+"""Pydantic models for the Recommendation API contract (version 1.4: 1.0 plus optional fields for the tuned model in 1.1;
 no field changes in 1.2, where the point route lets the method that names the right crop first more often answer;
-in 1.3 the point route gives one crop, two crops or no answer, with the confidence of answers like it).
+in 1.3 the point route gives one crop, two crops or no answer, with the confidence of answers like it; no field changes
+in 1.4, where the model on the map is the Random Forest of the third round of tuning, with crop weights).
 
 These models are the executable form of docs/api_contracts.md. If a field changes,
 change this file and the document together, and bump CONTRACT_VERSION.
@@ -14,7 +15,7 @@ from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CONTRACT_VERSION = "1.3"
+CONTRACT_VERSION = "1.4"
 
 # Approximate bounding box of Rwanda (decimal degrees, WGS84).
 LAT_MIN, LAT_MAX = -2.9, -1.0

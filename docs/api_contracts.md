@@ -1,6 +1,6 @@
 # API contracts
 
-**Status:** 1.3, 25 November 2026, by Thierry (Part B, ML and Geospatial). First proposed on 20 October 2026, updated on 28 October and 18 November 2026, final as 1.0 on 23 November 2026. Version 1.1 only adds optional fields, for the tuned model now on the map. Version 1.2 changes no field: the point route lets the method that names the right crop first more often answer in each district. Version 1.3 adds optional fields: the point route gives one crop, or two crops that fit about equally, with the confidence of answers like it, and no answer where nothing tested is reliable enough (section 9). Both recommendation interfaces are implemented in `01-crop-recommendation/src/recommendation/service.py` and checked by the tests in section 2.6. The crop health diagnosis interface belongs to the CV sub-team and joins this document when the two dashboards are merged.
+**Status:** 1.4, 25 November 2026, by Thierry (Part B, ML and Geospatial). First proposed on 20 October 2026, updated on 28 October and 18 November 2026, final as 1.0 on 23 November 2026. Version 1.1 only adds optional fields, for the tuned model now on the map. Version 1.2 changes no field: the point route lets the method that names the right crop first more often answer in each district. Version 1.3 adds optional fields: the point route gives one crop, or two crops that fit about equally, with the confidence of answers like it, and no answer where nothing tested is reliable enough. Version 1.4 changes no field: the model on the map is now the Random Forest of the third round of tuning, on field + satellite inputs with one weight per crop (section 9). Both recommendation interfaces are implemented in `01-crop-recommendation/src/recommendation/service.py` and checked by the tests in section 2.6. The crop health diagnosis interface belongs to the CV sub-team and joins this document when the two dashboards are merged.
 
 **Reviewers:** Arsene (Part A) for the inputs and the season decision. Anny and Gabin (CV sub-team) for section 1 when their service joins.
 
@@ -13,7 +13,7 @@ The examples of `POST /v1/recommend` are placeholders that show the shape. The e
 | # | Interface | Method and route | Status |
 | --- | --- | --- | --- |
 | 1 | Crop and fertiliser recommendation (expert rules, district or point) | `POST /v1/recommend` | Implemented |
-| 2 | One recommendation for a point, with a confidence level | `POST /v1/recommend/point` | Implemented, new in 1.0, model updated in 1.1, choice of method updated in 1.2, confidence by situation in 1.3 |
+| 2 | One recommendation for a point, with a confidence level | `POST /v1/recommend/point` | Implemented, new in 1.0, model updated in 1.1 and 1.4, choice of method updated in 1.2, confidence by situation in 1.3 |
 | 3 | Service metadata | `GET /v1/metadata` | Implemented |
 | 4 | Service health | `GET /v1/health` | Implemented |
 | 5 | Crop health diagnosis | `POST /v1/diagnose` | Owned by the CV sub-team, added when the two dashboards are merged |
@@ -46,7 +46,7 @@ These are proposals. The goal is that the dashboard can call both services the s
 | Responsible workstream | Crop recommendation (ML and Geospatial, Part B), with the shared dashboard |
 | Purpose | An extension officer gives a location, a season and optional soil test values. The service returns ranked crops with reasons and a reliability level, and fertiliser guidance for one crop with the source of each rule. |
 | Method and route | `POST /v1/recommend` |
-| Contract version | 1.3. This route has not changed since 1.0, final for the practicum. |
+| Contract version | 1.4. This route has not changed since 1.0, final for the practicum. |
 
 ### 2.1 Input fields
 
@@ -369,18 +369,18 @@ FastAPI answers validation errors in its own format by default. The service repl
 | Field | Value |
 | --- | --- |
 | Interface name | One recommendation for a point |
-| Status | Implemented, new in 1.0. In 1.1 the trained model is the tuned Random Forest. In 1.2 the method that names the right crop first more often answers, which is the tuned Random Forest in all four districts. In 1.3 the confidence is how often answers like this one were right in testing, the answer can be two crops, and there is no answer instead of a low one. |
+| Status | Implemented, new in 1.0. In 1.1 the trained model is the tuned Random Forest. In 1.2 the method that names the right crop first more often answers, which is the tuned Random Forest in all four districts. In 1.3 the confidence is how often answers like this one were right in testing, the answer can be two crops, and there is no answer instead of a low one. In 1.4 the model is the Random Forest of the third round of tuning (`RF[field_sat] steady+weights`). |
 | Responsible workstream | Crop recommendation (ML and Geospatial, Part B), with the shared dashboard |
 | Purpose | A user clicks or types a point in one of the four pilot districts. The service returns one crop (or two that fit about equally), a confidence level with plain reasons, the fertiliser for each crop, and the inputs it used. It is the same answer as the dashboard map, as the client asked on 19 Nov 2026: one recommendation and how sure we are, not a comparison of methods. |
 | Method and route | `POST /v1/recommend/point` |
-| Contract version | 1.3 |
+| Contract version | 1.4 |
 
 ### 3.1 How the answer is made
 
 1. **District.** From the district outline the point falls in. A point within 1.5 km of a CIAT block just across a simplified outline counts as that block's district. Outside the four pilot districts the service abstains.
 2. **Inputs.** Soil (iSDAsoil, 0 to 20 and 20 to 50 cm), elevation and four satellite values (SRTM elevation, CHIRPS rainfall from 1 February to 30 June 2025, and the Sentinel-2 vegetation index and shortwave ratio of 2024) come from the CIAT fields of the same 2 km block, or of the nearest block in the district. An `elevation_m` given in the request replaces both elevations. Season B 2025 weather (NASA POWER) and NISR crop shares come from the district, the values the model learned from.
-3. **Two methods rank the crops.** The trained model on the map and the expert rules (B1). Since 1.1 the trained model is the tuned Random Forest on all inputs plus satellite (`RF[all_sat] tuned`), which the rule written before the tuning run chose for the map (`docs/training_protocol.md`, section 11, decision 2). It is trained once on the 1,904 CIAT fields with the settings in `01-crop-recommendation/reports/tuning_v1/final_model.json`. In 1.0 it was XGBoost on all inputs with the protocol settings.
-4. **One method answers.** In each district, the method whose first crop was right for more of the new fields in testing (`tuning_v1`), if it is ahead by more than 0.01; otherwise the rules, the default. The answer is one crop, so the choice uses the same measure as the confidence level. Today that means Random Forest in all four districts: its first crop was right for 75% of the new fields in Musanze, 74% in Nyabihu, 76% in Nyagatare and 63% in Ruhango, against 62%, 66%, 22% and 59% for the rules. Until 1.1 the choice used the main score, so the rules answered in Nyabihu (0.645 against 0.627), where they often rate maize, Irish potato and rice the same.
+3. **Two methods rank the crops.** The trained model on the map and the expert rules (B1). Since 1.4 the trained model is the Random Forest on field + satellite inputs of the third round of tuning (`RF[field_sat] steady+weights`), which the rule written before that run chose for the map (`docs/training_protocol.md`, section 13, decision 2): 0.531 on new fields against 0.514, with the first crop right as often (72 percent). It is trained once on the 1,904 CIAT fields with the settings in `01-crop-recommendation/reports/tuning_v3/final_model.json`, and its probabilities are multiplied by one weight per crop from the same file, then normalised again. In 1.1 to 1.3 it was the tuned Random Forest on all inputs plus satellite (`RF[all_sat] tuned`, `tuning_v1`); in 1.0, XGBoost on all inputs with the protocol settings.
+4. **One method answers.** In each district, the method whose first crop was right for more of the new fields in testing (`tuning_v1`), if it is ahead by more than 0.01; otherwise the rules, the default. The answer is one crop, so the choice uses the same measure as the confidence level. Today that means Random Forest in all four districts: its first crop was right for 76% of the new fields in Musanze, 72% in Nyabihu, 76% in Nyagatare and 64% in Ruhango, against 62%, 66%, 22% and 59% for the rules. Until 1.1 the choice used the main score, so the rules answered in Nyabihu (0.645 against 0.627), where they often rate maize, Irish potato and rice the same.
 5. **One crop, two crops or no answer, and the confidence (since 1.3).** The confidence is how often answers like this one were right in testing, from `01-crop-recommendation/reports/map_confidence` (made by `build_map_confidence.py` from the new-fields test of `tuning_v1`). "Like this one" means the same district, the same kind of answer and field inputs from about as far away (within 5 km, 5 to 10 km, or 10 to 20 km from the point). The levels are fixed, not tuned on results: `high` from 0.75, `medium` from 0.50.
 
 | Situation | Answer | `tested_hit_rate` |
@@ -390,7 +390,7 @@ FastAPI answers validation errors in its own format by default. The service repl
 | A one-crop rate below 0.50 | Both crops | Share of all such fields where the crop planted was one of the first two |
 | The rate of the answer is below 0.50, the nearest surveyed field is more than 20 km away, or the season is not B | No answer: `abstain: true` with the reason in `abstain_message` and the warning `NO_RELIABLE_ANSWER` | |
 
-A cell of the table with fewer than 30 tested fields takes the value of the four districts together. In season B the map shows today: one crop with `high` confidence in most of Musanze (92% of the area), Nyabihu (87%) and Nyagatare (77%); one crop with `medium` confidence in Ruhango (85%) and where the nearest surveyed field is more than 5 km away; two crops with `high` confidence where they fit about equally (15% of Ruhango, 1 to 3% elsewhere); and no answer for under 1% of Nyagatare. When the rules answer (no district today), the level comes from their district hit rate as in 1.2, and a level that would be `low` gives no answer. `lowered_by` says in plain words what makes the point less sure than the best case.
+A cell of the table with fewer than 30 tested fields takes the value of the four districts together. In season B the map shows today: one crop with `high` confidence in most of Musanze (91% of the area) and Nyagatare (78%); one crop with `medium` confidence in most of Nyabihu (95%) and Ruhango (90%), and where the nearest surveyed field is more than 5 km away; two crops with `high` confidence where they fit about equally (2 to 10% of each district); and no answer for under 1% of Nyagatare. When the rules answer (no district today), the level comes from their district hit rate as in 1.2, and a level that would be `low` gives no answer. `lowered_by` says in plain words what makes the point less sure than the best case.
 
 6. **Fertiliser** for the recommended crop, from the same rule engine as section 2 (interim national rates until the RAB guideline is in), and since 1.3 for the second crop of a two-crop answer in `fertiliser_second`.
 
@@ -421,7 +421,7 @@ Example request:
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `request_id`, `api_version`, `rules_version`, `generated_at`, `disclaimer` | | As in section 2.2. |
-| `model_version` | string | The trained model on the map, `RF[all_sat] tuned` since 1.1. |
+| `model_version` | string | The trained model on the map: `RF[field_sat] steady+weights` since 1.4, `RF[all_sat] tuned` in 1.1 to 1.3. |
 | `location` | object | District, province, the requested point, and `resolution: point`. |
 | `season.asked`, `season.used` | strings | The season asked, and the season the answer is for (always `B`). |
 | `abstain` | boolean | `true` outside the four pilot districts, and since 1.3 also when nothing tested is reliable enough at the point (section 3.1, step 5). Then `recommendation` and `fertiliser` are `null` and `abstain_message` says why. `inputs_used` is `null` outside the pilot districts and given inside them. |
@@ -451,10 +451,10 @@ Example response (a real answer of the service for a point in Nyagatare, with `r
 ```json
 {
   "request_id": "example-0004",
-  "api_version": "1.3",
-  "model_version": "RF[all_sat] tuned, trained on the 1,904 CIAT fields",
+  "api_version": "1.4",
+  "model_version": "RF[field_sat] steady+weights, trained on the 1,904 CIAT fields",
   "rules_version": "crops-0.1-draft+fertiliser-0.1-interim-2026-11-18",
-  "generated_at": "2026-11-25T09:30:00Z",
+  "generated_at": "2026-11-25T12:30:00Z",
   "location": {
     "district": "Nyagatare",
     "province": "East",
@@ -473,10 +473,10 @@ Example response (a real answer of the service for a point in Nyagatare, with `r
     "method": "random_forest",
     "confidence": {
       "level": "high",
-      "tested_hit_rate": 0.775946,
+      "tested_hit_rate": 0.773845,
       "lowered_by": [],
       "basis": "first_crop",
-      "tested_fields": 1031,
+      "tested_fields": 1017,
       "situation": "Nyagatare, field data within 5 km, one clear first crop"
     },
     "kind": "one_crop",
@@ -486,12 +486,12 @@ Example response (a real answer of the service for a point in Nyagatare, with `r
     "close_second": null,
     "alternatives": [
       "rice",
-      "irish_potato",
-      "beans"
+      "beans",
+      "irish_potato"
     ],
     "why": [
       "In Nyagatare, Random Forest named the right crop first for 76% of the new fields in testing, against 22% for the expert rules, so the answer comes from Random Forest.",
-      "In testing, answers like this one, with one clear first crop, were right for 78% of the fields (1031 fields in Nyagatare, field data within 5 km)."
+      "In testing, answers like this one, with one clear first crop, were right for 77% of the fields (1017 fields in Nyagatare, field data within 5 km)."
     ]
   },
   "fertiliser": {
@@ -533,6 +533,7 @@ Example response (a real answer of the service for a point in Nyagatare, with `r
       }
     ]
   },
+  "fertiliser_second": null,
   "inputs_used": {
     "elevation_m": 1350.2,
     "elevation_source": "median GPS elevation of the CIAT fields in the block",
@@ -572,7 +573,6 @@ Example response (a real answer of the service for a point in Nyagatare, with `r
       "swir_ratio": 1.116
     }
   },
-  "evaluation": null,
   "warnings": [
     {
       "code": "FERTILISER_INTERIM",
@@ -717,6 +717,7 @@ Then open http://127.0.0.1:8001/docs for the interactive page.
 | 1.1 | 2026-11-23 | The point route serves the tuned Random Forest on all inputs plus satellite, as decision 2 of the tuning protocol requires (`docs/training_protocol.md`, section 11). Only optional fields and values are added, so 1.0 clients still work: `random_forest` as a `recommendation.method`, `inputs_used.satellite_at_field`, and `evaluation.model` and `evaluation.model_ranking`; `evaluation.xgboost_ranking` is now `null`. Health no longer depends on XGBoost. Units of `inputs_used.soil_0_20cm` written down. `POST /v1/recommend` is unchanged. |
 | 1.2 | 2026-11-25 | The point route chooses the method that answers in each district by first crop right on new fields in testing (ahead by more than 0.01, otherwise the rules), the measure the confidence level already uses, instead of the main score. In Nyabihu the tuned Random Forest now answers instead of the rules (first crop right 74% against 66%), so `recommendation.method` there is `random_forest` and the reasons in `why` say it in those words. No field changes, so 1.1 clients still work. The `low` row of the confidence table now also names one reason to lower a hit rate below 0.75. `POST /v1/recommend` is unchanged. |
 | 1.3 | 2026-11-25 | The point route gives one crop, or two crops that fit about equally, with the confidence of answers like it in testing (same district, same kind of answer, field data from about as far away; `reports/map_confidence`), and no answer (`abstain: true`, warning `NO_RELIABLE_ANSWER`) for a season other than B, beyond 20 km from any surveyed field, or when even the answer's tested rate is below 0.50. A farmer never gets one crop with a `low` confidence. New optional fields: `recommendation.kind`, `recommendation.crops`, `recommendation.confidence.basis`, `tested_fields` and `situation`, and `fertiliser_second`. `close_second` is now the second crop of a two-crop answer. Behaviour change for 1.2 clients: season A or C requests now abstain instead of answering with `low`. A second example (`RESPONSE_POINT_TWO_CROPS` in `03-shared/apis/recommend_examples.py`) shows a two-crop answer. `POST /v1/recommend` is unchanged. |
+| 1.4 | 2026-11-25 | The model on the map and behind the point route is now the Random Forest on field + satellite inputs of the third round of tuning, with one weight per crop at decision time (`RF[field_sat] steady+weights`, `reports/tuning_v3/final_model.json`), as decision 2 of `docs/training_protocol.md` section 13 requires. The confidence table (`reports/map_confidence`) was measured again for it. No field changes, so 1.3 clients still work; `model_version` and the numbers in the answers change. `POST /v1/recommend` is unchanged. |
 
 ## Review checklist
 
@@ -724,5 +725,5 @@ Confirm that field naming, units, error behavior, and confidence semantics match
 
 - [ ] Anny and Gabin reviewed section 1 and the diagnosis side (when the two dashboards are merged)
 - [ ] Arsene reviewed the inputs, soil units and the season decision
-- [x] Contract and service tests pass (`python -m pytest 01-crop-recommendation/tests 03-shared/tests -q`, 278 tests on 25 Nov 2026)
+- [x] Contract and service tests pass (`python -m pytest 01-crop-recommendation/tests 03-shared/tests -q`, the full suite on 25 Nov 2026)
 - [x] Status changed to Final 1.0 for the implemented interfaces

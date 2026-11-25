@@ -1,0 +1,77 @@
+{
+  "protocol_version": "1.4",
+  "quick_check_only": false,
+  "run_at_utc": "2026-11-25 09:38",
+  "compute_hours": 0.37261298298835754,
+  "wall_hours_this_call": 0.0008578346172968546,
+  "workers": 2,
+  "git_commit": "103d25f18398b97410b27755dbaa87a7783cd95b",
+  "uncommitted_changes": false,
+  "report_rebuilt_at_commit": "fa468684776068e1ea1f4672c8c4e5d4d3245c15",
+  "report_rebuilt_with_uncommitted_changes": false,
+  "table_sha256": "0bb9096237a38bc0a3aff73a72130bbea72726154f92093d39ea0eb0683a49be",
+  "methods": [
+    "RF",
+    "ET",
+    "XGB"
+  ],
+  "views": [
+    "all_sat",
+    "field_sat"
+  ],
+  "top_k": 8,
+  "extra_seeds": [
+    1,
+    2
+  ],
+  "weight_steps": [
+    1.0,
+    0.6667,
+    1.5
+  ],
+  "groups": [
+    "RF",
+    "ET",
+    "XGB",
+    "RF+ET",
+    "RF+XGB",
+    "ET+XGB",
+    "RF+ET+XGB"
+  ],
+  "builtin_check": {
+    "compared_with": "01-crop-recommendation/reports/tuning_v2",
+    "rows_compared": 48,
+    "mismatches": [],
+    "passed": true
+  },
+  "decisions": {
+    "map": {
+      "today": "RF[all_sat] tuned",
+      "today_score": 0.5140788351964372,
+      "today_top1": 0.7237394957983193,
+      "margin": 0.01,
+      "top1_margin": 0.01,
+      "best": "RF[field_sat] steady+weights",
+      "best_score": 0.5305117840325597,
+      "best_top1": 0.7221638655462185,
+      "beating": {
+        "ET[field_sat] steady+weights": 0.5251748104244041,
+        "RF[field_sat] steady+weights": 0.5305117840325597
+      },
+      "changes": true,
+      "serve": "RF[field_sat] steady+weights"
+    },
+    "adoption": {
+      "passing": [],
+      "best": "ET[field_sat] steady+weights",
+      "best_score": 0.31334047293972844
+    }
+  },
+  "versions": {
+    "python": "3.12.3",
+    "pandas": "3.1.0",
+    "numpy": "2.3.5",
+    "scikit-learn": "1.7.2",
+    "xgboost": "3.4.1"
+  }
+}

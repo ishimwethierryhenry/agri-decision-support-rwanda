@@ -49,7 +49,7 @@ The contract is `docs/api_detect.md` in that repository.
 ## Model scores page
 
 - Logic: `01-crop-recommendation/src/models/model_scores.py`. It recomputes every number from the committed result files (summaries, results per district and confusion counts), and a test checks that the main score it recomputes equals the official one for every model, district and test.
-- Nothing on this page is trained or tuned: it only reads `01-crop-recommendation/reports/eval_v2` and `01-crop-recommendation/reports/tuning_v1`.
+- Nothing on this page is trained or tuned: it only reads `01-crop-recommendation/reports/eval_v2` and the three tuning rounds, `tuning_v1`, `tuning_v2` and `tuning_v3`.
 
 ## Crop and fertiliser page
 

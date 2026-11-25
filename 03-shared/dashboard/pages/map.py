@@ -2,8 +2,9 @@
 
 Flow agreed at the stand-up of 28 Oct 2026: click a point, the page finds the district, reads the soil, elevation,
 satellite values, weather and crop shares for that point, and shows one recommended crop with its confidence and its
-fertiliser. Since 23 Nov 2026 the trained model is the tuned Random Forest that the protocol's rule chose for the map
-(reports/tuning_v1); the Evaluation view shows it next to the expert rules. The page opens on season B, the only
+fertiliser. The trained model is the one the protocol's rule chose for the map: since 25 Nov 2026 the Random Forest of
+the third round of tuning, on field + satellite inputs with crop weights (reports/tuning_v3; from 23 to 25 Nov the tuned
+Random Forest of reports/tuning_v1); the Evaluation view shows it next to the expert rules. The page opens on season B, the only
 season in the training data; today's season is marked and can be picked.
 The model runs inside the dashboard (no server needed). Logic: 01-crop-recommendation/src/recommendation/map_model.py
 Since 24 Nov 2026 the page uses the shared Agri DSS look (ui_theme.py, rec_ui.py): a hero heading, the steps in one
@@ -170,7 +171,8 @@ with st.expander("How this page works"):
         "3. **District inputs**: season B 2025 weather (NASA POWER) and NISR crop shares, the values the model "
         "learned from.\n"
         f"4. **One answer**: two methods were tested, the {mm.MODEL_TITLE} (trained on all 1,904 CIAT fields, "
-        "with the settings the tuning of 23 November chose without ever looking at the test fields) and the "
+        "with the settings and crop weights the third round of tuning, on 25 November, chose without ever looking at "
+        "the test fields) and the "
         "expert rules (B1). In each district, the answer comes from the one that named the right crop first more "
         "often in testing on new fields there: "
         + (f"{mm.MODEL_LABEL} in all four districts" if all(answered_by[d] == "model" for d in PILOTS) else
@@ -308,7 +310,7 @@ if evaluation and res["status"] == "ok":
     with st.container(key="card_eval"):
         ui.head("Evaluation view: both methods at this point")
         st.caption("For the team. Users only see the answer above.")
-        st.markdown("**Tested scores (macro-F1, 0 to 1, protocol 1.2)**")
+        st.markdown("**Tested scores (macro-F1, 0 to 1, protocol 1.4)**")
         st.dataframe(tested_table(rec).style.format("{:.2f}", na_rep=""))
         st.caption("New fields: fields from 2 km blocks the model never saw, in a district it knows. District "
                    "left out: the model never saw the district at all. The API default stays the rules, because "
@@ -355,7 +357,7 @@ if evaluation and res["status"] == "ok":
                 st.dataframe(shown)
             st.caption("Precision: when the method says this crop, how often it is right. Recall: of the fields "
                        "with this crop, how many the method found. F1 combines the two, from 0 to 1. Crops with "
-                       "fewer than 5 fields in the district are not scored. From the tuning run (tuning_v1). "
+                       "fewer than 5 fields in the district are not scored. From the third round of tuning (tuning_v3). "
                        "The Model scores page has every model.")
         with st.expander("Why the rules say this"):
             for r in res["rules"]["ranking"]:
