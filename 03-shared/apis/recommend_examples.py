@@ -2,8 +2,8 @@
 
 The POST /v1/recommend examples are ILLUSTRATIVE placeholders that show the shape of the contract: they are not
 agronomic advice and not real output. The POST /v1/recommend/point examples (added in 1.0, updated in 1.1 for the tuned
-Random Forest on the map) are real answers of the service on 23 Nov 2026, with only request_id and generated_at fixed. Their fertiliser rates are the interim national
-rates, labelled as such.
+Random Forest on the map and in 1.2 for the reasons text) are real answers of the service on 25 Nov 2026, with only
+request_id and generated_at fixed. Their fertiliser rates are the interim national rates, labelled as such.
 """
 
 REQUEST_DISTRICT = {
@@ -23,7 +23,7 @@ REQUEST_POINT_FERTILISER_ONLY = {
 
 RESPONSE_OK = {
     "request_id": "example-0001",
-    "api_version": "1.1",
+    "api_version": "1.2",
     "model_version": None,
     "rules_version": "rules-0.1-example",
     "generated_at": "2026-10-21T08:00:00Z",
@@ -80,7 +80,7 @@ RESPONSE_OK = {
 
 RESPONSE_ABSTAIN = {
     "request_id": "example-0002",
-    "api_version": "1.1",
+    "api_version": "1.2",
     "model_version": None,
     "rules_version": "rules-0.1-example",
     "generated_at": "2026-10-21T08:05:00Z",
@@ -110,10 +110,10 @@ REQUEST_POINT = {"lat": -1.35, "lon": 30.30, "season": "B"}
 
 RESPONSE_POINT_OK = {
     "request_id": "example-0004",
-    "api_version": "1.1",
+    "api_version": "1.2",
     "model_version": "RF[all_sat] tuned, trained on the 1,904 CIAT fields",
     "rules_version": "crops-0.1-draft+fertiliser-0.1-interim-2026-11-18",
-    "generated_at": "2026-11-23T12:30:00Z",
+    "generated_at": "2026-11-25T09:30:00Z",
     "location": {
         "district": "Nyagatare",
         "province": "East",
@@ -138,11 +138,9 @@ RESPONSE_POINT_OK = {
         "close_second": None,
         "alternatives": ["rice", "irish_potato", "beans"],
         "why": [
-            ("In Nyagatare, Random Forest did better than the expert rules in "
-                "testing on new fields (0.43 against 0.09, main score), so the answer "
+            ("In Nyagatare, Random Forest named the right crop first for 76% of the "
+                "new fields in testing, against 22% for the expert rules, so the answer "
                 "comes from Random Forest."),
-            ("In that test, its first crop was the right one for 76% of the fields "
-                "in Nyagatare."),
         ],
     },
     "fertiliser": {
@@ -245,7 +243,7 @@ RESPONSE_POINT_OK = {
 
 RESPONSE_POINT_OUTSIDE = {
     "request_id": "example-0005",
-    "api_version": "1.1",
+    "api_version": "1.2",
     "model_version": "RF[all_sat] tuned, trained on the 1,904 CIAT fields",
     "rules_version": "crops-0.1-draft+fertiliser-0.1-interim-2026-11-18",
     "generated_at": "2026-11-23T12:31:00Z",

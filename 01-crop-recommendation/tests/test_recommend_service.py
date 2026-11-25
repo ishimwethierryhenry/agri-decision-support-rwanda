@@ -36,7 +36,7 @@ def codes(resp):
 
 def test_health_says_what_can_answer(monkeypatch):
     j = client.get("/v1/health").json()
-    assert j["rules_loaded"] and j["api_version"] == "1.1" and j["status"] == "ok"   # XGBoost is not needed any more
+    assert j["rules_loaded"] and j["api_version"] == "1.2" and j["status"] == "ok"   # XGBoost is not needed any more
     monkeypatch.setattr(service, "map_ready", lambda: False)                         # model settings or data missing
     assert client.get("/v1/health").json()["status"] == "degraded"
 
@@ -264,7 +264,7 @@ def point(body):
 
 def test_point_gives_one_answer_with_confidence_and_fertiliser():
     resp, r = point({"lat": -1.35, "lon": 30.30, "season": "B"})             # Nyagatare: Random Forest answers
-    assert r.headers["X-Request-ID"] == resp.request_id and resp.api_version == "1.1"
+    assert r.headers["X-Request-ID"] == resp.request_id and resp.api_version == "1.2"
     a = resp.recommendation
     assert resp.location.district == "Nyagatare" and a.crop == "maize" and a.method == "random_forest"
     assert a.confidence.level.value == "high" and a.confidence.tested_hit_rate == 0.759   # tuning_v1, new fields

@@ -227,8 +227,10 @@ with st.container(key="card_why"):
            "and inputs that say which crops the nearby surveyed fields grow. The best, the tuned "
            f"{ms.short_label(r2['best'].replace(ms.TUNED, ''))}, scored {r2['best_score']:.3f} on new fields, not "
            f"more than {r2['margin']} above this model, so the map kept it.\n" if r2 and not r2["changes"] else "")
-        + "- **One answer per point.** In each district it comes from the method that did better on new fields there: "
-        + ", ".join(f"{algo if w == 'model' else 'the rules'} in {d}" for d, w in who.items()) + ".\n"
+        + "- **One answer per point.** In each district it comes from the method that named the right crop first "
+        "more often in testing on new fields there: "
+        + (f"the tuned {algo} in all four districts" if all(w == "model" for w in who.values()) else
+           ", ".join(f"{algo if w == 'model' else 'the rules'} in {d}" for d, w in who.items())) + ".\n"
         f"- **It knows when to be trusted.** When it gives its first crop a probability of 0.7 or more "
         f"({pct(at_07['Fields answered'])} of the fields), that crop is right {pct(at_07['First crop right'])} of the "
         "time. When it is less sure, it is right less often, as the table below shows.\n"

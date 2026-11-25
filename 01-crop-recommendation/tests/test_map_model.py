@@ -94,10 +94,11 @@ def test_answer_has_both_methods_with_tested_scores(rec):
     assert not any("season" in w.lower() and "not in the training" in w for w in r["warnings"])
 
 
-def test_one_answer_comes_from_the_method_that_tested_better_in_the_district(rec):
-    # tuning_v1, new fields: Random Forest 0.661, 0.627, 0.432, 0.337 against the rules 0.592, 0.645, 0.090, 0.186
+def test_one_answer_comes_from_the_method_that_names_the_right_crop_first_more_often(rec):
+    # tuning_v1, new fields, first crop right: Random Forest 0.750, 0.744, 0.759, 0.629 against the rules 0.622, 0.661,
+    # 0.219, 0.592. Until 25 Nov the choice used the main score, where the rules led in Nyabihu (0.645 against 0.627).
     assert {d: rec.method_for(d) for d in sorted(PILOTS)} == {
-        "Musanze": "model", "Nyabihu": "rules", "Nyagatare": "model", "Ruhango": "model"}
+        "Musanze": "model", "Nyabihu": "model", "Nyagatare": "model", "Ruhango": "model"}
     blockcv = pd.read_csv(mm.EVAL_DIR / "main_blockcv_results.csv")
     for d in PILOTS:
         for method, model in (("model", mm.MODEL_NAME), ("rules", "B1_expert_rules")):
@@ -108,16 +109,34 @@ def test_one_answer_comes_from_the_method_that_tested_better_in_the_district(rec
     assert a["method"] == "model" and a["crop"] == r["model"]["ranking"][0]["crop"] == "irish_potato"
     assert a["hit_rate"] == rec.hit_rates["Musanze"]["model"] == 0.75 and a["confidence"] == "high"
     assert a["others"] == [x["crop"] for x in r["model"]["ranking"][1:]] and a["close_second"] is None
-    assert a["why"][0].startswith("In Musanze, Random Forest did better than the expert rules")
+    assert a["why"][0] == ("In Musanze, Random Forest named the right crop first for 75% of the new fields in "
+                           "testing, against 62% for the expert rules, so the answer comes from Random Forest.")
     r = rec.recommend(-1.35, 30.30, "B")                           # Nyagatare: Random Forest answers
     assert r["answer"]["method"] == "model" and r["answer"]["crop"] == r["model"]["ranking"][0]["crop"]
     assert r["fertiliser"]["crop"] == r["answer"]["crop"]
     a = rec.recommend(-1.35, 30.30, "A")["answer"]                      # a season never tested
     assert a["confidence"] == "low" and a["lowered_by"] == ["this season was never tested"]
     assert r["answer"]["lowered_by"] == []
-    r = rec.recommend(-1.62, 29.50, "B")                           # Nyabihu: the rules rate crops equally
-    assert r["district"] == "Nyabihu" and r["answer"]["close_second"] is not None
-    assert r["answer"]["confidence"] == "low" and any("fits just as well" in w for w in r["answer"]["why"])
+    for lat, lon in ((-1.62, 29.50), (-1.692, 29.538)):            # Nyabihu: the rules rate crops equally here
+        r = rec.recommend(lat, lon, "B")
+        a = r["answer"]
+        assert r["district"] == "Nyabihu" and a["method"] == "model" and a["hit_rate"] == 0.744
+        assert a["crop"] == r["model"]["ranking"][0]["crop"] and a["close_second"] is None
+        assert a["confidence"] == "medium" and a["lowered_by"] == []
+        assert r["rules"]["ranking"][0]["score"] == r["rules"]["ranking"][1]["score"]   # a tie for the rules
+        assert "CROPS_TIED" not in r["warning_codes"]                  # the tie matters only when the rules answer
+
+
+def test_the_rules_answer_when_the_model_is_not_ahead_by_more_than_the_margin(rec, monkeypatch):
+    monkeypatch.setitem(rec.hit_rates["Nyabihu"], "model", 0.668)  # 0.007 above the rules: not enough
+    assert rec.method_for("Nyabihu") == "rules"
+    r = rec.recommend(-1.62, 29.50, "B")
+    a = r["answer"]
+    assert a["method"] == "rules" and a["close_second"] is not None and a["confidence"] == "low"
+    assert a["why"][0] == ("In Nyabihu, Random Forest was not ahead of the expert rules in testing on new fields "
+                           "(first crop right for 67% of the fields, against 66% for the rules), so the answer comes "
+                           "from the rules, the default.")
+    assert any("fits just as well" in w for w in a["why"]) and "CROPS_TIED" in r["warning_codes"]
 
 
 @pytest.mark.parametrize("hit,season,close,far,expected", [

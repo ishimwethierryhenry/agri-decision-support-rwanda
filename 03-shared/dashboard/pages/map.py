@@ -7,7 +7,9 @@ fertiliser. Since 23 Nov 2026 the trained model is the tuned Random Forest that 
 season in the training data; today's season is marked and can be picked.
 The model runs inside the dashboard (no server needed). Logic: 01-crop-recommendation/src/recommendation/map_model.py
 Since 24 Nov 2026 the page uses the shared Agri DSS look (ui_theme.py, rec_ui.py): a hero heading, the steps in one
-card and the answer in another, like the Diagnosis page.
+card and the answer in another, like the Diagnosis page. Since 25 Nov 2026 the answer in each district comes from the
+method that named the right crop first more often in testing (the measure the confidence uses), which is the tuned
+Random Forest in all four districts.
 """
 import sys
 from pathlib import Path
@@ -167,9 +169,10 @@ with st.expander("How this page works"):
         "learned from.\n"
         f"4. **One answer**: two methods were tested, the {mm.MODEL_TITLE} (trained on all 1,904 CIAT fields, "
         "with the settings the tuning of 23 November chose without ever looking at the test fields) and the "
-        "expert rules (B1). In each district, the answer comes from the one that did better in testing on new "
-        "fields there: "
-        + ", ".join(f"{mm.MODEL_LABEL if answered_by[d] == 'model' else 'the rules'} in {d}" for d in PILOTS)
+        "expert rules (B1). In each district, the answer comes from the one that named the right crop first more "
+        "often in testing on new fields there: "
+        + (f"{mm.MODEL_LABEL} in all four districts" if all(answered_by[d] == "model" for d in PILOTS) else
+           ", ".join(f"{mm.MODEL_LABEL if answered_by[d] == 'model' else 'the rules'} in {d}" for d in PILOTS))
         + ".\n"
         "5. **Confidence**: how often that method named the right crop first in testing on new fields in the "
         "district. High from 75%, medium from 50%, low below. One step lower when two crops are close or when the "
@@ -309,15 +312,19 @@ if evaluation and res["status"] == "ok":
         b2.caption(f"Rule score {top_rules['score']:.2f} out of 1")
         better = res["better_in_testing"]
         mt, rt = res["model"]["tested"].get("new_fields"), res["rules"]["tested"].get("new_fields")
+        hits = rec.hit_rates.get(res["district"], {})
+        first = ("" if hits.get("model") is None or hits.get("rules") is None else
+                 f" First crop right: {hits['model']:.0%} for the {mm.MODEL_LABEL} and {hits['rules']:.0%} for the "
+                 "rules. The one answer for users goes to the method that names the right crop first more often.")
         if better == "model":
             st.success(f"On new fields in {res['district']}, the {mm.MODEL_LABEL} did better than the rules in "
-                       f"testing ({mt:.2f} against {rt:.2f}).")
+                       f"testing (main score {mt:.2f} against {rt:.2f})." + first)
         elif better == "rules":
             st.warning(f"On new fields in {res['district']}, the rules did better than the {mm.MODEL_LABEL} in "
-                       f"testing ({rt:.2f} against {mt:.2f}). Read both rankings.")
+                       f"testing (main score {rt:.2f} against {mt:.2f})." + first + " Read both rankings.")
         elif better == "same":
-            st.info(f"On new fields in {res['district']}, the {mm.MODEL_LABEL} and the rules scored about the "
-                    "same in testing.")
+            st.info(f"On new fields in {res['district']}, the {mm.MODEL_LABEL} and the rules had about the same "
+                    "main score in testing." + first)
         c1, c2 = st.columns(2)
         with c1:
             ranking(mm.MODEL_TITLE, res["model"]["ranking"], "probability", res["model"]["tested"],
