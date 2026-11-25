@@ -1,0 +1,15 @@
+{
+  "model": "RF[all_sat] tuned",
+  "changes": false,
+  "decided_by": "decision 2 of docs/training_protocol.md, section 12",
+  "run_at_utc": "2026-11-25 07:21",
+  "git_commit": "f5efb4b6ffe7bcfd12c954fe0f27f8ff75b1529e",
+  "uncommitted_changes": false,
+  "versions": {
+    "python": "3.12.3",
+    "pandas": "3.1.0",
+    "numpy": "2.3.5",
+    "scikit-learn": "1.7.2"
+  },
+  "note": "The map keeps the model of version 1.2: 01-crop-recommendation/reports/tuning_v1/final_model.json"
+}

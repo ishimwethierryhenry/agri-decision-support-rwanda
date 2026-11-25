@@ -3,7 +3,8 @@
 Asked by the client and the team on 29 Oct 2026: show the performance of every model, per district and per crop,
 next to the recommendations. Updated on 18 Nov 2026 for protocol 1.1, which adds four satellite inputs measured at
 each field (the 12 combinations of the midterm give the same numbers as in eval_v1), and on 23 Nov 2026 for protocol
-1.2: the tuning run (reports/tuning_v1) and why its tuned Random Forest is now the trained model on the map.
+1.2: the tuning run (reports/tuning_v1) and why its tuned Random Forest is now the trained model on the map. On
+25 Nov 2026 the "why" section also gives the result of the second round of tuning (protocol 1.3, reports/tuning_v2).
 Everything here is read from the committed result files. Logic: 01-crop-recommendation/src/models/model_scores.py
 Since 24 Nov 2026 the page uses the shared Agri DSS look (ui_theme.py, rec_ui.py): a hero heading and one card per
 section.
@@ -211,6 +212,7 @@ who = tuning.answered_by()
 sure = tuning.when_sure()
 at_07 = sure[sure["Answers only from"] == 0.7].iloc[0]
 alt = tuning.alternatives().set_index("Choice")
+r2 = ms.second_round()                     # protocol 1.3 (reports/tuning_v2); None if its results are not there
 district_rule = "Most common crop of the field's district"
 mixed = tuning.mixed.loc["all"]
 with st.container(key="card_why"):
@@ -220,7 +222,12 @@ with st.container(key="card_why"):
         f"new fields by more than {mp['margin']}. The tuned {ms.short_label(on_map.replace(ms.TUNED, ''))} scores "
         f"{tf.loc[on_map, 'macro_f1_mean']:.3f} against {mp['today_score']:.3f} for {ms.short_label(mp['today'])} with "
         "the protocol settings, so the map moved to it.\n"
-        "- **One answer per point.** In each district it comes from the method that did better on new fields there: "
+        + (f"- **A second, bigger search found nothing better.** A second round of tuning, finished on 25 Nov, tried "
+           f"{sum(r2['settings'].values())} settings of Random Forest, Extra Trees and XGBoost, a blend of the three, "
+           "and inputs that say which crops the nearby surveyed fields grow. The best, the tuned "
+           f"{ms.short_label(r2['best'].replace(ms.TUNED, ''))}, scored {r2['best_score']:.3f} on new fields, not "
+           f"more than {r2['margin']} above this model, so the map kept it.\n" if r2 and not r2["changes"] else "")
+        + "- **One answer per point.** In each district it comes from the method that did better on new fields there: "
         + ", ".join(f"{algo if w == 'model' else 'the rules'} in {d}" for d, w in who.items()) + ".\n"
         f"- **It knows when to be trusted.** When it gives its first crop a probability of 0.7 or more "
         f"({pct(at_07['Fields answered'])} of the fields), that crop is right {pct(at_07['First crop right'])} of the "
@@ -249,7 +256,8 @@ with st.container(key="card_why"):
                      hide_index=True, height=rows_height(len(alt)))
     st.caption("Out-of-fold predictions of the new-fields test: no field was predicted by a model that saw its 2 km "
                "block. 'Answers only from' is the model's probability for its first crop. Full report: "
-               "01-crop-recommendation/reports/tuning_v1/report.md.")
+               "01-crop-recommendation/reports/tuning_v1/report.md"
+               + ("; second round: 01-crop-recommendation/reports/tuning_v2/report.md." if r2 else "."))
 
 with st.expander("Second check: the 650 fields CIAT marked \"Used\""):
     used_scores = load("used_only")

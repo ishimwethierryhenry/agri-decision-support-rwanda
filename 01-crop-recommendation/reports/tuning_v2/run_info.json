@@ -1,0 +1,98 @@
+{
+  "protocol_version": "1.3",
+  "quick_check_only": false,
+  "run_at_utc": "2026-11-25 07:18",
+  "compute_hours": 4.526237930258115,
+  "wall_hours_this_call": 0.0004976217614279853,
+  "workers": 2,
+  "job_minutes": {
+    "RF[field_sat]": 35.0,
+    "RF[all_sat]": 43.6,
+    "RF[field_sat_near]": 24.3,
+    "RF[all_sat_near]": 28.3,
+    "ET[field_sat]": 18.7,
+    "ET[all_sat]": 21.3,
+    "ET[field_sat_near]": 12.0,
+    "ET[all_sat_near]": 13.0,
+    "XGB[field_sat]": 22.0,
+    "XGB[all_sat]": 23.5,
+    "XGB[field_sat_near]": 14.2,
+    "XGB[all_sat_near]": 15.6
+  },
+  "table": "01-crop-recommendation/data/processed/feature_table_v6b.csv",
+  "table_sha256": "0bb9096237a38bc0a3aff73a72130bbea72726154f92093d39ea0eb0683a49be",
+  "git_commit": "a6dc702920af30ffedda49154b259103b758d31b",
+  "uncommitted_changes": false,
+  "report_rebuilt_at_commit": "f5efb4b6ffe7bcfd12c954fe0f27f8ff75b1529e",
+  "report_rebuilt_with_uncommitted_changes": false,
+  "rows": {
+    "before_filters": 2739,
+    "after_qc_ok": 2728,
+    "main": 1904
+  },
+  "methods": [
+    "RF",
+    "ET",
+    "XGB"
+  ],
+  "views": [
+    "field_sat",
+    "all_sat",
+    "field_sat_near",
+    "all_sat_near"
+  ],
+  "near_views_tests": "new fields only",
+  "n_draws": 100,
+  "inner_block_folds": 3,
+  "n_shuffles": 5,
+  "seed": 0,
+  "near": {
+    "block_deg": 0.018,
+    "cutoff_times_h": 3.0,
+    "h_of_section_6_settings": 4.0
+  },
+  "tests": {
+    "main": "leave one district out; inside: leave each training district out in turn",
+    "second": "5 folds over block_id (StratifiedGroupKFold, seed 0); inside: 3 folds over block_id, seed 0"
+  },
+  "builtin_check": {
+    "compared_with": "01-crop-recommendation/reports/eval_v2",
+    "rows_compared": 48,
+    "mismatches": [],
+    "passed": true
+  },
+  "decisions": {
+    "adoption": {
+      "passing": [],
+      "best_tuned": "RF[all_sat] tuned",
+      "best_tuned_score": 0.3082752785526772,
+      "best_tuned_wins": 1,
+      "b1_score": 0.37833722260517505
+    },
+    "map": {
+      "today": "RF[all_sat] tuned",
+      "today_score": 0.5140788351964372,
+      "margin": 0.01,
+      "beating": {},
+      "serve": "RF[all_sat] tuned",
+      "changes": false
+    },
+    "new_fields": {
+      "best": "ET[field_sat] tuned",
+      "best_score": 0.5214312151624125
+    }
+  },
+  "blends": [
+    "Blend[field_sat] tuned",
+    "Blend[all_sat] tuned",
+    "Blend[field_sat_near] tuned",
+    "Blend[all_sat_near] tuned"
+  ],
+  "versions": {
+    "python": "3.12.3",
+    "pandas": "3.1.0",
+    "numpy": "2.3.5",
+    "scikit-learn": "1.7.2",
+    "xgboost": "3.4.1"
+  }
+}

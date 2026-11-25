@@ -23,6 +23,7 @@ EVAL_V1 = MODULE / "reports" / "eval_v1"            # midterm, protocol 1.0 (12 
 EVAL_V2 = MODULE / "reports" / "eval_v2"            # protocol 1.1 (18 combinations, satellite inputs added)
 EVAL_DIR = EVAL_V2
 TUNING_V1 = MODULE / "reports" / "tuning_v1"        # protocol 1.2: the same models with tuned settings
+TUNING_V2 = MODULE / "reports" / "tuning_v2"        # protocol 1.3: second round of tuning
 TUNED = " tuned"
 CROPS = ["beans", "irish_potato", "maize", "rice"]
 CROP_NAMES = {"beans": "Beans", "irish_potato": "Irish potato", "maize": "Maize", "rice": "Rice"}
@@ -37,10 +38,12 @@ MODEL_ORDER = ["B0_majority", "B1_expert_rules",
                "LR[district]", "LR[field]", "LR[field_sat]", "LR[all]", "LR[all_sat]",
                "RF[district]", "RF[field]", "RF[field_sat]", "RF[all]", "RF[all_sat]", "RF[all_subsoil]",
                "XGB[district]", "XGB[field]", "XGB[field_sat]", "XGB[all]", "XGB[all_sat]"]
-_ALGO = {"LR": "Logistic Regression", "RF": "Random Forest", "XGB": "XGBoost"}
+_ALGO = {"LR": "Logistic Regression", "RF": "Random Forest", "ET": "Extra Trees", "XGB": "XGBoost",
+         "Blend": "Blend of the three"}
 _FIXED = {"B0_majority": ("B0, most common crop", "none"), "B1_expert_rules": ("B1, expert rules", "rules")}
 _VIEWS = {"district": "district (12)", "field": "field (10)", "field_sat": "field + satellite (14)",
-          "all": "all (21)", "all_sat": "all + satellite (25)", "all_subsoil": "all + subsoil (30)"}
+          "all": "all (21)", "all_sat": "all + satellite (25)", "all_subsoil": "all + subsoil (30)",
+          "field_sat_near": "field + satellite + nearby crops (19)", "all_sat_near": "all + satellite + nearby crops (30)"}
 # the same inputs without and with the four satellite inputs of protocol 1.1
 SATELLITE_PAIRS = {"field": "field_sat", "all": "all_sat"}
 
@@ -255,3 +258,19 @@ class Tuning:
         return pd.DataFrame([{"Choice": label, "Main score": s.loc[m, "macro_f1_mean"],
                               "First crop right, all fields": s.loc[m, "top1_all_fields"]}
                              for m, label in names.items() if m in s.index])
+
+
+def second_round(folder: Path = TUNING_V2) -> Optional[dict]:
+    """The second round of tuning (protocol 1.3, reports/tuning_v2), or None if its results are not there: the best
+    tuned model or blend on new fields and its main score, the model on the map before the round and its score, the
+    margin of decision 2, whether the map changed, and how many settings each method tried."""
+    folder = Path(folder)
+    if not (folder / "run_info.json").exists():
+        return None
+    info = json.loads((folder / "run_info.json").read_text(encoding="utf-8"))
+    cands = json.loads((folder / "candidates.json").read_text(encoding="utf-8"))
+    d = info["decisions"]
+    return {"best": d["new_fields"]["best"], "best_score": d["new_fields"]["best_score"],
+            "map_model": d["map"]["today"], "map_score": d["map"]["today_score"], "margin": d["map"]["margin"],
+            "changes": d["map"]["changes"], "serve": d["map"]["serve"],
+            "settings": {m: len(c) for m, c in cands.items()}, "run_at_utc": info["run_at_utc"]}
