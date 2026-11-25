@@ -7,6 +7,7 @@
 | `evaluate.py` | Evaluation harness v1. Follows `docs/training_protocol.md`: leave one district out (main test), new fields inside the known districts (second test), and both again on CIAT "Used" fields (second check). `--protocol 1.1` adds the satellite inputs (section 10) and writes `eval_v2`. |
 | `tune.py` | Tuning with nested tests (protocol 1.2, section 11). 61 candidate settings per method for Logistic Regression, Random Forest and XGBoost on the views `all`, `field_sat` and `all_sat`. The settings are chosen inside the training part of every fold of both tests, so the test fields never choose them. Also gives input importance, how often the model is right at each level of its own probability, simple alternatives and how mixed the 2 km blocks are. |
 | `tune_v2.py` | Second round of tuning (protocol 1.3, section 12). Random Forest, Extra Trees and XGBoost with wider ranges (102 candidates for Random Forest, 101 for the others), a blend of the three, and the views `field_sat` and `all_sat` plus two views with inputs that say which crops are grown on the surveyed fields of the nearby 2 km blocks (new-fields test only). Same nested tests as `tune.py`, which it reuses. |
+| `tune_v3.py` | Third round of tuning (protocol 1.4, section 13). Same candidates as `tune_v2.py`, but the 8 best of each fold are compared again on two more inner splits (a steadier choice), then one weight per crop is chosen at decision time, and a blend picks its group of models inside the training part. Built-in check: the version 1.3 choices fitted again give exactly the `tuning_v2` scores. |
 | `train_xgboost.py` | XGBoost training and scores (agreed at the stand-up of 28 Oct). Same folds and settings as `evaluate.py`, plus overall scores, scores per crop, confusion matrices, a check against `eval_v1`, and the final XGBoost on all inputs and all 1,904 fields (the model behind the dashboard map). |
 | `model_scores.py` | Reads the official evaluation (`reports/eval_v1`) and gives every score the dashboard and the notebooks show: main score per model and district, overall scores over all test fields, and precision, recall and F1 of each crop in each district. Needs only pandas and numpy. |
 | `compare_results.py` | Compares a rerun with the committed result files, file by file and model by model (used by the Colab notebooks). |
@@ -42,6 +43,14 @@ python 01-crop-recommendation/src/models/tune_v2.py
 ```
 
 It writes `01-crop-recommendation/reports/tuning_v2/` with the same files as `tuning_v1`, plus the nearest-fields reference and the blends in the result tables. Finished jobs are saved in `tuning_v2/_work/` (not committed), so a stopped run starts again where it stopped. `--quick` and `--final` work as in `tune.py`; `--final` only chooses new settings when decision 2 moves the map, otherwise it writes a note that the map keeps the model of `tuning_v1`. `--assemble-only` rebuilds the report from the saved jobs in a few seconds. The official run (25 Nov 2026) did not move the map: the best of the round, the tuned Extra Trees on `field_sat`, scored 0.521 on new fields against 0.514 for the model on the map.
+
+Third round of tuning (protocol 1.4, about half an hour on two cores):
+
+```
+python 01-crop-recommendation/src/models/tune_v3.py
+```
+
+It writes `01-crop-recommendation/reports/tuning_v3/`: `report.md`, the results and summaries of both tests, `choices.csv` (the candidate, crop weights and blend group chosen in every fold) and `run_info.json`. Finished tasks are kept in `tuning_v3/_work/` (not committed). `--quick` checks the code on one fold; its numbers are never reported.
 
 Rules for using results:
 
