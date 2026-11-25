@@ -1,0 +1,10 @@
+rule,shown,fields,right,share
+"25 Nov, first crop right","one crop, high",1184,0.773649,0.621849
+"25 Nov, first crop right","one crop, low",82,0.47561,0.043067
+"25 Nov, first crop right","one crop, medium",638,0.663009,0.335084
+"now, by situation","one crop, high",1331,0.774606,0.699055
+"now, by situation","one crop, medium",427,0.651054,0.224265
+"now, by situation","two crops, high",146,0.869863,0.076681
+until 25 Nov,"one crop, high",1184,0.773649,0.621849
+until 25 Nov,"one crop, low",153,0.470588,0.080357
+until 25 Nov,"one crop, medium",567,0.663139,0.297794

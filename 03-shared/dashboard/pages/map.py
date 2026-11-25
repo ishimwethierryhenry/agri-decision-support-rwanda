@@ -9,7 +9,9 @@ The model runs inside the dashboard (no server needed). Logic: 01-crop-recommend
 Since 24 Nov 2026 the page uses the shared Agri DSS look (ui_theme.py, rec_ui.py): a hero heading, the steps in one
 card and the answer in another, like the Diagnosis page. Since 25 Nov 2026 the answer in each district comes from the
 method that named the right crop first more often in testing (the measure the confidence uses), which is the tuned
-Random Forest in all four districts.
+Random Forest in all four districts. Also since 25 Nov 2026 the confidence is how often answers like this one were
+right in testing (reports/map_confidence): one crop, two crops when they fit about equally, or no answer, never one
+crop with a low confidence.
 """
 import sys
 from pathlib import Path
@@ -174,10 +176,12 @@ with st.expander("How this page works"):
         + (f"{mm.MODEL_LABEL} in all four districts" if all(answered_by[d] == "model" for d in PILOTS) else
            ", ".join(f"{mm.MODEL_LABEL if answered_by[d] == 'model' else 'the rules'} in {d}" for d in PILOTS))
         + ".\n"
-        "5. **Confidence**: how often that method named the right crop first in testing on new fields in the "
-        "district. High from 75%, medium from 50%, low below. One step lower when two crops are close or when the "
-        "nearest CIAT data is more than 5 km away; low for a season that was never tested. Only season B has "
-        "labelled data, so the page opens on season B.\n"
+        "5. **Confidence**: how often answers like this one were right in testing: same district, same kind of "
+        "answer, and field data from about as far away (01-crop-recommendation/reports/map_confidence). High from "
+        "75%, medium from 50%. When the first two crops are close, the page gives both, with how often the crop "
+        "planted was one of the two. When even that was right for less than half of such fields, when the nearest "
+        "surveyed field is more than 20 km away, or for a season that was never tested, the page gives no answer "
+        "instead of a low one. Only season B has labelled data, so the page opens on season B.\n"
         "6. **Fertiliser**: for the recommended crop. Until the RAB guideline is in, the rates are interim: "
         "national blanket rates copied from published sources, each shown with its page and link. Nothing is "
         "invented.\n\n"
@@ -238,31 +242,38 @@ with right:
             inp = res["inputs"]
             ui.place(f"{res['district']} ({PROVINCES.get(inp['province'], inp['province'])}), point "
                      f"{res['point']['lat']}, {res['point']['lon']}")
-            if res["season"]["asked"] != res["season"]["used"]:
-                st.info(f"{mm.SEASON_NAMES[res['season']['asked']]} is not in the training data yet. The answer "
-                        "below is for season B (from 1 February), the only season the model and the rules were "
-                        "tested on.")
             ans = res["answer"]
-            note = ""
-            if ans["hit_rate"] is not None:
-                note = (f"In testing on new fields in {res['district']}, the first crop was right about "
-                        f"{round(ans['hit_rate'] * 10)} times out of 10."
-                        + (f" Lower here because {' and '.join(ans['lowered_by'])}." if ans["lowered_by"] else ""))
-            ui.answer(crop(ans["crop"]), ans["confidence"], ans["hit_rate"], note)
-            if ans["close_second"]:
-                st.caption(f"{crop(ans['close_second'])} fits almost as well here.")
-            with st.expander("Why this crop and this confidence"):
+            blk_km = inp["block"]["distance_km"]
+            far = (f" The nearest surveyed field is {blk_km:.1f} km away, so the soil, elevation and satellite "
+                   "values come from there." if blk_km > mm.NEAR_KM else "")
+            if ans["kind"] == "none":
+                title = ("No answer for this season" if res["season"]["asked"] != res["season"]["used"]
+                         else "No reliable answer here")
+                ui.no_answer(title, ans["message"] + " Please ask the local agronomist.")
+            elif ans["kind"] == "two_crops":
+                first, second = (crop(c) for c in ans["crops"])
+                ui.answer(f"{first} or {second}", ans["confidence"], ans["hit_rate"],
+                          f"Both fit this field about equally. In testing, the crop planted was one of these two "
+                          f"about {round(ans['hit_rate'] * 10)} times out of 10. Pick between them by the seed you "
+                          "have and where you can sell." + far)
+            else:
+                ui.answer(crop(ans["crop"]), ans["confidence"], ans["hit_rate"],
+                          f"In testing, answers like this one were right about {round(ans['hit_rate'] * 10)} times "
+                          "out of 10." + far)
+            title = {"none": "Why there is no answer", "two_crops": "Why these crops and this confidence"}.get(
+                ans["kind"], "Why this crop and this confidence")
+            with st.expander(title):
                 for line in ans["why"]:
                     st.write(f"- {line}")
                 if ans["others"]:
                     st.write("Next in order: " + ", ".join(crop(c) for c in ans["others"]) + ".")
-            st.write("")
-            ui.head(f"Fertiliser for {crop(ans['crop'])}")
-            fert = res["fertiliser"]
-            if fert["status"] == "no_matching_rule":
-                st.write(f"No fertiliser rule fits {crop(ans['crop'])}, so no rate is given.")
-            else:
-                show_fertiliser(fert["items"])
+            for c, advice in zip(ans["crops"], (res["fertiliser"], res["fertiliser_second"])):
+                st.write("")
+                ui.head(f"Fertiliser for {crop(c)}")
+                if advice["status"] == "no_matching_rule":
+                    st.write(f"No fertiliser rule fits {crop(c)}, so no rate is given.")
+                else:
+                    show_fertiliser(advice["items"])
             with st.expander("Inputs for this point"):
                 blk = inp["block"]
                 where = ("the same 2 km block" if blk["distance_km"] == 0

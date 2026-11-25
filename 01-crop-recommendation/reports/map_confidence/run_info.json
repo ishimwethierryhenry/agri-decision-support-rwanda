@@ -1,0 +1,50 @@
+{
+  "run_at_utc": "2026-11-25 08:09",
+  "git_commit": "bd694606a91e4ded748e4c2d71ca9fb37f614097",
+  "uncommitted_changes": true,
+  "table": "01-crop-recommendation/data/processed/feature_table_v6b.csv",
+  "table_sha256": "0bb9096237a38bc0a3aff73a72130bbea72726154f92093d39ea0eb0683a49be",
+  "model": "RF[all_sat] tuned",
+  "folds": "5 folds over block_id (StratifiedGroupKFold, seed 0), settings of tuning_v1/chosen_settings.csv",
+  "close_call": 0.1,
+  "bands": [
+    "within 5 km",
+    "5 to 10 km",
+    "10 to 20 km"
+  ],
+  "min_tested_fields": 30,
+  "levels": {
+    "high": 0.75,
+    "medium": 0.5
+  },
+  "grid_step_degrees": 0.01,
+  "builtin_check": {
+    "compared_with": "01-crop-recommendation/reports/tuning_v1/main_blockcv_results.csv",
+    "districts": {
+      "Musanze": {
+        "tuning_v1": 0.75,
+        "replayed": 0.75
+      },
+      "Nyabihu": {
+        "tuning_v1": 0.7440476190476191,
+        "replayed": 0.7440476190476191
+      },
+      "Nyagatare": {
+        "tuning_v1": 0.7592250922509225,
+        "replayed": 0.7592250922509225
+      },
+      "Ruhango": {
+        "tuning_v1": 0.6290983606557377,
+        "replayed": 0.6290983606557377
+      }
+    },
+    "passed": true
+  },
+  "minutes": 1.1,
+  "versions": {
+    "python": "3.12.3",
+    "pandas": "3.1.0",
+    "numpy": "2.3.5",
+    "scikit-learn": "1.7.2"
+  }
+}

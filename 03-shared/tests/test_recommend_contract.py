@@ -170,6 +170,26 @@ def test_point_examples_are_valid():
     assert ok.recommendation.confidence.level.value in {"high", "medium", "low"}
     out = PointResponse(**ex.RESPONSE_POINT_OUTSIDE)
     assert out.abstain and out.recommendation is None and out.abstain_message
+    # Added in 1.3: two crops that fit about equally, each with its fertiliser, and the confidence of such answers
+    PointRequest(**ex.REQUEST_POINT_TWO_CROPS)
+    two = PointResponse(**ex.RESPONSE_POINT_TWO_CROPS)
+    r = two.recommendation
+    assert r.kind == "two_crops" and r.crops == [r.crop, r.close_second] and r.confidence.basis == "first_two_crops"
+    assert two.fertiliser.crop == r.crop and two.fertiliser_second.crop == r.close_second
+    assert ok.recommendation.kind == "one_crop" and ok.recommendation.confidence.tested_fields >= 30
+
+
+def test_two_crop_answers_and_their_second_fertiliser_must_agree():
+    two = ex.RESPONSE_POINT_TWO_CROPS
+    rec = two["recommendation"]
+    with pytest.raises(ValidationError):                       # a two-crop answer needs both crops
+        PointResponse(**{**two, "recommendation": {**rec, "crops": [rec["crop"]]}})
+    with pytest.raises(ValidationError):                       # the second crop is close_second
+        PointResponse(**{**two, "recommendation": {**rec, "close_second": "rice"}})
+    with pytest.raises(ValidationError):                       # the second fertiliser is for the second crop
+        PointResponse(**{**two, "fertiliser_second": {**two["fertiliser_second"], "crop": "rice"}})
+    with pytest.raises(ValidationError):                       # at most two crops
+        PointResponse(**{**two, "recommendation": {**rec, "crops": ["beans", "maize", "rice"]}})
 
 
 @pytest.mark.parametrize("body", [{"lat": -1.5, "season": "B"}, {"lon": 29.6, "season": "B"},

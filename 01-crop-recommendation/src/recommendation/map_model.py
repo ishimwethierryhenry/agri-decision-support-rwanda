@@ -61,6 +61,8 @@ BOUNDARIES_PATH = MODULE / "data" / "reference" / "rwanda_districts.geojson"
 EVAL_DIR = MODULE / "reports" / "tuning_v1"
 FINAL_MODEL_PATH = EVAL_DIR / "final_model.json"
 FERTILISER_RULES_PATH = HERE / "rules" / "fertiliser_rules.yaml"
+# How often answers like each one were right in testing (built by build_map_confidence.py, since 25 Nov 2026)
+CONFIDENCE_TABLE_PATH = MODULE / "reports" / "map_confidence" / "confidence_table.csv"
 
 BLOCK_DEG = 0.018          # Part A's block_id is round(lat / 0.018) and round(lon / 0.018)
 MODEL_SEASON = "B"         # the only season in the training data (CIAT, season B 2025)
@@ -74,6 +76,11 @@ CHOICE_MARGIN = 0.01       # the model answers only if its tested first crop rig
 HIGH_HIT, LOW_HIT = 0.75, 0.50   # tested hit rate bands for the confidence level (simple, fixed, not tuned)
 CLOSE_CALL = 0.10          # first and second crop closer than this in the method's own score: a close call
 LEVELS = ("low", "medium", "high")
+# Distance from the point to the CIAT block its field inputs come from, in the bands of the confidence table.
+# Beyond the last band the map gives no answer: nothing was tested with inputs from that far.
+DATA_BANDS = ((NEAR_KM, "within 5 km"), (10.0, "5 to 10 km"), (20.0, "10 to 20 km"))
+ONE_CROP, TWO_CLOSE, TWO_ANY = "one crop", "two crops, close", "two crops, any"   # kinds of answer in the table
+MIN_TESTED_FIELDS = 30     # a cell of the table with fewer tested fields takes the value of the four districts together
 SEASON_NAMES = {"A": "Season A (Sep to Jan)", "B": "Season B (Feb to Jun)", "C": "Season C (Jul to Aug)"}
 
 
@@ -118,6 +125,23 @@ def confidence_level(hit_rate: Optional[float], season_tested: bool = True, clos
         return "low"
     step = (2 if hit_rate >= HIGH_HIT else 1) - int(close_call) - int(far)
     return LEVELS[max(step, 0)]
+
+
+def data_band(km: float) -> Optional[str]:
+    """The distance band of the confidence table for field inputs taken this far from the point, or None beyond."""
+    for limit, name in DATA_BANDS:
+        if km < limit:
+            return name
+    return None
+
+
+def load_confidence_table(path: Optional[Path] = CONFIDENCE_TABLE_PATH) -> dict:
+    """{(district, band, kind): {"rate", "fields", "pooled"}} from reports/map_confidence, or {} if it is missing."""
+    if not path or not Path(path).exists():
+        return {}
+    t = pd.read_csv(path)
+    return {(r.district, r.band, r.kind): {"rate": float(r.rate), "fields": int(r.fields), "pooled": bool(r.pooled)}
+            for r in t.itertuples()}
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -207,8 +231,9 @@ class MapRecommender:
     """Trains the model on the map on all fields once (a few seconds), then answers one point at a time."""
 
     def __init__(self, raw: pd.DataFrame, districts: Districts, evaluation_dir: Optional[Path] = EVAL_DIR,
-                 final: Optional[dict] = None):
+                 final: Optional[dict] = None, confidence_table: Optional[Path] = CONFIDENCE_TABLE_PATH):
         self.districts = districts
+        self.confidence = load_confidence_table(confidence_table)
         self.main = ev.prepare(raw)                                 # the 1,904 training fields
         self.final = final or FINAL
         self.model = tune.Tunable(self.final["method"], self.final["settings"], self.final["view"])
@@ -223,8 +248,10 @@ class MapRecommender:
 
     @classmethod
     def load(cls, table: Path = TABLE_PATH, boundaries: Path = BOUNDARIES_PATH,
-             evaluation_dir: Optional[Path] = EVAL_DIR) -> "MapRecommender":
-        return cls(pd.read_csv(table, low_memory=False), Districts.load(boundaries), evaluation_dir)
+             evaluation_dir: Optional[Path] = EVAL_DIR,
+             confidence_table: Optional[Path] = CONFIDENCE_TABLE_PATH) -> "MapRecommender":
+        return cls(pd.read_csv(table, low_memory=False), Districts.load(boundaries), evaluation_dir,
+                   confidence_table=confidence_table)
 
     # ----------------------------------------------------------- lookup tables (no farm coordinates)
     def _build_lookup(self, raw: pd.DataFrame) -> None:
@@ -305,17 +332,10 @@ class MapRecommender:
         return out
 
     # ----------------------------------------------------------- one point
-    def feature_row(self, lat: float, lon: float, district: str,
-                    elevation_m: Optional[float] = None) -> tuple[dict, dict]:
-        blocks = self.blocks[self.blocks["District"] == district]
-        bid = block_id(lat, lon)
-        here = blocks[blocks["block_id"] == bid]
-        if here.empty:
-            dist = blocks.apply(lambda b: haversine_km(lat, lon, b["lat"], b["lon"]), axis=1)
-            b = blocks.loc[dist.idxmin()]
-            km = float(dist.min())
-        else:
-            b, km = here.iloc[0], 0.0
+    def block_row(self, b: pd.Series, district: str, elevation_m: Optional[float] = None) -> dict:
+        """The model's input row for a point whose field inputs come from block b (one row of self.blocks): soil,
+        elevation and satellite values of the block, climate and crop shares of the district. build_map_confidence.py
+        uses the same row to measure how often the map is right with inputs taken from a given distance."""
         d = self.district_values[district]
         elev = float(elevation_m) if elevation_m is not None else float(b["elevation_m"])
         tmean = (d["tmax_c"] + d["tmin_c"]) / 2
@@ -330,6 +350,20 @@ class MapRecommender:
             # An elevation given by the user replaces both elevations: on the CIAT fields SRTM and GPS agree
             # within about 11 m (median), so keeping the block's SRTM value would contradict the user's.
             row["srtm_elevation_m"] = elev
+        return row
+
+    def feature_row(self, lat: float, lon: float, district: str,
+                    elevation_m: Optional[float] = None) -> tuple[dict, dict]:
+        blocks = self.blocks[self.blocks["District"] == district]
+        bid = block_id(lat, lon)
+        here = blocks[blocks["block_id"] == bid]
+        if here.empty:
+            dist = blocks.apply(lambda b: haversine_km(lat, lon, b["lat"], b["lon"]), axis=1)
+            b = blocks.loc[dist.idxmin()]
+            km = float(dist.min())
+        else:
+            b, km = here.iloc[0], 0.0
+        row = self.block_row(b, district, elevation_m)
         info = {"block_id": str(b["block_id"]), "block_lat": float(b["lat"]), "block_lon": float(b["lon"]),
                 "distance_km": round(km, 2), "n_fields": int(b["n_fields"]),
                 "elevation_source": "user" if elevation_m is not None else "median GPS elevation of the CIAT fields in the block"}
@@ -367,7 +401,7 @@ class MapRecommender:
         if asked != MODEL_SEASON:
             _warn(out, "SEASON_NOT_EVALUATED",
                   f"{SEASON_NAMES[asked]} is not in the training data yet: the model and the rules were only tested "
-                  f"on season B (CIAT, 2025). The answer below is for season B, which starts on 1 February.",
+                  f"on season B (CIAT, 2025), so there is no answer for this season. Season B starts on 1 February.",
                   first=True)
         row, info = self.feature_row(lat, lon, district, elevation_m)
         d = self.district_values[district]
@@ -421,17 +455,45 @@ class MapRecommender:
             if len(tied) > 1:
                 _warn(out, "CROPS_TIED", f"The rules rate {', '.join(tied)} equally ({ranked[0]['score']:.2f}); "
                                          "their order is only a tie-break.")
-        top = out["answer"]["crop"]
-        out["fertiliser"] = fert.recommend(self.fert_rules, top, {})
-        if out["fertiliser"]["status"] == "no_matching_rule":
+        # Fertiliser for each crop of the answer (none when there is no answer)
+        advice = [fert.recommend(self.fert_rules, c, {}) for c in out["answer"]["crops"]]
+        out["fertiliser"] = advice[0] if advice else None
+        out["fertiliser_second"] = advice[1] if len(advice) > 1 else None
+        if any(a["status"] == "no_matching_rule" for a in advice):
             _warn(out, "NO_GUIDELINE_RULE_FOUND", "No fertiliser rule fits this crop, so no rate is given.")
-        elif fert.interim_rules_used(self.fert_rules, out["fertiliser"]):
+        if any(a["status"] != "no_matching_rule" and fert.interim_rules_used(self.fert_rules, a) for a in advice):
             _warn(out, "FERTILISER_INTERIM", "Fertiliser rates are interim: national blanket rates from published "
                                              "sources, not yet confirmed by RAB, and the same for every field.")
+        if out["answer"]["kind"] == "none":
+            _warn(out, "NO_RELIABLE_ANSWER", out["answer"]["message"])
         return out
 
+    def _situation(self, district: str, km: float, close: bool) -> Optional[dict]:
+        """How often answers like this one were right in testing (reports/map_confidence): the kind of answer the map
+        gives (one crop, or the first two when they are close or when one crop would be right less than half the
+        time), its tested rate and how many fields it rests on. None when nothing was tested for this situation."""
+        band = data_band(km)
+        if band is None or not self.confidence:
+            return None
+        if close:
+            kind, cell = "two_crops", self.confidence.get((district, band, TWO_CLOSE))
+        else:
+            kind, cell = "one_crop", self.confidence.get((district, band, ONE_CROP))
+            if cell is not None and cell["rate"] < LOW_HIT:
+                kind, cell = "two_crops", self.confidence.get((district, band, TWO_ANY))
+        return None if cell is None else {"kind": kind, "band": band, "table_kind": TWO_CLOSE if close else
+                                          (ONE_CROP if kind == "one_crop" else TWO_ANY), **cell}
+
     def _answer(self, out: dict, district: str, season_tested: bool, far: bool) -> dict[str, Any]:
-        """The one recommendation shown to the user, with its confidence and the reasons behind both."""
+        """The recommendation shown to the user, with its confidence and the reasons behind both.
+
+        Since 25 Nov 2026 the confidence is how often answers like this one were right in testing: same district,
+        same kind of answer, field inputs from about as far away (reports/map_confidence). The answer is one crop
+        when the model's first two crops are not close, and the two crops when they are (or when one crop would be
+        right for less than half of such fields). There is no answer (kind "none") when the season was never tested,
+        when the nearest surveyed field is more than 20 km away, or when even the answer's tested rate is below 50
+        percent: a farmer never gets one crop with a low confidence. Without the table (or when the rules answer),
+        the level comes from the district hit rate as on 22 Nov, and a low level also means no answer."""
         method = self.method_for(district)
         no_rules = method == "rules" and not out["rules"]["ranking"]
         if no_rules:
@@ -440,42 +502,101 @@ class MapRecommender:
         ranked = out[method]["ranking"]
         first, second = ranked[0], (ranked[1] if len(ranked) > 1 else None)
         close = second is not None and first[key] - second[key] < CLOSE_CALL
-        hit = self.hit_rates.get(district, {}).get(method)
-        level = confidence_level(hit, season_tested, close, far)
+        km = out["inputs"]["block"]["distance_km"]
+        district_hit = self.hit_rates.get(district, {}).get(method)
         other = "rules" if method == "model" else "model"
         theirs = self.hit_rates.get(district, {}).get(other)
+
+        # Kind of answer and its tested rate
+        situation = self._situation(district, km, close) if method == "model" else None
+        beyond = method == "model" and bool(self.confidence) and data_band(km) is None
+        if situation is not None:
+            kind, rate = situation["kind"], situation["rate"]
+            level = "high" if rate >= HIGH_HIT else "medium" if rate >= LOW_HIT else "low"
+        else:                                   # the rules, or no table: the district hit rate of 22 Nov
+            kind, rate = "one_crop", district_hit
+            level = confidence_level(district_hit, season_tested, close, far)
+        if not season_tested or beyond or level == "low":
+            kind = "none"
+        two = kind == "two_crops"
+
+        # Reasons, in plain words
         if no_rules:
             why = [f"The expert rules could not rate any crop here, so the answer comes from {MODEL_LABEL}."]
-        elif hit is not None and theirs is not None and method == "model":
-            why = [f"In {district}, {MODEL_LABEL} named the right crop first for {hit:.0%} of the new fields in "
-                   f"testing, against {theirs:.0%} for the expert rules, so the answer comes from {MODEL_LABEL}."]
-        elif hit is not None and theirs is not None:
+        elif district_hit is not None and theirs is not None and method == "model":
+            why = [f"In {district}, {MODEL_LABEL} named the right crop first for {district_hit:.0%} of the new fields "
+                   f"in testing, against {theirs:.0%} for the expert rules, so the answer comes from {MODEL_LABEL}."]
+        elif district_hit is not None and theirs is not None:
             why = [f"In {district}, {MODEL_LABEL} was not ahead of the expert rules in testing on new fields (first "
-                   f"crop right for {theirs:.0%} of the fields, against {hit:.0%} for the rules), so the answer "
-                   "comes from the rules, the default."]
+                   f"crop right for {theirs:.0%} of the fields, against {district_hit:.0%} for the rules), so the "
+                   "answer comes from the rules, the default."]
         else:
             why = [f"The answer comes from {METHOD_NAMES[method]}."]
-        if hit is not None and (no_rules or theirs is None):
-            why.append(f"In testing, its first crop was the right one for {hit:.0%} of the new fields in {district}.")
+        if situation is None and district_hit is not None and (no_rules or theirs is None):
+            why.append(f"In testing, its first crop was the right one for {district_hit:.0%} of the new fields in "
+                       f"{district}.")
         if method == "rules":
             why += [r["text"] for r in first.get("reasons", [])]
-        if close and abs(first[key] - second[key]) < 1e-9:
-            why.append(f"{CROP_NAMES[second['crop']]} fits just as well ({first[key]:.2f} each), so the confidence is "
-                       "one step lower.")
-        elif close:
-            why.append(f"{CROP_NAMES[second['crop']]} is close behind ({first[key]:.2f} against {second[key]:.2f}), "
-                       "so the confidence is one step lower.")
-        if far:
-            why.append(f"The nearest CIAT data is more than {NEAR_KM:.0f} km away, so the confidence is one step "
-                       "lower.")
-        if not season_tested:
-            why.append("The season you picked was never tested, so the confidence is low. The answer is for season B.")
+        message = None
+        if kind == "none":
+            if not season_tested:
+                message = ("This season was never tested: the model and the rules learned from season B 2025 only. "
+                           "Pick season B (February to June) for a tested answer.")
+            elif beyond:
+                message = (f"The nearest surveyed field is {km:.1f} km away. Nothing was tested with field data from "
+                           "that far, so there is no reliable answer here.")
+            elif situation is not None:
+                message = (f"Answers like this one were right for only {rate:.0%} of the fields in testing, less than "
+                           "half, so there is no reliable answer here.")
+            else:                               # the district hit rate of 22 Nov, lowered to low
+                reasons = ([f"{METHOD_NAMES[method]} named the right crop first for only {rate:.0%} of the new "
+                            f"fields in {district}"] if rate is not None and rate < LOW_HIT else
+                           ["there is no tested hit rate"] if rate is None else [])
+                reasons += (["two crops fit almost as well"] if close else []) + (
+                    [f"the nearest surveyed field is {km:.1f} km away"] if far else [])
+                message = f"The confidence here would be low ({' and '.join(reasons)}), so there is no reliable answer."
+            why = [message + " Please ask the local agronomist."]
+        else:
+            if second is not None and (close or two):
+                how = (f"just as well ({first[key]:.2f} each)" if abs(first[key] - second[key]) < 1e-9 else
+                       f"almost as well ({first[key]:.2f} against {second[key]:.2f})")
+                why.append(f"{CROP_NAMES[second['crop']]} fits {how}" + (", so both are given." if two else
+                                                                         ", so the confidence is one step lower."))
+            if far:
+                why.append(f"The nearest surveyed field is {km:.1f} km away, so the soil, elevation and satellite "
+                           "values come from there.")
+            if situation is not None:
+                where = (f"all four districts together, {situation['fields']} fields, because {district} alone has "
+                         f"too few such fields" if situation["pooled"] else f"{situation['fields']} fields in {district}")
+                data = ("field data within 5 km" if situation["band"] == "within 5 km" else
+                        f"field data taken {situation['band']} away")
+                if two and close:
+                    why.append(f"In testing, when the first two crops were this close, the crop planted was one of the "
+                               f"two for {rate:.0%} of the fields ({where}, {data}).")
+                elif two:
+                    why.append(f"In testing, one crop alone was right for less than half of such fields, but the crop "
+                               f"planted was one of the first two for {rate:.0%} of them ({where}, {data}).")
+                else:
+                    why.append(f"In testing, answers like this one, with one clear first crop, were right for "
+                               f"{rate:.0%} of the fields ({where}, {data}).")
         lowered = ((["this season was never tested"] if not season_tested else [])
-                   + (["another crop fits almost as well"] if close else [])
-                   + ([f"the nearest CIAT data is more than {NEAR_KM:.0f} km away"] if far else []))
-        return {"crop": first["crop"], "method": method, "method_name": out[method]["name"], "confidence": level,
-                "hit_rate": hit, "close_second": second["crop"] if close else None, "lowered_by": lowered,
-                "others": [r["crop"] for r in ranked[1:]], "why": why}
+                   + (["two crops fit almost as well" if two else "another crop fits almost as well"]
+                      if close or two else [])
+                   + ([f"the nearest CIAT data is {km:.1f} km away"] if far else []))
+        crops = [] if kind == "none" else [first["crop"]] + ([second["crop"]] if two else [])
+        shown = kind != "none"
+        band = situation["band"] if situation is not None else None
+        return {"kind": kind, "crop": first["crop"] if shown else None, "crops": crops,
+                "method": method, "method_name": out[method]["name"],
+                "confidence": level if shown else None, "hit_rate": rate if shown else None,
+                "basis": "first_two_crops" if two else "first_crop",
+                "tested_fields": situation["fields"] if situation is not None and shown else None,
+                "situation": (f"{district}, field data {band}{'' if band == 'within 5 km' else ' away'}, "
+                              + ("first two crops close" if two and close else "first two crops" if two else
+                                 "one clear first crop")) if shown and situation is not None else None,
+                "close_second": second["crop"] if two else None, "lowered_by": lowered,
+                "others": [r["crop"] for r in ranked[len(crops):]] if shown else [],
+                "message": message, "why": why}
 
     # ----------------------------------------------------------- for the notebook
     def feature_importance(self, evaluation_dir: Path = EVAL_DIR) -> pd.DataFrame:

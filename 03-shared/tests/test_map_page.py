@@ -73,9 +73,9 @@ def test_default_point_shows_one_answer_with_its_confidence():
     assert _place(at) == ["Musanze (Northern Province), point -1.458, 29.556"]
     assert _answer(at) == ["Irish potato"] and not _picks(at)       # one answer, no comparison for the user
     assert "Random Forest suggests" not in [c.value for c in at.caption]
-    assert len(_confidence(at)) == 1 and _confidence(at)[0] in {"High", "Medium", "Low"}
+    assert _confidence(at) == ["High"]                       # one clear first crop: 76% of 153 Musanze fields
     text = " ".join(m.value for m in at.markdown)
-    assert "In testing on new fields in Musanze, the first crop was right about" in text
+    assert "In testing, answers like this one were right about 8 times out of 10." in text
     assert "Soil, 0 to 20 cm (iSDAsoil)" in text and "NISR" in text     # inputs stay available, folded
     assert "Satellite at the field: SRTM elevation" in text
 
@@ -100,14 +100,16 @@ def test_fertiliser_for_the_recommended_crop_is_interim_and_cited():
     assert any(c.value.startswith("Source: ") and "[link](https://" in c.value for c in at.caption)
 
 
-def test_page_opens_on_the_tested_season_and_other_seasons_get_a_note():
+def test_page_opens_on_the_tested_season_and_other_seasons_get_no_answer():
     at = _page()
     assert at.radio(key="pills_season").value == "B"        # the only season in the training data
-    assert not any("not in the training data yet" in i.value for i in at.info)
-    assert _confidence(at) == ["High"]                       # Musanze: tested hit rate 0.75
+    assert _confidence(at) == ["High"] and _answer(at) == ["Irish potato"]
     at.radio(key="pills_season").set_value("A").run()
-    assert any("not in the training data yet" in i.value for i in at.info)
-    assert _confidence(at) == ["Low"]
+    assert not at.exception
+    assert _confidence(at) == [] and _answer(at) == ["No answer for this season"]    # never one crop with Low
+    text = " ".join(m.value for m in at.markdown)
+    assert ">No answer<" in text and "Pick season B (February to June) for a tested answer." in text
+    assert "Fertiliser for" not in text
     at.radio(key="pills_season").set_value("B").run()
     assert _confidence(at) == ["High"]
 
@@ -127,13 +129,24 @@ def test_nyabihu_is_answered_by_the_method_that_names_the_right_crop_first_more_
     first more often in Nyabihu (74% against 66% of the new fields), so it answers now."""
     at = _type_point(_page(), -1.692, 29.538)
     assert _place(at)[0].startswith("Nyabihu (Western Province)")
-    assert _answer(at) == ["Maize"] and _confidence(at) == ["Medium"]
+    assert _answer(at) == ["Maize"] and _confidence(at) == ["High"]      # one clear first crop: 78% of 147 fields
     assert any("Random Forest named the right crop first for 74% of the new fields in testing, against 66% for the "
                "expert rules" in m.value for m in at.markdown)
     assert any("Random Forest in all four districts" in m.value for m in at.markdown)   # How this page works
     at = _evaluation_view(at)
     assert any("the rules did better than the Random Forest in testing (main score 0.65 against 0.63). First crop "
                "right: 74% for the Random Forest and 66% for the rules." in w.value for w in at.warning)
+
+
+def test_ruhango_point_where_two_crops_fit_gives_both():
+    """The point Thierry checked on 25 Nov: beans and maize fit almost equally, which gave one crop with a Low badge.
+    Now the page gives both, with how often the crop planted was one of the two (79% of 61 Ruhango close calls)."""
+    at = _type_point(_page(), -2.196, 29.592)
+    assert _place(at)[0].startswith("Ruhango (Southern Province)")
+    assert _answer(at) == ["Beans or Maize"] and _confidence(at) == ["High"]
+    text = " ".join(m.value for m in at.markdown)
+    assert "the crop planted was one of these two about 8 times out of 10" in text
+    assert "Fertiliser for Beans <b>" in text and "Fertiliser for Maize <b>" in text
 
 
 def test_points_outside_the_pilot_districts_or_rwanda_get_no_crop():

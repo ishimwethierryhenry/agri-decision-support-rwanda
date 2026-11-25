@@ -1,0 +1,37 @@
+district,band,kind,fields,right,rate,pooled,district_fields
+Musanze,within 5 km,one crop,153,116,0.75817,False,153
+Nyabihu,within 5 km,one crop,147,115,0.782313,False,147
+Nyagatare,within 5 km,one crop,1031,800,0.775946,False,1031
+Ruhango,within 5 km,one crop,427,278,0.651054,False,427
+Musanze,within 5 km,"two crops, close",146,127,0.869863,True,11
+Nyabihu,within 5 km,"two crops, close",146,127,0.869863,True,21
+Nyagatare,within 5 km,"two crops, close",53,52,0.981132,False,53
+Ruhango,within 5 km,"two crops, close",61,48,0.786885,False,61
+Musanze,within 5 km,"two crops, any",164,146,0.890244,False,164
+Nyabihu,within 5 km,"two crops, any",168,163,0.970238,False,168
+Nyagatare,within 5 km,"two crops, any",1084,1053,0.971402,False,1084
+Ruhango,within 5 km,"two crops, any",488,431,0.883197,False,488
+Musanze,5 to 10 km,one crop,159,92,0.578616,False,159
+Nyabihu,5 to 10 km,one crop,166,119,0.716867,False,166
+Nyagatare,5 to 10 km,one crop,1055,768,0.727962,False,1055
+Ruhango,5 to 10 km,one crop,409,227,0.555012,False,409
+Musanze,5 to 10 km,"two crops, close",115,105,0.913043,True,5
+Nyabihu,5 to 10 km,"two crops, close",115,105,0.913043,True,2
+Nyagatare,5 to 10 km,"two crops, close",115,105,0.913043,True,29
+Ruhango,5 to 10 km,"two crops, close",79,73,0.924051,False,79
+Musanze,5 to 10 km,"two crops, any",164,126,0.768293,False,164
+Nyabihu,5 to 10 km,"two crops, any",168,162,0.964286,False,168
+Nyagatare,5 to 10 km,"two crops, any",1084,1021,0.941882,False,1084
+Ruhango,5 to 10 km,"two crops, any",488,439,0.89959,False,488
+Musanze,10 to 20 km,one crop,164,52,0.317073,False,164
+Nyabihu,10 to 20 km,one crop,144,65,0.451389,False,144
+Nyagatare,10 to 20 km,one crop,1061,768,0.723845,False,1061
+Ruhango,10 to 20 km,one crop,420,231,0.55,False,420
+Musanze,10 to 20 km,"two crops, close",115,98,0.852174,True,0
+Nyabihu,10 to 20 km,"two crops, close",115,98,0.852174,True,24
+Nyagatare,10 to 20 km,"two crops, close",115,98,0.852174,True,23
+Ruhango,10 to 20 km,"two crops, close",68,67,0.985294,False,68
+Musanze,10 to 20 km,"two crops, any",164,119,0.72561,False,164
+Nyabihu,10 to 20 km,"two crops, any",168,118,0.702381,False,168
+Nyagatare,10 to 20 km,"two crops, any",1084,1018,0.939114,False,1084
+Ruhango,10 to 20 km,"two crops, any",488,422,0.864754,False,488

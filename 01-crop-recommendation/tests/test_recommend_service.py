@@ -36,7 +36,7 @@ def codes(resp):
 
 def test_health_says_what_can_answer(monkeypatch):
     j = client.get("/v1/health").json()
-    assert j["rules_loaded"] and j["api_version"] == "1.2" and j["status"] == "ok"   # XGBoost is not needed any more
+    assert j["rules_loaded"] and j["api_version"] == "1.3" and j["status"] == "ok"   # XGBoost is not needed any more
     monkeypatch.setattr(service, "map_ready", lambda: False)                         # model settings or data missing
     assert client.get("/v1/health").json()["status"] == "degraded"
 
@@ -264,11 +264,16 @@ def point(body):
 
 def test_point_gives_one_answer_with_confidence_and_fertiliser():
     resp, r = point({"lat": -1.35, "lon": 30.30, "season": "B"})             # Nyagatare: Random Forest answers
-    assert r.headers["X-Request-ID"] == resp.request_id and resp.api_version == "1.2"
+    assert r.headers["X-Request-ID"] == resp.request_id and resp.api_version == "1.3"
     a = resp.recommendation
     assert resp.location.district == "Nyagatare" and a.crop == "maize" and a.method == "random_forest"
-    assert a.confidence.level.value == "high" and a.confidence.tested_hit_rate == 0.759   # tuning_v1, new fields
+    assert a.kind == "one_crop" and a.crops == ["maize"] and a.close_second is None
+    # map_confidence: one clear first crop, Nyagatare, field data within 5 km: 78% of 1,031 tested fields
+    assert a.confidence.level.value == "high" and a.confidence.tested_hit_rate == pytest.approx(0.776, abs=5e-4)
+    assert a.confidence.basis == "first_crop" and a.confidence.tested_fields == 1031
+    assert a.confidence.situation == "Nyagatare, field data within 5 km, one clear first crop"
     assert a.confidence.lowered_by == [] and resp.model_version.startswith("RF[all_sat] tuned")
+    assert resp.fertiliser_second is None
     assert set(resp.inputs_used.satellite_at_field) == {"srtm_elevation_m", "chirps_precip_mm", "ndvi_annual",
                                                         "swir_ratio"}
     assert resp.fertiliser.crop == "maize" and [i.rate for i in resp.fertiliser.items] == [100, 100]
@@ -301,12 +306,29 @@ def test_point_without_the_model_files_is_503(monkeypatch):
     assert client.post("/v1/recommend", json={"district": "Musanze", "season": "B"}).status_code == 200
 
 
-def test_point_in_an_untested_season_is_low_with_a_warning():
+def test_point_in_an_untested_season_gets_no_answer_with_a_warning():
+    # Until 1.2 the season B answer came back with a low confidence; since 1.3 there is no answer instead
     resp, _ = point({"lat": -1.458, "lon": 29.556, "season": "A"})
     assert resp.season.asked == "A" and resp.season.used == "B"
-    assert resp.recommendation.confidence.level.value == "low"
-    assert resp.recommendation.confidence.lowered_by == ["this season was never tested"]
-    assert codes(resp)[0] == "SEASON_NOT_EVALUATED"
+    assert resp.abstain and resp.recommendation is None and resp.fertiliser is None
+    assert "Pick season B" in resp.abstain_message and "consult an extension officer" in resp.abstain_message
+    assert codes(resp)[0] == "SEASON_NOT_EVALUATED" and "NO_RELIABLE_ANSWER" in codes(resp)
+    assert resp.inputs_used is not None                         # the inputs of the point are still given
+
+
+def test_point_where_two_crops_fit_gives_both_with_their_fertiliser():
+    resp, _ = point({"lat": -2.196, "lon": 29.592, "season": "B"})          # Ruhango, the point of 25 Nov
+    a = resp.recommendation
+    assert a.kind == "two_crops" and a.crops == ["beans", "maize"] and a.crop == "beans" and a.close_second == "maize"
+    assert a.confidence.level.value == "high" and a.confidence.basis == "first_two_crops"
+    assert a.confidence.tested_hit_rate == pytest.approx(0.787, abs=5e-4) and a.confidence.tested_fields == 61
+    assert resp.fertiliser.crop == "beans" and resp.fertiliser_second.crop == "maize"
+    assert a.alternatives == ["irish_potato", "rice"]
+
+
+def test_point_far_from_any_surveyed_field_gets_no_answer():
+    resp, _ = point({"lat": -1.453, "lon": 30.725, "season": "B"})          # Nyagatare, 21.9 km from data
+    assert resp.abstain and resp.recommendation is None and "21.9 km away" in resp.abstain_message
 
 
 def test_point_outside_the_pilot_districts_abstains():
