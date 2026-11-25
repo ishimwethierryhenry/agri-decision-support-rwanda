@@ -121,6 +121,21 @@ def test_typed_point_in_nyagatare():
     assert any("the Random Forest did better than the rules" in s.value for s in at.success)
 
 
+def test_nyabihu_is_answered_by_the_method_that_names_the_right_crop_first_more_often():
+    """The point Thierry checked on 25 Nov. The rules rate maize, Irish potato and rice the same there, so while they
+    answered in Nyabihu (main score 0.645 against 0.627) the badge was Low. The Random Forest names the right crop
+    first more often in Nyabihu (74% against 66% of the new fields), so it answers now."""
+    at = _type_point(_page(), -1.692, 29.538)
+    assert _place(at)[0].startswith("Nyabihu (Western Province)")
+    assert _answer(at) == ["Maize"] and _confidence(at) == ["Medium"]
+    assert any("Random Forest named the right crop first for 74% of the new fields in testing, against 66% for the "
+               "expert rules" in m.value for m in at.markdown)
+    assert any("Random Forest in all four districts" in m.value for m in at.markdown)   # How this page works
+    at = _evaluation_view(at)
+    assert any("the rules did better than the Random Forest in testing (main score 0.65 against 0.63). First crop "
+               "right: 74% for the Random Forest and 66% for the rules." in w.value for w in at.warning)
+
+
 def test_points_outside_the_pilot_districts_or_rwanda_get_no_crop():
     at = _type_point(_page(), -1.95, 30.06)       # Kigali
     assert _place(at) == ["Nyarugenge"] and not _picks(at) and not _answer(at)
@@ -151,8 +166,8 @@ def test_scores_page_shows_every_model():
     assert len(main) == 18 and "Main score (macro-F1, 0 to 1)" in main.columns
     assert "Worst district (main score)" in main.columns and "Top-3 (mean)" not in main.columns
     assert "Passes the adoption rule" in main.columns and "Better than the rules in" in main.columns
-    assert any("Random Forest in Musanze, the rules in Nyabihu, Random Forest in Nyagatare, Random Forest in Ruhango"
-               in m.value for m in at.markdown)                         # same choice as the map
+    assert any("named the right crop first more often in testing on new fields there: the tuned Random Forest in all "
+               "four districts" in m.value for m in at.markdown)        # same choice as the map
     why = " ".join(m.value for m in at.markdown)
     assert "The tuned Random Forest, all + satellite inputs scores 0.514 against 0.451" in why
     assert "that crop is right 80% of the time" in why and "for only 80% of the fields" in why

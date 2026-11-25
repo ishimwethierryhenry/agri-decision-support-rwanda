@@ -14,11 +14,13 @@ What happens when someone clicks a point:
      inputs plus satellite, settings in reports/tuning_v1/final_model.json), trained on all 1,904 fields, and the B1
      expert rules. Every crop in each ranking also carries its tested precision, recall and F1 in that district.
   5. One answer for the user (client feedback, 19 Nov 2026: show one recommendation and its confidence, not the
-     comparison). In each district the answer comes from the method that did better in testing on new fields
-     there (main score, ahead by more than 0.01; otherwise the rules, the API default). The confidence level
-     starts from how often that method named the right crop first in that test, in that district, and goes down
-     when the first two crops are close, when the nearest CIAT data is far, or when the season was never tested.
-     The thresholds are simple and fixed, not tuned (see confidence_level).
+     comparison). In each district the answer comes from the method that named the right crop first more often
+     in testing on new fields there (ahead by more than 0.01; otherwise the rules, the API default). Until
+     25 Nov 2026 the choice used the main score instead, which made the rules answer in Nyabihu, where they
+     often rate several crops the same (docs/training_protocol.md, section 9). The confidence level starts from
+     the same number, how often that method named the right crop first in that test, in that district, and goes
+     down when the first two crops are close, when the nearest CIAT data is far, or when the season was never
+     tested. The thresholds are simple and fixed, not tuned (see confidence_level).
   6. Fertiliser: the rule engine answers for the recommended crop. Until the RAB guideline is in, the rule file
      holds interim national rates copied from published sources (page and link for each), shown as interim.
      If no rule fits, it says "no matching rule" instead of inventing a rate.
@@ -68,7 +70,7 @@ CROP_NAMES = {"beans": "Beans", "irish_potato": "Irish potato", "maize": "Maize"
 ALGO_NAMES = {"LR": "Logistic Regression", "RF": "Random Forest", "XGB": "XGBoost"}
 API_METHODS = {"RF": "random_forest", "XGB": "xgboost"}      # recommendation.method in the API (contract 1.1)
 VIEW_NAMES = {"all": "all inputs", "field_sat": "field + satellite inputs", "all_sat": "all + satellite inputs"}
-CHOICE_MARGIN = 0.01       # same margin as the adoption rule: a method answers only if it is ahead by more than this
+CHOICE_MARGIN = 0.01       # the model answers only if its tested first crop right is ahead of the rules' by more than this
 HIGH_HIT, LOW_HIT = 0.75, 0.50   # tested hit rate bands for the confidence level (simple, fixed, not tuned)
 CLOSE_CALL = 0.10          # first and second crop closer than this in the method's own score: a close call
 LEVELS = ("low", "medium", "high")
@@ -278,10 +280,12 @@ class MapRecommender:
         return out
 
     def method_for(self, district: str) -> str:
-        """The method that answers in a district: the model only if it did better than the rules in testing on new
-        fields there by more than CHOICE_MARGIN; otherwise the rules, the API default."""
-        t = self.tested.get(district, {})
-        m, r = t.get("model", {}).get("new_fields"), t.get("rules", {}).get("new_fields")
+        """The method that answers in a district: the model only if its first crop was right more often than the
+        rules' in testing on new fields there, by more than CHOICE_MARGIN; otherwise the rules, the API default.
+        The map shows one crop, so the choice uses the same measure as the confidence level (since 25 Nov 2026;
+        before, the main score, which made the rules answer in Nyabihu)."""
+        h = self.hit_rates.get(district, {})
+        m, r = h.get("model"), h.get("rules")
         return "model" if m is not None and r is not None and m > r + CHOICE_MARGIN else "rules"
 
     @staticmethod
@@ -429,7 +433,8 @@ class MapRecommender:
     def _answer(self, out: dict, district: str, season_tested: bool, far: bool) -> dict[str, Any]:
         """The one recommendation shown to the user, with its confidence and the reasons behind both."""
         method = self.method_for(district)
-        if method == "rules" and not out["rules"]["ranking"]:
+        no_rules = method == "rules" and not out["rules"]["ranking"]
+        if no_rules:
             method = "model"
         key = "probability" if method == "model" else "score"
         ranked = out[method]["ranking"]
@@ -438,18 +443,20 @@ class MapRecommender:
         hit = self.hit_rates.get(district, {}).get(method)
         level = confidence_level(hit, season_tested, close, far)
         other = "rules" if method == "model" else "model"
-        mine = out[method]["tested"].get("new_fields")
-        theirs = out[other]["tested"].get("new_fields")
-        if mine is not None and theirs is not None and method == "model":
-            why = [f"In {district}, {MODEL_LABEL} did better than the expert rules in testing on new fields "
-                   f"({mine:.2f} against {theirs:.2f}, main score), so the answer comes from {MODEL_LABEL}."]
-        elif mine is not None and theirs is not None:
-            why = [f"In {district}, the expert rules did as well as or better than {MODEL_LABEL} in testing on new fields "
-                   f"({mine:.2f} against {theirs:.2f}, main score), so the answer comes from the rules."]
+        theirs = self.hit_rates.get(district, {}).get(other)
+        if no_rules:
+            why = [f"The expert rules could not rate any crop here, so the answer comes from {MODEL_LABEL}."]
+        elif hit is not None and theirs is not None and method == "model":
+            why = [f"In {district}, {MODEL_LABEL} named the right crop first for {hit:.0%} of the new fields in "
+                   f"testing, against {theirs:.0%} for the expert rules, so the answer comes from {MODEL_LABEL}."]
+        elif hit is not None and theirs is not None:
+            why = [f"In {district}, {MODEL_LABEL} was not ahead of the expert rules in testing on new fields (first "
+                   f"crop right for {theirs:.0%} of the fields, against {hit:.0%} for the rules), so the answer "
+                   "comes from the rules, the default."]
         else:
             why = [f"The answer comes from {METHOD_NAMES[method]}."]
-        if hit is not None:
-            why.append(f"In that test, its first crop was the right one for {hit:.0%} of the fields in {district}.")
+        if hit is not None and (no_rules or theirs is None):
+            why.append(f"In testing, its first crop was the right one for {hit:.0%} of the new fields in {district}.")
         if method == "rules":
             why += [r["text"] for r in first.get("reasons", [])]
         if close and abs(first[key] - second[key]) < 1e-9:

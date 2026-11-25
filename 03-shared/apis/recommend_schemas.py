@@ -1,4 +1,5 @@
-"""Pydantic models for the Recommendation API contract (version 1.1: 1.0 plus optional fields for the tuned model).
+"""Pydantic models for the Recommendation API contract (version 1.2: 1.0 plus optional fields for the tuned model in 1.1;
+no field changes in 1.2, where the point route lets the method that names the right crop first more often answer).
 
 These models are the executable form of docs/api_contracts.md. If a field changes,
 change this file and the document together, and bump CONTRACT_VERSION.
@@ -12,7 +13,7 @@ from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CONTRACT_VERSION = "1.1"
+CONTRACT_VERSION = "1.2"
 
 # Approximate bounding box of Rwanda (decimal degrees, WGS84).
 LAT_MIN, LAT_MAX = -2.9, -1.0

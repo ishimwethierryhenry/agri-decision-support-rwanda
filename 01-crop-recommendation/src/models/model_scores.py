@@ -232,9 +232,10 @@ class Tuning:
         return pd.DataFrame(rows)
 
     def answered_by(self, margin: float = 0.01) -> dict:
-        """In each district, 'model' if the model on the map beats the rules on new fields by more than the margin
-        (the choice of map_model.method_for), otherwise 'rules'."""
-        r = self.results["new_fields"].pivot(index="model", columns="district", values="macro_f1")
+        """In each district, 'model' if the model on the map named the right crop first more often than the rules
+        on new fields, by more than the margin (the choice of map_model.method_for since 25 Nov 2026), otherwise
+        'rules'."""
+        r = self.results["new_fields"].pivot(index="model", columns="district", values="top1")
         return {d: "model" if r.loc[self.map_model, d] > r.loc[BASELINE, d] + margin else "rules" for d in DISTRICTS}
 
     def when_sure(self, model: Optional[str] = None, district: str = "all") -> pd.DataFrame:
