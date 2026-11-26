@@ -24,6 +24,7 @@ EVAL_V2 = MODULE / "reports" / "eval_v2"            # protocol 1.1 (18 combinati
 EVAL_DIR = EVAL_V2
 TUNING_V1 = MODULE / "reports" / "tuning_v1"        # protocol 1.2: the same models with tuned settings
 TUNING_V2 = MODULE / "reports" / "tuning_v2"        # protocol 1.3: second round of tuning
+TUNING_V3 = MODULE / "reports" / "tuning_v3"        # protocol 1.4: third round, the model on the map since 25 Nov
 TUNED = " tuned"
 CROPS = ["beans", "irish_potato", "maize", "rice"]
 CROP_NAMES = {"beans": "Beans", "irish_potato": "Irish potato", "maize": "Maize", "rice": "Rice"}
@@ -52,8 +53,9 @@ def model_label(model: str) -> tuple[str, str]:
     """('XGBoost', 'all (21)') for 'XGB[all]'."""
     if model in _FIXED:
         return _FIXED[model]
-    algo, _, view = model.partition("[")
-    return _ALGO.get(algo, algo), _VIEWS.get(view.rstrip("]"), view.rstrip("]"))
+    algo, _, rest = model.partition("[")
+    view = rest.split("]")[0]                          # 'RF[field_sat] steady+weights': the view is field_sat
+    return _ALGO.get(algo, algo), _VIEWS.get(view, view)
 
 
 def short_label(model: str) -> str:
@@ -197,9 +199,10 @@ class Scores:
 
 
 class Tuning:
-    """The tuning run (protocol 1.2, reports/tuning_v1): every method with the protocol settings and with tuned
-    settings on both tests, the model the map serves (decision 2), how often it is right at each level of its own
-    probability, simple alternatives on the same folds, and how mixed the 2 km blocks are."""
+    """A tuning run: reports/tuning_v1 (protocol 1.2, every method with the protocol settings and tuned) or
+    reports/tuning_v3 (protocol 1.4, the third round and the model on the map since 25 Nov). It gives the model the map
+    serves (decision 2), how often it is right at each level of its own probability, simple alternatives on the same
+    folds, and how mixed the 2 km blocks are (measured once, in tuning_v1)."""
 
     def __init__(self, folder: Path = TUNING_V1):
         folder = Path(folder)
@@ -208,7 +211,9 @@ class Tuning:
         self.results = {t: pd.read_csv(folder / f"main_{p}_results.csv") for t, (_, p) in TESTS.items()}
         self.sure = pd.read_csv(folder / "answer_when_sure.csv")
         self.bands = pd.read_csv(folder / "confidence_bands.csv")
-        self.mixed = pd.read_csv(folder / "mixed_land.csv").set_index("district")
+        self.mixed = pd.read_csv((folder if (folder / "mixed_land.csv").exists() else TUNING_V1) / "mixed_land.csv"
+                                 ).set_index("district")
+        self.folder = folder
         self.info = json.loads((folder / "run_info.json").read_text(encoding="utf-8"))
         self.decisions = self.info["decisions"]
         self.map_model = self.decisions["map"]["serve"]
@@ -247,18 +252,25 @@ class Tuning:
             ["Answers only from", "Fields answered", "First crop right"]].reset_index(drop=True)
 
     def alternatives(self) -> pd.DataFrame:
-        """Simple choices on the same folds of the new-fields test, next to the model on the map before and after."""
+        """Simple choices on the same folds of the new-fields test, next to the models the map served before and the
+        one it serves now. Models of an earlier run are read from tuning_v1 (same folds, same fields)."""
         s = self.summary["new_fields"]
-        before = self.decisions["map"]["today"]
+        first = pd.read_csv(TUNING_V1 / "main_blockcv_summary.csv").set_index("model")
         names = {"B0_majority": "Most common crop of all training fields (B0)",
                  "B0d_district_majority": "Most common crop of the field's district",
                  BASELINE: "Expert rules (B1)",
-                 before: f"{short_label(before)} (map before 23 Nov)"}
-        if self.map_model != before:
-            names[self.map_model] = f"{short_label(self.map_model.replace(TUNED, ''))}, tuned (map now)"
-        return pd.DataFrame([{"Choice": label, "Main score": s.loc[m, "macro_f1_mean"],
-                              "First crop right, all fields": s.loc[m, "top1_all_fields"]}
-                             for m, label in names.items() if m in s.index])
+                 "XGB[all]": "XGBoost, all inputs (map until 23 Nov)"}
+        if self.map_model != "RF[all_sat]" + TUNED:
+            names["RF[all_sat]" + TUNED] = "Random Forest, all + satellite inputs, tuned (map 23 to 25 Nov)"
+        names[self.map_model] = f"{short_label(self.map_model)}, tuned" + (
+            " with crop weights" if self.map_model.endswith("+weights") else "") + " (map now)"
+        rows = []
+        for m, label in names.items():
+            src = s if m in s.index else first if m in first.index else None
+            if src is not None:
+                rows.append({"Choice": label, "Main score": src.loc[m, "macro_f1_mean"],
+                             "First crop right, all fields": src.loc[m, "top1_all_fields"]})
+        return pd.DataFrame(rows)
 
 
 def second_round(folder: Path = TUNING_V2) -> Optional[dict]:

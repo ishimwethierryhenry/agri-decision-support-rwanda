@@ -50,9 +50,18 @@ def place(text: str) -> None:
 
 
 def answer(crop_name: str, level: str, share: Optional[float], note: str) -> None:
-    """The one answer: confidence badge, the crop as the card title, the tested hit rate as a bar, then the note."""
+    """The answer: confidence badge, the crop (or 'Beans or maize' for two crops) as the card title, the tested rate
+    of answers like it as a bar, then the note."""
     cls, words = LEVEL_BADGE[level]
     bar = f'<div class="confidence"><div style="width:{share:.0%}"></div></div>' if share is not None else ""
     html(f'<span class="result-badge {cls}">{words} confidence</span>'
          f'<div class="card-title" style="margin-top:12px">{crop_name}</div>{bar}'
+         f'<div class="muted">{note}</div>')
+
+
+def no_answer(title: str, note: str) -> None:
+    """No reliable answer for this point: a neutral badge instead of a confidence level, then the reason. Since
+    25 Nov 2026 the map never shows one crop with a low confidence."""
+    html(f'<span class="result-badge unsure">No answer</span>'
+         f'<div class="card-title" style="margin-top:12px">{title}</div>'
          f'<div class="muted">{note}</div>')

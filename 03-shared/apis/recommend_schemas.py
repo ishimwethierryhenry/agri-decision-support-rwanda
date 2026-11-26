@@ -1,5 +1,7 @@
-"""Pydantic models for the Recommendation API contract (version 1.2: 1.0 plus optional fields for the tuned model in 1.1;
-no field changes in 1.2, where the point route lets the method that names the right crop first more often answer).
+"""Pydantic models for the Recommendation API contract (version 1.4: 1.0 plus optional fields for the tuned model in 1.1;
+no field changes in 1.2, where the point route lets the method that names the right crop first more often answer;
+in 1.3 the point route gives one crop, two crops or no answer, with the confidence of answers like it; no field changes
+in 1.4, where the model on the map is the Random Forest of the third round of tuning, with crop weights).
 
 These models are the executable form of docs/api_contracts.md. If a field changes,
 change this file and the document together, and bump CONTRACT_VERSION.
@@ -13,7 +15,7 @@ from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CONTRACT_VERSION = "1.2"
+CONTRACT_VERSION = "1.4"
 
 # Approximate bounding box of Rwanda (decimal degrees, WGS84).
 LAT_MIN, LAT_MAX = -2.9, -1.0
@@ -223,21 +225,36 @@ class PointRequest(Strict):
 
 
 class Confidence(Strict):
-    level: Level
+    level: Level = Field(..., description="high or medium. Since 1.3 a point that would get low gets no answer "
+                                          "(abstain) instead.")
     tested_hit_rate: Optional[float] = Field(None, ge=0, le=1,
-                                             description="Share of new fields in this district where the answering "
-                                                         "method's first crop was right in testing (reports/tuning_v1).")
-    lowered_by: list[str] = Field(default_factory=list, description="Why the level is lower than the hit rate "
-                                                                    "alone would give, in plain words.")
+                                             description="Since 1.3: share of tested fields like this one where the "
+                                                         "answer was right: the first crop for a one-crop answer, one "
+                                                         "of the two for a two-crop answer (reports/map_confidence). "
+                                                         "In 1.0 to 1.2: the district's share of first crops right.")
+    lowered_by: list[str] = Field(default_factory=list, description="What makes this point less sure than the best "
+                                                                    "case, in plain words.")
+    basis: Optional[Literal["first_crop", "first_two_crops"]] = Field(
+        None, description="Added in 1.3. What tested_hit_rate counts.")
+    tested_fields: Optional[int] = Field(None, ge=1, description="Added in 1.3. How many tested fields the rate rests "
+                                                                 "on.")
+    situation: Optional[str] = Field(None, description="Added in 1.3. The situation the rate was measured for, e.g. "
+                                                       "'Ruhango, field data within 5 km, first two crops close'.")
 
 
 class PointAnswer(Strict):
-    crop: str
+    crop: str = Field(..., description="The crop, or the first of the two crops of a two-crop answer.")
     method: Literal["random_forest", "xgboost", "expert_rules"] = Field(
         ..., description="The method that answers in this district. random_forest since 1.1 (the tuned model on the "
                          "map); xgboost was the model on the map in 1.0.")
     confidence: Confidence
-    close_second: Optional[str] = Field(None, description="A crop that fits almost as well, if any.")
+    kind: Optional[Literal["one_crop", "two_crops"]] = Field(
+        None, description="Added in 1.3. two_crops when the model's first two crops fit about equally: both are the "
+                          "answer.")
+    crops: Optional[list[str]] = Field(None, min_length=1, max_length=2, description="Added in 1.3. The crop or the "
+                                                                                     "two crops of the answer.")
+    close_second: Optional[str] = Field(None, description="Since 1.3, the second crop of a two-crop answer. In 1.0 "
+                                                          "to 1.2, a crop that fits almost as well.")
     alternatives: list[str] = Field(default_factory=list, description="The method's next crops, in order.")
     why: list[str] = Field(..., min_length=1)
 
@@ -294,6 +311,8 @@ class PointResponse(Strict):
     abstain_message: Optional[str] = None
     recommendation: Optional[PointAnswer] = None
     fertiliser: Optional[FertiliserAdvice] = None
+    fertiliser_second: Optional[FertiliserAdvice] = Field(None, description="Added in 1.3. Fertiliser for the second "
+                                                                            "crop of a two-crop answer.")
     inputs_used: Optional[PointInputs] = None
     evaluation: Optional[PointEvaluation] = None
     warnings: list[Warning_] = Field(default_factory=list)
@@ -307,6 +326,12 @@ class PointResponse(Strict):
             raise ValueError("abstain false needs a recommendation")
         if self.recommendation and self.fertiliser and self.fertiliser.crop != self.recommendation.crop:
             raise ValueError("fertiliser advice must be for the recommended crop")
+        if self.fertiliser_second and (self.recommendation is None
+                                       or self.fertiliser_second.crop != self.recommendation.close_second):
+            raise ValueError("fertiliser_second must be for the second crop of a two-crop answer")
+        r = self.recommendation
+        if r and r.kind == "two_crops" and (not r.crops or len(r.crops) != 2 or r.close_second != r.crops[1]):
+            raise ValueError("a two-crop answer needs its two crops, the second one as close_second")
         return self
 
 

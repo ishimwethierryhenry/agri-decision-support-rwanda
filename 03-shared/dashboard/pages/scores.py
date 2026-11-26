@@ -3,8 +3,9 @@
 Asked by the client and the team on 29 Oct 2026: show the performance of every model, per district and per crop,
 next to the recommendations. Updated on 18 Nov 2026 for protocol 1.1, which adds four satellite inputs measured at
 each field (the 12 combinations of the midterm give the same numbers as in eval_v1), and on 23 Nov 2026 for protocol
-1.2: the tuning run (reports/tuning_v1) and why its tuned Random Forest is now the trained model on the map. On
-25 Nov 2026 the "why" section also gives the result of the second round of tuning (protocol 1.3, reports/tuning_v2).
+1.2: the tuning run (reports/tuning_v1) and why its tuned Random Forest was the trained model on the map. Since
+25 Nov 2026 the "why" section gives the three rounds of tuning (protocols 1.2 to 1.4) and the numbers of the model on
+the map now, the Random Forest of the third round (reports/tuning_v3).
 Everything here is read from the committed result files. Logic: 01-crop-recommendation/src/models/model_scores.py
 Since 24 Nov 2026 the page uses the shared Agri DSS look (ui_theme.py, rec_ui.py): a hero heading and one card per
 section.
@@ -203,30 +204,45 @@ with st.container(key="card_tuning"):
                          f"the fourth: tuning lowered {lowered} of the {len(gains)} models, and none passes the adoption "
                          "rule, so the rules stay the default answer of the API.")
 
-# The model on the map since 23 Nov: decision 2 of the protocol, section 11 (written before the tuning run).
-mp = tuning.decisions["map"]
-on_map = tuning.map_model
-algo = ms.model_label(on_map.replace(ms.TUNED, ""))[0]
-tf, tm = tuning.summary["new_fields"], tuning.summary["new_district"]
-who = tuning.answered_by()
-sure = tuning.when_sure()
+# The model on the map: decision 2 of the protocol, written before each tuning run. Since 25 Nov it comes from the third
+# round (section 13, reports/tuning_v3); from 23 to 25 Nov it was the first round's (section 11, reports/tuning_v1).
+@st.cache_resource(show_spinner=False)
+def load_map_tuning() -> ms.Tuning:
+    return ms.Tuning(ms.TUNING_V3 if (ms.TUNING_V3 / "run_info.json").exists() else ms.TUNING_V1)
+
+
+now = load_map_tuning()
+r1d = tuning.decisions["map"]                  # first round: from XGBoost with the protocol settings to RF all_sat
+r2 = ms.second_round()                         # protocol 1.3 (reports/tuning_v2); None if its results are not there
+r3d = now.decisions["map"] if now.folder != tuning.folder else None
+on_map = now.map_model
+algo = ms.model_label(on_map)[0]
+on_map_label = ms.short_label(on_map) + (", tuned with crop weights" if on_map.endswith("+weights") else ", tuned")
+tf, tm = now.summary["new_fields"], now.summary["new_district"]
+who = now.answered_by()
+sure = now.when_sure()
 at_07 = sure[sure["Answers only from"] == 0.7].iloc[0]
-alt = tuning.alternatives().set_index("Choice")
-r2 = ms.second_round()                     # protocol 1.3 (reports/tuning_v2); None if its results are not there
+alt = now.alternatives().set_index("Choice")
 district_rule = "Most common crop of the field's district"
-mixed = tuning.mixed.loc["all"]
+mixed = now.mixed.loc["all"]
 with st.container(key="card_why"):
     st.subheader(f"Why the tuned {algo} is the trained model on the map")
+    rounds = (f"- **Three rounds of tuning, each with its rule written before the run.** The map changes only if a "
+              f"tuned model beats the model on the map on new fields by more than {r1d['margin']}. Round 1 (23 Nov): "
+              f"the tuned {ms.short_label(r1d['serve'])} scored {tuning.summary['new_fields'].loc[r1d['serve'], 'macro_f1_mean']:.3f} "
+              f"against {r1d['today_score']:.3f} for {ms.short_label(r1d['today'])} with the protocol settings, so the "
+              "map moved to it.")
+    if r2 and not r2["changes"]:
+        rounds += (f" Round 2: {sum(r2['settings'].values())} settings of Random Forest, Extra Trees and XGBoost, a "
+                   "blend of the three and inputs from the crops of nearby fields found nothing better by more than "
+                   f"{r2['margin']} (best {r2['best_score']:.3f}).")
+    if r3d and r3d["changes"]:
+        rounds += (f" Round 3 (25 Nov) compared the best settings on three splits of the training fields instead of "
+                   f"one and added one weight per crop: the {on_map_label.replace(', tuned', '')} scores "
+                   f"{tf.loc[on_map, 'macro_f1_mean']:.3f}, with its first crop right as often as before "
+                   f"({pct(tf.loc[on_map, 'top1_all_fields'])}), so the map moved to it.")
     st.markdown(
-        f"- **The rule was written before the run.** The map changes only if a tuned model beats the model on the map on "
-        f"new fields by more than {mp['margin']}. The tuned {ms.short_label(on_map.replace(ms.TUNED, ''))} scores "
-        f"{tf.loc[on_map, 'macro_f1_mean']:.3f} against {mp['today_score']:.3f} for {ms.short_label(mp['today'])} with "
-        "the protocol settings, so the map moved to it.\n"
-        + (f"- **A second, bigger search found nothing better.** A second round of tuning, finished on 25 Nov, tried "
-           f"{sum(r2['settings'].values())} settings of Random Forest, Extra Trees and XGBoost, a blend of the three, "
-           "and inputs that say which crops the nearby surveyed fields grow. The best, the tuned "
-           f"{ms.short_label(r2['best'].replace(ms.TUNED, ''))}, scored {r2['best_score']:.3f} on new fields, not "
-           f"more than {r2['margin']} above this model, so the map kept it.\n" if r2 and not r2["changes"] else "")
+        rounds + "\n"
         + "- **One answer per point.** In each district it comes from the method that named the right crop first "
         "more often in testing on new fields there: "
         + (f"the tuned {algo} in all four districts" if all(w == "model" for w in who.values()) else
@@ -257,9 +273,10 @@ with st.container(key="card_why"):
                                    "First crop right": [pct(v) for v in alt["First crop right, all fields"]]}),
                      hide_index=True, height=rows_height(len(alt)))
     st.caption("Out-of-fold predictions of the new-fields test: no field was predicted by a model that saw its 2 km "
-               "block. 'Answers only from' is the model's probability for its first crop. Full report: "
+               "block. 'Answers only from' is the model's probability for its first crop. Reports: "
                "01-crop-recommendation/reports/tuning_v1/report.md"
-               + ("; second round: 01-crop-recommendation/reports/tuning_v2/report.md." if r2 else "."))
+               + ("; second round: 01-crop-recommendation/reports/tuning_v2/report.md" if r2 else "")
+               + ("; third round: 01-crop-recommendation/reports/tuning_v3/report.md." if r3d else "."))
 
 with st.expander("Second check: the 650 fields CIAT marked \"Used\""):
     used_scores = load("used_only")

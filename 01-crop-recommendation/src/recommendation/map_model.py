@@ -9,9 +9,11 @@ What happens when someone clicks a point:
      the nearest block in the same district. The answer says how far that block is.
   3. District inputs: season climate (NASA POWER) and NISR crop shares of season B 2025, the season the model
      learned from. The model only knows season B, so another season is shown as a note, not as an answer.
-  4. Two methods, each with its tested score in that district (reports/tuning_v1): the trained model the protocol's
-     rule chose for the map (decision 2 of docs/training_protocol.md, section 11: the tuned Random Forest on all
-     inputs plus satellite, settings in reports/tuning_v1/final_model.json), trained on all 1,904 fields, and the B1
+  4. Two methods, each with its tested score in that district (reports/tuning_v3): the trained model the protocol's
+     rule chose for the map (decision 2 of docs/training_protocol.md, section 13, since 25 Nov 2026: the Random
+     Forest on field + satellite inputs with one weight per crop at decision time, settings and weights in
+     reports/tuning_v3/final_model.json; from 23 to 25 Nov the tuned Random Forest on all inputs plus satellite of
+     reports/tuning_v1), trained on all 1,904 fields, and the B1
      expert rules. Every crop in each ranking also carries its tested precision, recall and F1 in that district.
   5. One answer for the user (client feedback, 19 Nov 2026: show one recommendation and its confidence, not the
      comparison). In each district the answer comes from the method that named the right crop first more often
@@ -55,25 +57,35 @@ import expert_baseline as b1  # noqa: E402
 import fertiliser_engine as fert  # noqa: E402
 import model_scores as ms  # noqa: E402
 import tune  # noqa: E402
+import tune_v2  # noqa: E402  (Tunable: Random Forest, Extra Trees and XGBoost with the settings of tuning_v2 and v3)
 
 TABLE_PATH = MODULE / "data" / "processed" / "feature_table_v6b.csv"   # the v2 rows and inputs plus satellite
 BOUNDARIES_PATH = MODULE / "data" / "reference" / "rwanda_districts.geojson"
-EVAL_DIR = MODULE / "reports" / "tuning_v1"
+# The model on the map since 25 Nov 2026: the third round of tuning (protocol 1.4, decision 2 of section 13). Its
+# folder also holds the expert rules' numbers on the same folds, copied from tuning_v2.
+EVAL_DIR = MODULE / "reports" / "tuning_v3"
 FINAL_MODEL_PATH = EVAL_DIR / "final_model.json"
 FERTILISER_RULES_PATH = HERE / "rules" / "fertiliser_rules.yaml"
+# How often answers like each one were right in testing (built by build_map_confidence.py, since 25 Nov 2026)
+CONFIDENCE_TABLE_PATH = MODULE / "reports" / "map_confidence" / "confidence_table.csv"
 
 BLOCK_DEG = 0.018          # Part A's block_id is round(lat / 0.018) and round(lon / 0.018)
 MODEL_SEASON = "B"         # the only season in the training data (CIAT, season B 2025)
 NEAR_KM = 5.0              # nearest CIAT block further than this: the answer warns that the data is far away
 BORDER_KM = 1.5            # a point this close to a CIAT block, just across a district line, uses that block
 CROP_NAMES = {"beans": "Beans", "irish_potato": "Irish potato", "maize": "Maize", "rice": "Rice"}
-ALGO_NAMES = {"LR": "Logistic Regression", "RF": "Random Forest", "XGB": "XGBoost"}
+ALGO_NAMES = {"LR": "Logistic Regression", "RF": "Random Forest", "ET": "Extra Trees", "XGB": "XGBoost"}
 API_METHODS = {"RF": "random_forest", "XGB": "xgboost"}      # recommendation.method in the API (contract 1.1)
 VIEW_NAMES = {"all": "all inputs", "field_sat": "field + satellite inputs", "all_sat": "all + satellite inputs"}
 CHOICE_MARGIN = 0.01       # the model answers only if its tested first crop right is ahead of the rules' by more than this
 HIGH_HIT, LOW_HIT = 0.75, 0.50   # tested hit rate bands for the confidence level (simple, fixed, not tuned)
 CLOSE_CALL = 0.10          # first and second crop closer than this in the method's own score: a close call
 LEVELS = ("low", "medium", "high")
+# Distance from the point to the CIAT block its field inputs come from, in the bands of the confidence table.
+# Beyond the last band the map gives no answer: nothing was tested with inputs from that far.
+DATA_BANDS = ((NEAR_KM, "within 5 km"), (10.0, "5 to 10 km"), (20.0, "10 to 20 km"))
+ONE_CROP, TWO_CLOSE, TWO_ANY = "one crop", "two crops, close", "two crops, any"   # kinds of answer in the table
+MIN_TESTED_FIELDS = 30     # a cell of the table with fewer tested fields takes the value of the four districts together
 SEASON_NAMES = {"A": "Season A (Sep to Jan)", "B": "Season B (Feb to Jun)", "C": "Season C (Jul to Aug)"}
 
 
@@ -83,7 +95,7 @@ def load_final_model(path: Path = FINAL_MODEL_PATH) -> dict:
 
 
 FINAL = load_final_model()
-MODEL_NAME = FINAL["model"]                     # its name in the tuning_v1 results, "RF[all_sat] tuned"
+MODEL_NAME = FINAL["model"]                     # its name in the tuning_v3 results, "RF[field_sat] steady+weights"
 MODEL_LABEL = ALGO_NAMES[FINAL["method"]]       # "Random Forest"
 MODEL_TITLE = f"{MODEL_LABEL}, {VIEW_NAMES[FINAL['view']]}" + (", tuned" if FINAL["tuned"] else "")
 API_METHOD = API_METHODS[FINAL["method"]]
@@ -118,6 +130,23 @@ def confidence_level(hit_rate: Optional[float], season_tested: bool = True, clos
         return "low"
     step = (2 if hit_rate >= HIGH_HIT else 1) - int(close_call) - int(far)
     return LEVELS[max(step, 0)]
+
+
+def data_band(km: float) -> Optional[str]:
+    """The distance band of the confidence table for field inputs taken this far from the point, or None beyond."""
+    for limit, name in DATA_BANDS:
+        if km < limit:
+            return name
+    return None
+
+
+def load_confidence_table(path: Optional[Path] = CONFIDENCE_TABLE_PATH) -> dict:
+    """{(district, band, kind): {"rate", "fields", "pooled"}} from reports/map_confidence, or {} if it is missing."""
+    if not path or not Path(path).exists():
+        return {}
+    t = pd.read_csv(path)
+    return {(r.district, r.band, r.kind): {"rate": float(r.rate), "fields": int(r.fields), "pooled": bool(r.pooled)}
+            for r in t.itertuples()}
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -207,12 +236,16 @@ class MapRecommender:
     """Trains the model on the map on all fields once (a few seconds), then answers one point at a time."""
 
     def __init__(self, raw: pd.DataFrame, districts: Districts, evaluation_dir: Optional[Path] = EVAL_DIR,
-                 final: Optional[dict] = None):
+                 final: Optional[dict] = None, confidence_table: Optional[Path] = CONFIDENCE_TABLE_PATH):
         self.districts = districts
+        self.confidence = load_confidence_table(confidence_table)
         self.main = ev.prepare(raw)                                 # the 1,904 training fields
         self.final = final or FINAL
-        self.model = tune.Tunable(self.final["method"], self.final["settings"], self.final["view"])
+        self.model = tune_v2.Tunable(self.final["method"], self.final["settings"], self.final["view"])
         self.model.fit(self.main, self.main["label"])
+        # One weight per crop at decision time (tuning_v3), then normalised again; all ones for older models
+        weights = dict(zip(self.final.get("crops", list(CROP_NAMES)), self.final.get("crop_weights", [1.0] * 4)))
+        self.crop_weights = np.array([weights.get(str(c), 1.0) for c in self.model.classes_], dtype=float)
         self.crop_prior = self.main["label"].value_counts(normalize=True).to_dict()
         self.rules = b1.load_rules()
         self.fert_rules = fert.load_rules(FERTILISER_RULES_PATH)
@@ -221,10 +254,17 @@ class MapRecommender:
         self.hit_rates = self._load_hit_rates(evaluation_dir)
         self.crop_tested = self._load_crop_tested(evaluation_dir)
 
+    def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
+        """The model's probabilities with its crop weights, normalised again (columns follow self.model.classes_)."""
+        p = self.model.predict_proba(X) * self.crop_weights
+        return p / p.sum(axis=1, keepdims=True)
+
     @classmethod
     def load(cls, table: Path = TABLE_PATH, boundaries: Path = BOUNDARIES_PATH,
-             evaluation_dir: Optional[Path] = EVAL_DIR) -> "MapRecommender":
-        return cls(pd.read_csv(table, low_memory=False), Districts.load(boundaries), evaluation_dir)
+             evaluation_dir: Optional[Path] = EVAL_DIR,
+             confidence_table: Optional[Path] = CONFIDENCE_TABLE_PATH) -> "MapRecommender":
+        return cls(pd.read_csv(table, low_memory=False), Districts.load(boundaries), evaluation_dir,
+                   confidence_table=confidence_table)
 
     # ----------------------------------------------------------- lookup tables (no farm coordinates)
     def _build_lookup(self, raw: pd.DataFrame) -> None:
@@ -305,17 +345,10 @@ class MapRecommender:
         return out
 
     # ----------------------------------------------------------- one point
-    def feature_row(self, lat: float, lon: float, district: str,
-                    elevation_m: Optional[float] = None) -> tuple[dict, dict]:
-        blocks = self.blocks[self.blocks["District"] == district]
-        bid = block_id(lat, lon)
-        here = blocks[blocks["block_id"] == bid]
-        if here.empty:
-            dist = blocks.apply(lambda b: haversine_km(lat, lon, b["lat"], b["lon"]), axis=1)
-            b = blocks.loc[dist.idxmin()]
-            km = float(dist.min())
-        else:
-            b, km = here.iloc[0], 0.0
+    def block_row(self, b: pd.Series, district: str, elevation_m: Optional[float] = None) -> dict:
+        """The model's input row for a point whose field inputs come from block b (one row of self.blocks): soil,
+        elevation and satellite values of the block, climate and crop shares of the district. build_map_confidence.py
+        uses the same row to measure how often the map is right with inputs taken from a given distance."""
         d = self.district_values[district]
         elev = float(elevation_m) if elevation_m is not None else float(b["elevation_m"])
         tmean = (d["tmax_c"] + d["tmin_c"]) / 2
@@ -330,6 +363,20 @@ class MapRecommender:
             # An elevation given by the user replaces both elevations: on the CIAT fields SRTM and GPS agree
             # within about 11 m (median), so keeping the block's SRTM value would contradict the user's.
             row["srtm_elevation_m"] = elev
+        return row
+
+    def feature_row(self, lat: float, lon: float, district: str,
+                    elevation_m: Optional[float] = None) -> tuple[dict, dict]:
+        blocks = self.blocks[self.blocks["District"] == district]
+        bid = block_id(lat, lon)
+        here = blocks[blocks["block_id"] == bid]
+        if here.empty:
+            dist = blocks.apply(lambda b: haversine_km(lat, lon, b["lat"], b["lon"]), axis=1)
+            b = blocks.loc[dist.idxmin()]
+            km = float(dist.min())
+        else:
+            b, km = here.iloc[0], 0.0
+        row = self.block_row(b, district, elevation_m)
         info = {"block_id": str(b["block_id"]), "block_lat": float(b["lat"]), "block_lon": float(b["lon"]),
                 "distance_km": round(km, 2), "n_fields": int(b["n_fields"]),
                 "elevation_source": "user" if elevation_m is not None else "median GPS elevation of the CIAT fields in the block"}
@@ -367,7 +414,7 @@ class MapRecommender:
         if asked != MODEL_SEASON:
             _warn(out, "SEASON_NOT_EVALUATED",
                   f"{SEASON_NAMES[asked]} is not in the training data yet: the model and the rules were only tested "
-                  f"on season B (CIAT, 2025). The answer below is for season B, which starts on 1 February.",
+                  f"on season B (CIAT, 2025), so there is no answer for this season. Season B starts on 1 February.",
                   first=True)
         row, info = self.feature_row(lat, lon, district, elevation_m)
         d = self.district_values[district]
@@ -395,7 +442,7 @@ class MapRecommender:
                                    for c in ev.SATELLITE if c in row},
             "province": d["province"],
         }
-        proba = self.model.predict_proba(pd.DataFrame([row]))[0]
+        proba = self.predict_proba(pd.DataFrame([row]))[0]
         order = np.argsort(-proba)
         crop_tested = self.crop_tested.get(district, {})
         out["model"] = {"name": MODEL_TITLE,
@@ -421,17 +468,45 @@ class MapRecommender:
             if len(tied) > 1:
                 _warn(out, "CROPS_TIED", f"The rules rate {', '.join(tied)} equally ({ranked[0]['score']:.2f}); "
                                          "their order is only a tie-break.")
-        top = out["answer"]["crop"]
-        out["fertiliser"] = fert.recommend(self.fert_rules, top, {})
-        if out["fertiliser"]["status"] == "no_matching_rule":
+        # Fertiliser for each crop of the answer (none when there is no answer)
+        advice = [fert.recommend(self.fert_rules, c, {}) for c in out["answer"]["crops"]]
+        out["fertiliser"] = advice[0] if advice else None
+        out["fertiliser_second"] = advice[1] if len(advice) > 1 else None
+        if any(a["status"] == "no_matching_rule" for a in advice):
             _warn(out, "NO_GUIDELINE_RULE_FOUND", "No fertiliser rule fits this crop, so no rate is given.")
-        elif fert.interim_rules_used(self.fert_rules, out["fertiliser"]):
+        if any(a["status"] != "no_matching_rule" and fert.interim_rules_used(self.fert_rules, a) for a in advice):
             _warn(out, "FERTILISER_INTERIM", "Fertiliser rates are interim: national blanket rates from published "
                                              "sources, not yet confirmed by RAB, and the same for every field.")
+        if out["answer"]["kind"] == "none":
+            _warn(out, "NO_RELIABLE_ANSWER", out["answer"]["message"])
         return out
 
+    def _situation(self, district: str, km: float, close: bool) -> Optional[dict]:
+        """How often answers like this one were right in testing (reports/map_confidence): the kind of answer the map
+        gives (one crop, or the first two when they are close or when one crop would be right less than half the
+        time), its tested rate and how many fields it rests on. None when nothing was tested for this situation."""
+        band = data_band(km)
+        if band is None or not self.confidence:
+            return None
+        if close:
+            kind, cell = "two_crops", self.confidence.get((district, band, TWO_CLOSE))
+        else:
+            kind, cell = "one_crop", self.confidence.get((district, band, ONE_CROP))
+            if cell is not None and cell["rate"] < LOW_HIT:
+                kind, cell = "two_crops", self.confidence.get((district, band, TWO_ANY))
+        return None if cell is None else {"kind": kind, "band": band, "table_kind": TWO_CLOSE if close else
+                                          (ONE_CROP if kind == "one_crop" else TWO_ANY), **cell}
+
     def _answer(self, out: dict, district: str, season_tested: bool, far: bool) -> dict[str, Any]:
-        """The one recommendation shown to the user, with its confidence and the reasons behind both."""
+        """The recommendation shown to the user, with its confidence and the reasons behind both.
+
+        Since 25 Nov 2026 the confidence is how often answers like this one were right in testing: same district,
+        same kind of answer, field inputs from about as far away (reports/map_confidence). The answer is one crop
+        when the model's first two crops are not close, and the two crops when they are (or when one crop would be
+        right for less than half of such fields). There is no answer (kind "none") when the season was never tested,
+        when the nearest surveyed field is more than 20 km away, or when even the answer's tested rate is below 50
+        percent: a farmer never gets one crop with a low confidence. Without the table (or when the rules answer),
+        the level comes from the district hit rate as on 22 Nov, and a low level also means no answer."""
         method = self.method_for(district)
         no_rules = method == "rules" and not out["rules"]["ranking"]
         if no_rules:
@@ -440,49 +515,114 @@ class MapRecommender:
         ranked = out[method]["ranking"]
         first, second = ranked[0], (ranked[1] if len(ranked) > 1 else None)
         close = second is not None and first[key] - second[key] < CLOSE_CALL
-        hit = self.hit_rates.get(district, {}).get(method)
-        level = confidence_level(hit, season_tested, close, far)
+        km = out["inputs"]["block"]["distance_km"]
+        district_hit = self.hit_rates.get(district, {}).get(method)
         other = "rules" if method == "model" else "model"
         theirs = self.hit_rates.get(district, {}).get(other)
+
+        # Kind of answer and its tested rate
+        situation = self._situation(district, km, close) if method == "model" else None
+        beyond = method == "model" and bool(self.confidence) and data_band(km) is None
+        if situation is not None:
+            kind, rate = situation["kind"], situation["rate"]
+            level = "high" if rate >= HIGH_HIT else "medium" if rate >= LOW_HIT else "low"
+        else:                                   # the rules, or no table: the district hit rate of 22 Nov
+            kind, rate = "one_crop", district_hit
+            level = confidence_level(district_hit, season_tested, close, far)
+        if not season_tested or beyond or level == "low":
+            kind = "none"
+        two = kind == "two_crops"
+
+        # Reasons, in plain words
         if no_rules:
             why = [f"The expert rules could not rate any crop here, so the answer comes from {MODEL_LABEL}."]
-        elif hit is not None and theirs is not None and method == "model":
-            why = [f"In {district}, {MODEL_LABEL} named the right crop first for {hit:.0%} of the new fields in "
-                   f"testing, against {theirs:.0%} for the expert rules, so the answer comes from {MODEL_LABEL}."]
-        elif hit is not None and theirs is not None:
+        elif district_hit is not None and theirs is not None and method == "model":
+            why = [f"In {district}, {MODEL_LABEL} named the right crop first for {district_hit:.0%} of the new fields "
+                   f"in testing, against {theirs:.0%} for the expert rules, so the answer comes from {MODEL_LABEL}."]
+        elif district_hit is not None and theirs is not None:
             why = [f"In {district}, {MODEL_LABEL} was not ahead of the expert rules in testing on new fields (first "
-                   f"crop right for {theirs:.0%} of the fields, against {hit:.0%} for the rules), so the answer "
-                   "comes from the rules, the default."]
+                   f"crop right for {theirs:.0%} of the fields, against {district_hit:.0%} for the rules), so the "
+                   "answer comes from the rules, the default."]
         else:
             why = [f"The answer comes from {METHOD_NAMES[method]}."]
-        if hit is not None and (no_rules or theirs is None):
-            why.append(f"In testing, its first crop was the right one for {hit:.0%} of the new fields in {district}.")
+        if situation is None and district_hit is not None and (no_rules or theirs is None):
+            why.append(f"In testing, its first crop was the right one for {district_hit:.0%} of the new fields in "
+                       f"{district}.")
         if method == "rules":
             why += [r["text"] for r in first.get("reasons", [])]
-        if close and abs(first[key] - second[key]) < 1e-9:
-            why.append(f"{CROP_NAMES[second['crop']]} fits just as well ({first[key]:.2f} each), so the confidence is "
-                       "one step lower.")
-        elif close:
-            why.append(f"{CROP_NAMES[second['crop']]} is close behind ({first[key]:.2f} against {second[key]:.2f}), "
-                       "so the confidence is one step lower.")
-        if far:
-            why.append(f"The nearest CIAT data is more than {NEAR_KM:.0f} km away, so the confidence is one step "
-                       "lower.")
-        if not season_tested:
-            why.append("The season you picked was never tested, so the confidence is low. The answer is for season B.")
+        message = None
+        if kind == "none":
+            if not season_tested:
+                message = ("This season was never tested: the model and the rules learned from season B 2025 only. "
+                           "Pick season B (February to June) for a tested answer.")
+            elif beyond:
+                message = (f"The nearest surveyed field is {km:.1f} km away. Nothing was tested with field data from "
+                           "that far, so there is no reliable answer here.")
+            elif situation is not None:
+                message = (f"Answers like this one were right for only {rate:.0%} of the fields in testing, less than "
+                           "half, so there is no reliable answer here.")
+            else:                               # the district hit rate of 22 Nov, lowered to low
+                reasons = ([f"{METHOD_NAMES[method]} named the right crop first for only {rate:.0%} of the new "
+                            f"fields in {district}"] if rate is not None and rate < LOW_HIT else
+                           ["there is no tested hit rate"] if rate is None else [])
+                reasons += (["two crops fit almost as well"] if close else []) + (
+                    [f"the nearest surveyed field is {km:.1f} km away"] if far else [])
+                message = f"The confidence here would be low ({' and '.join(reasons)}), so there is no reliable answer."
+            why = [message + " Please ask the local agronomist."]
+        else:
+            if second is not None and (close or two):
+                how = (f"just as well ({first[key]:.2f} each)" if abs(first[key] - second[key]) < 1e-9 else
+                       f"almost as well ({first[key]:.2f} against {second[key]:.2f})")
+                why.append(f"{CROP_NAMES[second['crop']]} fits {how}" + (", so both are given." if two else
+                                                                         ", so the confidence is one step lower."))
+            if far:
+                why.append(f"The nearest surveyed field is {km:.1f} km away, so the soil, elevation and satellite "
+                           "values come from there.")
+            if situation is not None:
+                where = (f"all four districts together, {situation['fields']} fields, because {district} alone has "
+                         f"too few such fields" if situation["pooled"] else f"{situation['fields']} fields in {district}")
+                data = ("field data within 5 km" if situation["band"] == "within 5 km" else
+                        f"field data taken {situation['band']} away")
+                if two and close:
+                    why.append(f"In testing, when the first two crops were this close, the crop planted was one of the "
+                               f"two for {rate:.0%} of the fields ({where}, {data}).")
+                elif two:
+                    why.append(f"In testing, one crop alone was right for less than half of such fields, but the crop "
+                               f"planted was one of the first two for {rate:.0%} of them ({where}, {data}).")
+                else:
+                    why.append(f"In testing, answers like this one, with one clear first crop, were right for "
+                               f"{rate:.0%} of the fields ({where}, {data}).")
         lowered = ((["this season was never tested"] if not season_tested else [])
-                   + (["another crop fits almost as well"] if close else [])
-                   + ([f"the nearest CIAT data is more than {NEAR_KM:.0f} km away"] if far else []))
-        return {"crop": first["crop"], "method": method, "method_name": out[method]["name"], "confidence": level,
-                "hit_rate": hit, "close_second": second["crop"] if close else None, "lowered_by": lowered,
-                "others": [r["crop"] for r in ranked[1:]], "why": why}
+                   + (["two crops fit almost as well" if two else "another crop fits almost as well"]
+                      if close or two else [])
+                   + ([f"the nearest CIAT data is {km:.1f} km away"] if far else []))
+        crops = [] if kind == "none" else [first["crop"]] + ([second["crop"]] if two else [])
+        shown = kind != "none"
+        band = situation["band"] if situation is not None else None
+        return {"kind": kind, "crop": first["crop"] if shown else None, "crops": crops,
+                "method": method, "method_name": out[method]["name"],
+                "confidence": level if shown else None, "hit_rate": rate if shown else None,
+                "basis": "first_two_crops" if two else "first_crop",
+                "tested_fields": situation["fields"] if situation is not None and shown else None,
+                "situation": (f"{district}, field data {band}{'' if band == 'within 5 km' else ' away'}, "
+                              + ("first two crops close" if two and close else "first two crops" if two else
+                                 "one clear first crop")) if shown and situation is not None else None,
+                "close_second": second["crop"] if two else None, "lowered_by": lowered,
+                "others": [r["crop"] for r in ranked[len(crops):]] if shown else [],
+                "message": message, "why": why}
 
     # ----------------------------------------------------------- for the notebook
     def feature_importance(self, evaluation_dir: Path = EVAL_DIR) -> pd.DataFrame:
         """How much each input matters for the model on the map: the drop in main score on new fields when the input
-        is shuffled among the test fields (tuning_v1, importance.csv). Share: the positive drops, scaled to sum to 1."""
-        imp = pd.read_csv(Path(evaluation_dir) / "importance.csv")
-        imp = imp[(imp["test"] == "blockcv") & (imp["model"] == self.final["model"]) & (imp["kind"] == "input")]
+        is shuffled among the test fields (importance.csv). Share: the positive drops, scaled to sum to 1. The third
+        round of tuning did not measure it again, so final_model.json names where it comes from (the tuned model of
+        the same method and inputs in tuning_v2)."""
+        source, model = Path(evaluation_dir), self.final["model"]
+        if not (source / "importance.csv").exists() and self.final.get("importance_from"):
+            source = ev.REPO / self.final["importance_from"]["folder"]
+            model = self.final["importance_from"]["model"]
+        imp = pd.read_csv(source / "importance.csv")
+        imp = imp[(imp["test"] == "blockcv") & (imp["model"] == model) & (imp["kind"] == "input")]
         df = (imp.rename(columns={"name": "feature", "drop_mean": "drop_in_main_score"})
               [["feature", "drop_in_main_score"]].sort_values("drop_in_main_score", ascending=False))
         positive = df["drop_in_main_score"].clip(lower=0)
@@ -499,6 +639,9 @@ class MapRecommender:
         joblib.dump(self.model.estimator, folder / "model.joblib")
         self.feature_importance().to_csv(folder / "feature_importance.csv", index=False)
         meta = {"model": self.final["model"], "settings": self.final["settings"], "chosen_by": self.final["chosen_by"],
+                "crop_weights": dict(zip([str(c) for c in self.model.classes_], self.crop_weights.round(6).tolist())),
+                "how_to_use": "multiply predict_proba by crop_weights (same order as classes), then divide each row "
+                              "by its sum",
                 "trained_on_fields": int(len(self.main)), "features": self.model.used_,
                 "fill_missing_with": {k: round(float(v), 6) for k, v in self.model.fill_.items()},
                 "classes": [str(c) for c in self.model.classes_], "season": MODEL_SEASON,

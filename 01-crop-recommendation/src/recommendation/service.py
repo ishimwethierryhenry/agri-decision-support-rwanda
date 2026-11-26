@@ -352,7 +352,8 @@ OUTSIDE_CODES = {"outside_rwanda": "OUTSIDE_RWANDA", "outside_pilot": "OUTSIDE_P
 
 @app.post("/v1/recommend/point", response_model=PointResponse)
 def recommend_point(req: PointRequest, request: Request):
-    """One recommended crop for a point, with its confidence level and fertiliser: the same answer as the map."""
+    """The map's answer for a point: one crop, or two crops that fit about equally, with the confidence of answers
+    like it and the fertiliser; no answer (abstain) when nothing tested is reliable enough there (since 1.3)."""
     mm, rec = map_recommender()
     res = rec.recommend(req.lat, req.lon, req.season, elevation_m=req.elevation_m)
     warnings = [{"code": c, "message": m} for c, m in zip(res["warning_codes"], res["warnings"])]
@@ -368,20 +369,25 @@ def recommend_point(req: PointRequest, request: Request):
                 "abstain_message": res["message"] + " Please consult an extension officer."}
     a, inp = res["answer"], res["inputs"]
     methods = {"model": mm.API_METHOD, "rules": "expert_rules"}
-    out = {**base, "abstain": False,
-           "recommendation": {"crop": a["crop"], "method": methods[a["method"]],
-                              "confidence": {"level": a["confidence"], "tested_hit_rate": a["hit_rate"],
-                                             "lowered_by": a["lowered_by"]},
-                              "close_second": a["close_second"], "alternatives": a["others"], "why": a["why"]},
-           "fertiliser": res["fertiliser"],
-           "inputs_used": {"elevation_m": inp["elevation_m"], "elevation_source": inp["block"]["elevation_source"],
-                           "soil_texture": inp["soil_texture"], "soil_0_20cm": inp["soil_0_20cm"],
-                           "field_data_from": {"n_ciat_fields": inp["block"]["n_fields"],
-                                               "distance_km": inp["block"]["distance_km"]},
-                           "climate_season_b_2025": inp["climate_season_b_2025"],
-                           "nisr_crop_shares": inp["nisr_crop_shares"],
-                           "satellite_at_field": inp.get("satellite_at_field")},
-           "warnings": warnings}
+    if a["kind"] == "none":                     # since 1.3: no answer instead of one crop with a low confidence
+        out = {**base, "abstain": True, "abstain_message": a["message"] + " Please consult an extension officer."}
+    else:
+        out = {**base, "abstain": False,
+               "recommendation": {"crop": a["crop"], "method": methods[a["method"]], "kind": a["kind"],
+                                  "crops": a["crops"],
+                                  "confidence": {"level": a["confidence"], "tested_hit_rate": a["hit_rate"],
+                                                 "lowered_by": a["lowered_by"], "basis": a["basis"],
+                                                 "tested_fields": a["tested_fields"], "situation": a["situation"]},
+                                  "close_second": a["close_second"], "alternatives": a["others"], "why": a["why"]},
+               "fertiliser": res["fertiliser"], "fertiliser_second": res["fertiliser_second"]}
+    out["inputs_used"] = {"elevation_m": inp["elevation_m"], "elevation_source": inp["block"]["elevation_source"],
+                          "soil_texture": inp["soil_texture"], "soil_0_20cm": inp["soil_0_20cm"],
+                          "field_data_from": {"n_ciat_fields": inp["block"]["n_fields"],
+                                              "distance_km": inp["block"]["distance_km"]},
+                          "climate_season_b_2025": inp["climate_season_b_2025"],
+                          "nisr_crop_shares": inp["nisr_crop_shares"],
+                          "satellite_at_field": inp.get("satellite_at_field")}
+    out["warnings"] = warnings
     if req.include_evaluation:
         model_ranking = [{"crop": r["crop"], "score": r["probability"]} for r in res["model"]["ranking"]]
         out["evaluation"] = {
