@@ -1,0 +1,235 @@
+# Crop profiles (data, not code): names, short facts and the varieties released in Rwanda for the four crops of
+# the map. The dashboard shows them under the map's answer ("Get to know the crop").
+#
+# Every number and every claim comes from a source listed under `sources`, by key. Nothing is from memory. When
+# a source does not give a value, the field is left out, never guessed: for example no source we found gives the
+# days to maturity of the iron beans, so they have none.
+#
+# Altitude zones. The bean and potato sources give zones in words. To mark the varieties that fit a clicked
+# field, the words are turned into metres with RAB's own split for maize (Annual Report 2019-2020, Table 7):
+# mid altitude 900 to 1,700 m, high altitude above 1,700 m. The page says so under the varieties.
+#
+# Pictures are drawn by the dashboard (03-shared/dashboard/crop_art.py) from the colours given here: bean seed
+# colour, potato skin and flesh, maize kernel type, rice grain length. No photo is used.
+#
+# Checked: 26 Nov 2026. Keep the plain style of the app: no long dashes, no arrows.
+
+version: "2026-11-26"
+
+zones:
+  low_mid:   {label: "Low to mid altitude", max_m: 1700}
+  mid:       {label: "Mid altitude", min_m: 900, max_m: 1700}
+  mid_high:  {label: "Mid to high altitude", min_m: 900}
+  high:      {label: "High altitude", min_m: 1700}
+
+diseases:   # bean disease codes of Mulambu et al. (2017), Table 10.3
+  AB: Ascochyta blight
+  AC: anthracnose
+  ALS: angular leaf spot
+  BCMV: bean common mosaic virus
+  RR: root rot
+
+crops:
+  beans:
+    name: Beans
+    kinyarwanda: Ibishyimbo
+    scientific: Phaseolus vulgaris
+    intro: "Rwanda grows bush beans and climbing beans. Climbing beans grow up stakes and give much more grain from the same piece of land."
+    facts:
+      - big: "3 to 4 times"
+        text: "more grain from climbing beans than from bush beans"
+        source: cgiar_climbing_2019
+      - big: "About 50%"
+        text: "of the households that grow beans grow climbing beans: 785,714 households, on 43% of the bean area"
+        source: cgiar_climbing_2019
+      - big: "95 ppm"
+        text: "of iron in CAB 2, the richest of the ten iron beans released in 2010 and 2012"
+        source: mulambu_2017
+      - big: "19"
+        text: "new varieties released on 24 June 2021: 13 climbing, and 8 rich in iron and zinc"
+        source: rab_beans_2021
+    watch_out:
+      text: "Anthracnose, angular leaf spot, bean common mosaic virus and root rot. Each iron bean below resists or tolerates several of them."
+      source: mulambu_2017
+    varieties_note: "The ten iron beans RAB released with HarvestPlus in 2010 and 2012, from Mulambu et al. (2017), Table 10.3. No source we found lists the 19 varieties of 2021 one by one."
+    varieties:
+      - {name: CAB 2, habit: climbing, released: 2010, iron_ppm: 95, yield_t_ha: [4.0, 4.5], zone: high, seed: white, resistant: [AC, BCMV], tolerant: [AB, ALS], source: mulambu_2017}
+      - {name: MAC 42, habit: climbing, released: 2012, iron_ppm: 91, yield_t_ha: [3.5, 4.0], zone: high, seed: sugar, resistant: [AC, BCMV], tolerant: [AB, ALS], source: mulambu_2017}
+      - {name: RWV 3316, habit: climbing, released: 2012, iron_ppm: 87, yield_t_ha: [4.0], zone: high, seed: red, resistant: [AC, BCMV], tolerant: [AB, ALS], source: mulambu_2017}
+      - {name: RWV 2887, habit: climbing, released: 2012, iron_ppm: 85, yield_t_ha: [3.8], zone: high, seed: dark_red, resistant: [AC, BCMV], tolerant: [AB, ALS], source: mulambu_2017}
+      - {name: RWV 3006, habit: climbing, released: 2012, iron_ppm: 78, yield_t_ha: [3.8], zone: mid_high, seed: white, resistant: [AB, AC, ALS, BCMV], tolerant: [], source: mulambu_2017}
+      - {name: MAC 44, habit: climbing, released: 2010, iron_ppm: 78, yield_t_ha: [2.5, 3.0], zone: mid_high, seed: red_mottled, resistant: [AC], tolerant: [AB, ALS, BCMV, RR], source: mulambu_2017}
+      - {name: RWV 1129, habit: climbing, released: 2010, iron_ppm: 77, yield_t_ha: [3.0], zone: mid_high, seed: salmon, resistant: [AC, BCMV, RR], tolerant: [AB, ALS], source: mulambu_2017}
+      - {name: RWR 2245, habit: bush, released: 2010, iron_ppm: 76, yield_t_ha: [1.0, 1.5], zone: low_mid, seed: red_mottled, resistant: [AB, AC, BCMV], tolerant: [ALS, RR], source: mulambu_2017}
+      - {name: RWV 3317, habit: climbing, released: 2012, iron_ppm: 74, yield_t_ha: [4.0], zone: high, seed: sugar, resistant: [AC, BCMV], tolerant: [AB, ALS], source: mulambu_2017}
+      - {name: RWR 2154, habit: bush, released: 2010, iron_ppm: 71, yield_t_ha: [1.2, 1.7], zone: low_mid, seed: sugar, resistant: [AB, AC, BCMV], tolerant: [ALS], source: mulambu_2017}
+    seed_labels:
+      white: White
+      sugar: Sugar bean
+      red: Red
+      dark_red: Dark red
+      red_mottled: Red mottled
+      salmon: Salmon
+
+  irish_potato:
+    name: Irish potato
+    kinyarwanda: Ibirayi
+    scientific: Solanum tuberosum
+    intro: "Most of Rwanda's potatoes grow in the highlands: the volcanic soils of the north, Buberuka and the Congo-Nile Divide."
+    facts:
+      - big: "Over 80%"
+        text: "of national potato production comes from the high-altitude region"
+        source: cip_potato_2025
+      - big: "15"
+        text: "varieties released from 2019 to 2022, all described in the 2025 guide of CIP and RAB"
+        source: cip_potato_2025
+      - big: "1983"
+        text: "the year of Kinigi, the oldest variety in the guide (20 to 30 t/ha). Twihaze, from 2019, can give 56 t/ha"
+        source: cip_potato_2025
+      - big: "All"
+        text: "varieties in the guide are susceptible to bacterial wilt"
+        source: cip_potato_2025
+    watch_out:
+      text: "Late blight, common in wet highland areas, and bacterial wilt, which no variety in the guide resists."
+      source: [cip_potato_2025, ktpress_2026]
+    varieties_note: "From the Rwanda Potato Variety Description Guide (CIP, RAB and partners, 2025, CC BY 4.0). Izihirwe has no maturity or yield here because the guide gives two different values for each."
+    shown_first: 8
+    varieties:
+      - {name: Kinigi, released: 1983, maturity_days: [110, 120], yield_t_ha: [20, 30], skin: red, flesh: yellow, shape: Round, late_blight: Moderately tolerant, use: "Chips and table", where: Highlands, zone: high, source: cip_potato_2025}
+      - {name: Nkunganire, released: 2019, maturity_days: [90, 120], yield_t_ha: [32], skin: red, flesh: yellow, shape: Round, late_blight: Resistant, use: "Fresh, chips and crisps", where: Highlands, zone: high, source: cip_potato_2025}
+      - {name: Twihaze, released: 2019, maturity_days: [100, 120], yield_t_ha: [56], skin: cream, flesh: cream, shape: Round, late_blight: Resistant, use: "Fresh", where: Midlands and highlands, zone: mid_high, source: cip_potato_2025}
+      - {name: Kazeneza, released: 2019, maturity_days: [90, 120], yield_t_ha: [29], skin: cream, flesh: cream, shape: Round, late_blight: Resistant, use: "Table and chips", where: Highlands, zone: high, source: cip_potato_2025}
+      - {name: Kerekezo (Cyerekezo), released: 2020, maturity_days: [90, 110], yield_t_ha: [30], skin: red, flesh: yellow, shape: Round to oblong, late_blight: Mid-resistant, use: "Table and chips", where: Moderate lands and highlands, zone: mid_high, source: cip_potato_2025}
+      - {name: Gisubizo, released: 2020, maturity_days: [120, 150], yield_t_ha: [35], skin: red, flesh: light_yellow, shape: Round, late_blight: Mid-resistant, use: "Chips", where: Highlands, zone: high, source: cip_potato_2025}
+      - {name: Seka, released: 2020, maturity_days: [100], yield_t_ha: [30], skin: cream, flesh: cream, shape: Round to oblong, late_blight: Resistant, heat_tolerant: true, use: "Chips", where: Midlands and highlands, zone: mid_high, source: cip_potato_2025}
+      - {name: Twigire, released: 2020, maturity_days: [90, 110], yield_t_ha: [30], skin: cream, flesh: white_cream, shape: Round, late_blight: Resistant, use: "Table and chips", where: Highlands, zone: high, source: cip_potato_2025}
+      - {name: Ndeze, released: 2019, maturity_days: [90, 120], yield_t_ha: [24], skin: cream, flesh: cream, shape: Round, late_blight: Resistant, use: "Table and chips", where: Midlands and highlands, zone: mid_high, source: cip_potato_2025}
+      - {name: Jyambere, released: 2020, maturity_days: [100, 120], yield_t_ha: [25], skin: red, flesh: light_yellow, shape: Round, late_blight: Tolerant, use: "Table and chips", where: Highlands, zone: high, source: cip_potato_2025}
+      - {name: Ndamira, released: 2020, maturity_days: [90, 100], yield_t_ha: [35], skin: light_pink, flesh: light_yellow, shape: Round to oblong, late_blight: Moderately susceptible, use: "Chips and table", where: Highlands, zone: high, source: cip_potato_2025}
+      - {name: Izihirwe, released: 2019, skin: red, flesh: light_yellow, shape: Round, late_blight: Resistant, use: "Table and chips", where: Highlands, zone: high, source: cip_potato_2025}
+      - {name: Kirundo, released: 1989, maturity_days: [100, 120], yield_t_ha: [30], skin: cream, flesh: light_yellow, shape: Round, late_blight: Mid-tolerant, where: Highlands, zone: high, source: cip_potato_2025}
+      - {name: Cruza, released: 1985, maturity_days: [100, 120], yield_t_ha: [20, 30], skin: white_purple, flesh: light_yellow, shape: Round, late_blight: Tolerant, use: "Table and chips", where: Highlands, zone: high, source: cip_potato_2025}
+      - {name: Gikungu, released: 1992, maturity_days: [100, 120], yield_t_ha: [30], skin: red, flesh: yellow, shape: Round to oblong, late_blight: Resistant, use: "Chips", where: Highlands, zone: high, source: cip_potato_2025}
+    skin_labels:
+      red: Red skin
+      cream: Cream skin
+      light_pink: Light pink skin
+      white_purple: White skin with purple spots
+    flesh_labels:
+      yellow: yellow flesh
+      light_yellow: light yellow flesh
+      cream: cream flesh
+      white_cream: white cream flesh
+
+  maize:
+    name: Maize
+    kinyarwanda: Ibigori
+    scientific: Zea mays
+    intro: "RAB breeds its own maize hybrids for two zones: mid altitude, from 900 to 1,700 m, and high altitude, above 1,700 m."
+    facts:
+      - big: "6.6 times"
+        text: "more maize in 2013 than in 2007 (667,834 t against 101,659 t), after the Crop Intensification Program began"
+        source: newtimes_2017
+      - big: "9.2 t/ha"
+        text: "for RHM1409, the best RAB mid-altitude hybrid in the 2020A trials at Rubona and Cyabayaga"
+        source: rab_annual_2020
+      - big: "85 days"
+        text: "for RHM1407 to mature, as reported in 2026. It also needs less rain"
+        source: newtimes_2026
+      - big: "MLN"
+        text: "maize lethal necrosis: RHM1402, RHM1407 and RHM1409 tolerate it, and drought too"
+        source: rab_annual_2020
+    watch_out:
+      text: "Maize lethal necrosis (MLN) and drought. Three of the mid-altitude hybrids below tolerate both."
+      source: rab_annual_2020
+    varieties_note: "RAB hybrids in seed production in 2019-2020, multiplied by local seed companies such as NVGS and Rumbuka (RAB Annual Report 2019-2020, Tables 2 and 7). Trial yields are from the 2020A trials, at 15% moisture."
+    varieties:
+      - {name: RHM1409, zone: mid, trial_yield_t_ha: 9.23, traits: ["MLN tolerant", "Drought tolerant"], source: rab_annual_2020}
+      - {name: RHM1402, zone: mid, trial_yield_t_ha: 8.86, kernel: flint, traits: ["MLN tolerant", "Drought tolerant", "Flint kernels"], source: rab_annual_2020}
+      - {name: RHM1407, zone: mid, trial_yield_t_ha: 8.41, maturity_days: [85], traits: ["MLN tolerant", "Drought tolerant", "Needs less rain"], source: [rab_annual_2020, newtimes_2026]}
+      - {name: RHM104, zone: mid, trial_yield_t_ha: 7.73, traits: ["Drought tolerant"], source: rab_annual_2020}
+      - {name: RHMH1520, zone: high, kernel: flint, traits: ["Early", "Flint to semi-flint kernels, which farmers prefer"], source: rab_annual_2020}
+      - {name: RHMH1521, zone: high, kernel: semi_dent, traits: ["Semi-dent kernels"], source: rab_annual_2020}
+
+  rice:
+    name: Rice
+    kinyarwanda: Umuceri
+    scientific: Oryza sativa
+    intro: "Rice grows in Rwanda's marshlands. The newer varieties aim at long grains, yield and resistance to disease."
+    facts:
+      - big: "7 t/ha"
+        text: "rice yields with the new varieties, against 2 to 3 t/ha with the older ones"
+        source: newtimes_2026
+      - big: "6"
+        text: "long-grain varieties that RAB found can grow where nights are cold"
+        source: rab_annual_2020
+      - big: "TETA 10-04"
+        text: "ranked first by farmers in the 2025 trials for yield and disease resistance, and on the 2025 national list"
+        source: [newtimes_2026, ktpress_2026]
+      - big: "3"
+        text: "new long-grain varieties announced in November 2025 to compete with imports such as Basmati"
+        source: newtimes_2025_rice
+    watch_out:
+      text: "Rice blast. RAB is breeding five varieties that resist it."
+      source: rab_annual_2020
+    varieties_note: "Varieties named by RAB (Annual Report 2019-2020) and in the 2025 farmer trials (The New Times, 2026). Rice grows in marshlands, so the page does not match rice varieties to the field's elevation."
+    varieties:
+      - {name: TETA 10-04, notes: ["First for yield and disease resistance in the 2025 farmer trials", "On the 2025 national list"], source: [newtimes_2026, ktpress_2026]}
+      - {name: Umutebo, grain: long, notes: ["Long grain", "The leading variety in Southern Province in RAB's 2019-2020 report"], source: rab_annual_2020}
+      - {name: Gwiza, grain: long, notes: ["Long grain", "Top-ranked in Kirehe"], source: rab_annual_2020}
+      - {name: Cyuzuzo, grain: long, notes: ["Long grain", "Top-ranked in Nyamasheke"], source: rab_annual_2020}
+      - {name: TETA 10-03, notes: ["Climate-smart variety tested with farmers in 2025"], source: newtimes_2026}
+      - {name: Kigoli 13-1, notes: ["Climate-smart variety tested with farmers in 2025"], source: newtimes_2026}
+
+inputs:   # where farmers get seed and fertiliser; shown for every crop
+  title: "Get seed and fertiliser through SNS"
+  text: "The Smart Nkunganire System (SNS) is Rwanda's digital platform for subsidised farm inputs, put online in 2018 by RAB and BK Techouse. A farmer registers by phone, an agronomist approves, and the farmer collects the inputs from an agro-dealer of their choice. More than 1.5 million people are registered, and over 90% of subsidised fertiliser goes through it. Its fertiliser tool, SNS-FRT, gives advice for the farmer's own plot for potato, maize, rice and beans, from Rwanda's soil maps."
+  source: cgiar_sns_2025
+
+names_source: nisr_2025   # Kinyarwanda crop names
+
+sources:
+  cip_potato_2025:
+    short: "CIP and RAB, 2025"
+    text: 'D. Borus et al., "Rwanda Potato Variety Description Guide," International Potato Center, 2025, doi: 10.4160/cip.2025.03.001. CC BY 4.0.'
+    url: "https://cgspace.cgiar.org/bitstreams/51cfe6f3-c1f4-40b3-9128-0a68d693dde3/download"
+  mulambu_2017:
+    short: "Mulambu et al., 2017"
+    text: 'J. Mulambu et al., "Iron beans in Rwanda: crop development and delivery experience," Afr. J. Food Agric. Nutr. Dev., vol. 17, no. 2, pp. 12026-12050, 2017, Table 10.3.'
+    url: "https://www.ajfand.net/Volume17/No2/Biofortification%20Issue%20Chapter%2010.pdf"
+  cgiar_climbing_2019:
+    short: "CGIAR, 2019"
+    text: 'CGIAR, "Climbing beans reduce poverty in Rwanda," CGIAR Performance Report 2019.'
+    url: "https://www.cgiar.org/annual-report/performance-report-2019/climbing-beans-reduce-poverty-in-rwanda"
+  rab_beans_2021:
+    short: "RAB, 2021"
+    text: 'Rwanda Agriculture and Animal Resources Development Board (RAB), "RAB launches 19 new varieties of beans," 24 Jun. 2021.'
+    url: "https://www.rab.gov.rw/1-1/news-details/rab-launches-19-new-varieties-of-beans"
+  rab_annual_2020:
+    short: "RAB, 2020"
+    text: 'RAB, "Annual Report 2019-2020," Kigali, 2020: maize Tables 2 and 7, rice and bean sections.'
+    url: "https://www.rab.gov.rw/fileadmin/user_upload/RAB/Publications/Reports/RAB_annual_2019-2020.pdf"
+  newtimes_2026:
+    short: "The New Times, 2026"
+    text: 'M. Nkurunziza, "Farmers pick climate-smart seeds that double yields," The New Times, 1 Jan. 2026.'
+    url: "https://allafrica.com/stories/202601020015.html"
+  newtimes_2017:
+    short: "The New Times, 2017"
+    text: 'The New Times, "RAB scientists develop new hybrid maize varieties" (sponsored), 3 Jan. 2017.'
+    url: "https://www.newtimes.co.rw/article/136780/News/sponsored-rab-scientists-develop-new-hybrid-maize-varieties"
+  newtimes_2025_rice:
+    short: "The New Times, 2025"
+    text: 'The New Times, "New rice varieties could rival long-grain imports: officials," 13 Nov. 2025.'
+    url: "https://www.newtimes.co.rw/article/31227/news/agriculture/new-rice-varieties-could-rival-long-grain-imports-officials"
+  ktpress_2026:
+    short: "KT Press, 2026"
+    text: 'KT Press, "Government issues crop varieties suitable for Rwanda," Jan. 2026, on the National Plant Variety List 2025 (Official Gazette of 31 Dec. 2025).'
+    url: "https://www.ktpress.rw/2026/01/government-issues-crop-varieties-suitable-for-rwanda/"
+  nisr_2025:
+    short: "NISR, 2025"
+    text: "National Institute of Statistics of Rwanda (NISR), Seasonal Agricultural Survey 2025, summary in Kinyarwanda (Incamake)."
+    url: "https://statistics.gov.rw/sites/default/files/documents/2025-12/INCAMAKE%20SAS%202025.pdf"
+  cgiar_sns_2025:
+    short: "CGIAR, 2025"
+    text: 'CGIAR, "A smart and smartly delivered advisory service for Rwanda''s small-scale farmers," 6 Jan. 2025.'
+    url: "https://www.cgiar.org/news-events/news/a-smart-and-smartly-delivered-advisory-service-for-rwandas-small-scale-farmers"

@@ -150,6 +150,30 @@ def test_ruhango_point_where_two_crops_fit_gives_both():
     assert "Fertiliser for Beans <b>" in text and "Fertiliser for Maize <b>" in text
 
 
+def test_crop_profile_follows_the_answer():
+    """Since 26 Nov: the recommended crop's profile, with the varieties that fit the field's elevation first."""
+    at = _page()
+    text = " ".join(m.value for m in at.markdown)
+    assert "Get to know Irish potato" in text and ">Ibirayi<" in text and "Solanum tuberosum" in text
+    assert "15 of 15 fit a field at 2,284 m" in text and ">Kinigi<small>1983</small>" in text
+    assert "Smart Nkunganire System" in text and 'class="kc-scene"' in text
+    assert [e.label for e in at.expander][-1] == "7 more varieties"
+
+
+def test_two_crop_answer_gets_one_profile_tab_per_crop():
+    at = _type_point(_page(), -2.196, 29.592)
+    assert [t.label for t in at.tabs] == ["Beans  (Ibishyimbo)", "Maize  (Ibigori)"]
+    text = " ".join(m.value for m in at.markdown)
+    assert "Get to know both crops" in text and "5 of 10 fit a field at 1,620 m" in text
+    assert "4 of 6 fit a field at 1,620 m" in text and "Bush beans. Drawing, not a photo." in text
+
+
+def test_no_crop_profile_when_there_is_no_answer():
+    at = _page()
+    at.radio(key="pills_season").set_value("A").run()
+    assert not any("Get to know" in m.value for m in at.markdown) and not at.tabs
+
+
 def test_points_outside_the_pilot_districts_or_rwanda_get_no_crop():
     at = _type_point(_page(), -1.95, 30.06)       # Kigali
     assert _place(at) == ["Nyarugenge"] and not _picks(at) and not _answer(at)

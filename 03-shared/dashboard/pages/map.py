@@ -13,6 +13,9 @@ method that named the right crop first more often in testing (the measure the co
 Random Forest in all four districts. Also since 25 Nov 2026 the confidence is how often answers like this one were
 right in testing (reports/map_confidence): one crop, two crops when they fit about equally, or no answer, never one
 crop with a low confidence.
+Since 26 Nov 2026 a crop profile follows the answer (crop_ui.py): an animated drawing of the crop, its names in
+English, Kinyarwanda and Latin, short facts, and the varieties released in Rwanda, those that fit the field's
+elevation first, each drawn in its own colours, with numbered sources.
 """
 import sys
 from pathlib import Path
@@ -24,6 +27,7 @@ SERVICE_DIR = Path(__file__).resolve().parents[3] / "01-crop-recommendation" / "
 if str(SERVICE_DIR) not in sys.path:
     sys.path.insert(0, str(SERVICE_DIR))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import crop_ui  # noqa: E402
 import map_model as mm  # noqa: E402
 import rec_ui as ui  # noqa: E402
 from ui_theme import hero  # noqa: E402
@@ -304,6 +308,11 @@ with right:
                 with st.expander("Notes"):
                     for w in res["warnings"]:
                         st.write(f"- {w}")
+
+if res["status"] == "ok" and res["answer"]["kind"] != "none":
+    st.write("")
+    with st.container(key="card_crops"):
+        crop_ui.show(res["answer"]["crops"], res["inputs"].get("elevation_m"))
 
 if evaluation and res["status"] == "ok":
     st.write("")
